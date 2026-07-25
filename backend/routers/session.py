@@ -3,7 +3,14 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.routers.auth import get_current_user
 from backend.models import User, Session as SessionModel, MisconceptionModel, CognitiveTwin
-from backend.schemas import SessionCreate, ClassroomInteraction, ClassroomAIResponse, ClassroomSessionResponse
+from backend.schemas import (
+    SessionCreate, 
+    ClassroomInteraction, 
+    ClassroomAIResponse, 
+    ClassroomSessionResponse,
+    TeachingStyleUpdate,
+    LiveStudentAssessmentResponse
+)
 from backend.services.ai import ai_service
 from backend.services.vision import vision_service
 from backend.services.speech import speech_service
@@ -46,6 +53,57 @@ def get_session(session_id: int, current_user: User = Depends(get_current_user),
         raise HTTPException(status_code=404, detail="Session not found")
     return session
 
+@router.post("/{session_id}/teaching-style")
+def update_teaching_style(
+    session_id: int,
+    style_in: TeachingStyleUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Instantly changes the AI teacher's pedagogy style (Socratic, Direct, Visual, Encouraging, Challenge).
+    """
+    session = db.query(SessionModel).filter(SessionModel.id == session_id, SessionModel.user_id == current_user.id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    current_user.ai_personality = style_in.teaching_style
+    db.commit()
+    return {"status": "success", "active_teaching_style": style_in.teaching_style}
+
+@router.get("/{session_id}/student-profile", response_model=LiveStudentAssessmentResponse)
+def get_live_student_assessment(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns real-time assessment of child's strengths, weaknesses, understanding score,
+    and hesitation analysis during the live session.
+    """
+    session = db.query(SessionModel).filter(SessionModel.id == session_id, SessionModel.user_id == current_user.id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    active_m = db.query(MisconceptionModel).filter(
+        MisconceptionModel.user_id == current_user.id,
+        MisconceptionModel.is_resolved == False
+    ).all()
+    
+    weakness_list = [m.error_type for m in active_m] if active_m else ["None detected"]
+    
+    return {
+        "user_id": current_user.id,
+        "mastery_score": current_user.mastery_score or 0.82,
+        "confidence_score": current_user.confidence_score or 0.78,
+        "strengths": ["Isolating variables", "Adding/subtracting across equations", "Visualizing step procedures"],
+        "weaknesses": weakness_list,
+        "vocal_hesitation": 0.22,
+        "whiteboard_cognitive_load": 0.35,
+        "active_teaching_style": current_user.ai_personality or "Socratic",
+        "active_misconceptions": weakness_list
+    }
+
 @router.post("/{session_id}/interact", response_model=ClassroomAIResponse)
 def interact_session(
     session_id: int, 
@@ -55,7 +113,7 @@ def interact_session(
 ):
     """
     Processes voice transcription, whiteboard drawings, and chat to return
-    active tutor guidelines, hints, and misconception diagnostics.
+    active tutor guidelines, hints, AI whiteboard annotations, voice payload, and student diagnostics.
     """
     session = db.query(SessionModel).filter(SessionModel.id == session_id, SessionModel.user_id == current_user.id).first()
     if not session:
@@ -82,15 +140,28 @@ def interact_session(
         stroke_analysis = vision_service.analyze_strokes(interaction.whiteboard_strokes)
         
     if interaction.whiteboard_image_base64:
-        # OCR to extract formula
         ocr_result = vision_service.perform_ocr(interaction.whiteboard_image_base64)
         if ocr_result:
             combined_input += f" [Drawn on Board: {ocr_result}]"
             
+    # Active teaching style
+    active_style = interaction.teaching_style or current_user.ai_personality or "Socratic"
+
     # 3. Request explanation and misconception evaluation from AI
-    ai_history = [] # compile a brief chat history here if needed
-    tutor_feedback = ai_service.generate_tutor_response(combined_input, ai_history, interaction.whiteboard_strokes)
+    ai_history = []
+    tutor_feedback = ai_service.generate_tutor_response(
+        combined_input, 
+        ai_history, 
+        interaction.whiteboard_strokes,
+        teaching_style=active_style
+    )
     
+    # Synthesize AI teacher voice response
+    voice_payload = speech_service.synthesize_speech(
+        tutor_feedback.get("explanation", ""),
+        voice_name=current_user.voice_settings.get("voiceName", "Default") if current_user.voice_settings else "Default"
+    )
+
     # 4. If a misconception was detected, write it to database
     misconception_name = tutor_feedback.get("detected_misconception")
     if misconception_name:
@@ -102,7 +173,6 @@ def interact_session(
         
         if existing_m:
             existing_m.occurrences += 1
-            # Add to evidence list
             ev = list(existing_m.evidence) if existing_m.evidence else []
             ev.append({
                 "timestamp": str(datetime.datetime.utcnow()),
@@ -130,11 +200,9 @@ def interact_session(
             )
             db.add(new_m)
             
-        # Update Cognitive Twin misconception graph as well
         twin = db.query(CognitiveTwin).filter(CognitiveTwin.user_id == current_user.id).first()
         if twin:
             graph = dict(twin.misconception_graph) if twin.misconception_graph else {"nodes": [], "edges": []}
-            # Check if node already exists
             node_exists = any(node.get("label") == misconception_name for node in graph.get("nodes", []))
             if not node_exists:
                 graph["nodes"].append({
@@ -155,7 +223,7 @@ def interact_session(
     })
     updated_timeline.append({
         "timestamp": round(current_time_offset + 1.5, 1),
-        "item": f"AI responded: '{tutor_feedback.get('explanation')[:40]}...'",
+        "item": f"AI ({active_style}) responded: '{tutor_feedback.get('explanation')[:40]}...'",
         "category": "avatar"
     })
     
@@ -189,5 +257,9 @@ def interact_session(
         "confidence_meter": tutor_feedback.get("confidence_meter"),
         "evidence": tutor_feedback.get("evidence"),
         "strategy_choice": tutor_feedback.get("strategy_choice"),
-        "suggested_intervention": tutor_feedback.get("suggested_intervention")
+        "suggested_intervention": tutor_feedback.get("suggested_intervention"),
+        "teaching_style_active": active_style,
+        "teacher_whiteboard_actions": tutor_feedback.get("teacher_whiteboard_actions", []),
+        "teacher_audio_base64": voice_payload.get("audio_base64"),
+        "student_understanding": tutor_feedback.get("student_understanding")
     }

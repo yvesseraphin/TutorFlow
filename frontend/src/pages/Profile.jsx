@@ -1,385 +1,616 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  User, 
-  Volume2, 
-  Bell, 
-  Settings, 
-  Save, 
-  CheckCircle,
-  HelpCircle
-} from 'lucide-react';
-import GlassCard from '../components/GlassCard';
+import React from "react";
+import {
+  BarChart3,
+  Bell,
+  BookOpen,
+  Briefcase,
+  Check,
+  ChevronDown,
+  ClipboardList,
+  Edit3,
+  Globe2,
+  ShieldCheck,
+  SlidersHorizontal,
+  Smile,
+  Target,
+  Trophy,
+  User,
+} from "lucide-react";
 
-const Profile = () => {
-  const [activeTab, setActiveTab] = useState('profile'); // profile, preferences, notifications
-  const [fullName, setFullName] = useState('');
-  const [school, setSchool] = useState('');
-  const [grade, setGrade] = useState('');
-  
-  // Voice config
-  const [voiceName, setVoiceName] = useState('Default Female');
-  const [voiceSpeed, setVoiceSpeed] = useState(1.0);
-  const [voicePitch, setVoicePitch] = useState(1.0);
-  
-  // AI Persona
-  const [aiPersonality, setAiPersonality] = useState('Empathetic Tutor');
-  const [theme, setTheme] = useState('dark');
-  
-  // Alerts config
-  const [reminders, setReminders] = useState(true);
-  const [reviewAlerts, setReviewAlerts] = useState(true);
-  
-  const [savedMessage, setSavedMessage] = useState('');
+const goals = [
+  {
+    title: "Improve my math skills",
+    subtitle: "Get better at solving equations and problems",
+    icon: BarChart3,
+  },
+  {
+    title: "Score 90% or higher",
+    subtitle: "Achieve 90% or higher in assessments",
+    icon: Trophy,
+  },
+  {
+    title: "Build strong fundamentals",
+    subtitle: "Strengthen my basics for advanced topics",
+    icon: BookOpen,
+  },
+];
 
-  useEffect(() => {
-    // Load local storage
-    const userString = localStorage.getItem('user');
-    if (userString) {
-      const user = JSON.parse(userString);
-      setFullName(user.full_name || 'Alex Mercer');
-      setSchool(user.school || 'TutorFlow Academy');
-      setGrade(user.grade || '9th Grade');
-      if (user.voice_settings) {
-        setVoiceName(user.voice_settings.voiceName || 'Default Female');
-        setVoiceSpeed(user.voice_settings.speed || 1.0);
-        setVoicePitch(user.voice_settings.pitch || 1.0);
-      }
-      setAiPersonality(user.ai_personality || 'Empathetic Tutor');
-      setTheme(user.theme || 'dark');
+const preferences = [
+  { label: "Preferred Learning Style", value: "Visual", icon: User },
+  { label: "Difficulty Level", value: "Medium", icon: BarChart3 },
+  { label: "Lesson Duration", value: "45 minutes", icon: Bell },
+  { label: "Language", value: "English", icon: Globe2 },
+  { label: "AI Tutor Personality", value: "Friendly & Supportive", icon: Smile },
+];
+
+const notifications = [
+  {
+    title: "Lesson Reminders",
+    subtitle: "Get reminded about upcoming lessons",
+    icon: Bell,
+  },
+  {
+    title: "Homework Reminders",
+    subtitle: "Get reminded about homework deadlines",
+    icon: ClipboardList,
+  },
+  {
+    title: "AI Feedback & Tips",
+    subtitle: "Receive helpful tips and feedback from AI",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Product Updates",
+    subtitle: "Stay updated with new features and improvements",
+    icon: Briefcase,
+  },
+];
+
+const styles = `
+  .profile-page {
+    min-height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px 38px 36px;
+    background: #ffffff;
+    color: #020b3d;
+    font-family: "Outfit", sans-serif;
+  }
+
+  .profile-header {
+    min-height: 82px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 32px;
+  }
+
+  .profile-title {
+    margin: 0;
+    color: #020b3d;
+    font-size: 39px;
+    font-weight: 700;
+    line-height: 48px;
+    letter-spacing: -0.02em;
+  }
+
+  .profile-subtitle {
+    margin: 7px 0 0;
+    color: #001a6d;
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .profile-actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding-top: 2px;
+  }
+
+  .profile-bell,
+  .profile-avatar-top {
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #0054ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .profile-bell {
+    position: relative;
+    width: 48px;
+    height: 48px;
+  }
+
+  .profile-bell::after {
+    content: "";
+    position: absolute;
+    right: 9px;
+    top: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #0054ff;
+    box-shadow: 0 0 0 3px #ffffff;
+  }
+
+  .profile-avatar-top {
+    width: 56px;
+    height: 56px;
+    background: #eef4ff;
+  }
+
+  .profile-card {
+    border: 1px solid #cfe0ff;
+    border-radius: 9px;
+    background: #ffffff;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.025);
+  }
+
+  .profile-identity {
+    min-height: 176px;
+    padding: 26px 58px;
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr) minmax(260px, 0.75fr);
+    align-items: center;
+    gap: 42px;
+    margin-bottom: 18px;
+  }
+
+  .profile-photo-wrap {
+    position: relative;
+    width: 126px;
+    height: 126px;
+  }
+
+  .profile-photo {
+    width: 126px;
+    height: 126px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 35%, #0054ff 0 18px, transparent 19px),
+      radial-gradient(ellipse at 50% 78%, #0054ff 0 43px, transparent 44px),
+      #e8eef8;
+  }
+
+  .profile-edit-photo {
+    position: absolute;
+    right: 0;
+    bottom: 10px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #dbe7fb;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #0054ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .profile-label {
+    display: block;
+    margin-bottom: 9px;
+    color: #001a6d;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .profile-name,
+  .profile-grade {
+    margin: 0;
+    color: #020b3d;
+    font-size: 29px;
+    font-weight: 700;
+    line-height: 36px;
+    letter-spacing: -0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .profile-email {
+    margin: 8px 0 0;
+    color: #001a6d;
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .profile-edit-inline {
+    border: 0;
+    background: transparent;
+    color: #0054ff;
+    display: inline-flex;
+    cursor: pointer;
+  }
+
+  .profile-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.14fr);
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .settings-panel {
+    min-height: 312px;
+    padding: 22px 26px 24px;
+  }
+
+  .panel-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .panel-icon {
+    width: 34px;
+    height: 34px;
+    color: #0054ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  .panel-title {
+    margin: 0 0 5px;
+    color: #020b3d;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 24px;
+  }
+
+  .panel-subtitle {
+    margin: 0;
+    color: #163385;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .goal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .goal-row {
+    min-height: 62px;
+    padding: 10px 20px 10px 12px;
+    border: 1px solid #dbe7fb;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 26px;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .goal-icon,
+  .notification-icon,
+  .preference-icon {
+    border-radius: 8px;
+    background: #f4f8ff;
+    color: #0054ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .goal-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .goal-title,
+  .notification-title {
+    margin: 0 0 4px;
+    color: #020b3d;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 19px;
+  }
+
+  .goal-subtitle,
+  .notification-subtitle {
+    margin: 0;
+    color: #163385;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .goal-check {
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: #0054ff;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .add-goal {
+    height: 36px;
+    border: 1px solid #dbe7fb;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #0054ff;
+    font-family: "Outfit", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .preference-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .preference-row {
+    display: grid;
+    grid-template-columns: 40px minmax(180px, 1fr) minmax(220px, 254px);
+    align-items: center;
+    gap: 12px;
+  }
+
+  .preference-icon,
+  .notification-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .preference-label {
+    color: #020b3d;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .preference-select {
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #dbe7fb;
+    border-radius: 6px;
+    color: #001a6d;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .notifications-panel {
+    min-height: 284px;
+    padding: 22px 26px 24px;
+  }
+
+  .notification-row {
+    min-height: 56px;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 46px;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid #e7eefb;
+  }
+
+  .notification-row:last-child {
+    border-bottom: 0;
+  }
+
+  .toggle {
+    width: 36px;
+    height: 20px;
+    border: 0;
+    border-radius: 999px;
+    background: #0054ff;
+    justify-self: end;
+    padding: 2px;
+    display: flex;
+    justify-content: flex-end;
+    cursor: pointer;
+  }
+
+  .toggle span {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+  }
+
+  @media (max-width: 1180px) {
+    .profile-page {
+      padding: 24px;
     }
-  }, []);
 
-  const handleSaveProfile = async (e) => {
-    e.preventDefault();
-    setSavedMessage('');
-    
-    const payload = {
-      full_name: fullName,
-      school: school,
-      grade: grade
-    };
-
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/v1/auth/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      localStorage.setItem('user', JSON.stringify(data));
-      setSavedMessage('Profile data successfully synchronized!');
-    } catch (err) {
-      // Local fallback save
-      const userString = localStorage.getItem('user');
-      const user = userString ? JSON.parse(userString) : {};
-      const updatedUser = { ...user, ...payload };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setSavedMessage('Profile data updated locally!');
+    .profile-identity,
+    .profile-grid {
+      grid-template-columns: 1fr;
     }
-  };
 
-  const handleSavePreferences = async () => {
-    setSavedMessage('');
-    
-    const payload = {
-      voice_settings: { voiceName, speed: parseFloat(voiceSpeed), pitch: parseFloat(voicePitch) },
-      ai_personality: aiPersonality,
-      theme: theme
-    };
-
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/v1/auth/preferences', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      localStorage.setItem('user', JSON.stringify(data));
-      setSavedMessage('Tutor preferences updated successfully!');
-    } catch (err) {
-      const userString = localStorage.getItem('user');
-      const user = userString ? JSON.parse(userString) : {};
-      const updatedUser = { ...user, ...payload };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setSavedMessage('Preferences saved locally!');
+    .profile-identity {
+      padding: 26px;
+      gap: 24px;
     }
-  };
+  }
 
-  const handleSaveNotifications = () => {
-    setSavedMessage('Notification channels configured!');
-  };
+  @media (max-width: 760px) {
+    .profile-page {
+      padding: 18px;
+    }
 
-  return (
-    <div className="animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>STUDENT COCKPIT</span>
-          <h2 style={{ fontSize: '28px', color: '#fff' }}>Profile & Settings</h2>
+    .profile-header {
+      flex-direction: column;
+      min-height: auto;
+    }
+
+    .profile-title {
+      font-size: 32px;
+      line-height: 40px;
+    }
+
+    .preference-row,
+    .notification-row,
+    .goal-row {
+      grid-template-columns: 1fr;
+    }
+
+    .toggle {
+      justify-self: start;
+    }
+  }
+`;
+
+const Profile = () => (
+  <main className="profile-page">
+    <style>{styles}</style>
+
+    <header className="profile-header">
+      <div>
+        <h1 className="profile-title">Profile</h1>
+        <p className="profile-subtitle">
+          Manage your account and personalize your learning experience.
+        </p>
+      </div>
+      <div className="profile-actions">
+        <button className="profile-bell" type="button" aria-label="Notifications">
+          <Bell size={30} strokeWidth={1.75} />
+        </button>
+        <button className="profile-avatar-top" type="button" aria-label="Profile">
+          <User size={35} fill="currentColor" strokeWidth={0} />
+        </button>
+      </div>
+    </header>
+
+    <section className="profile-card profile-identity">
+      <div className="profile-photo-wrap">
+        <div className="profile-photo" aria-hidden="true" />
+        <button className="profile-edit-photo" type="button" aria-label="Edit profile photo">
+          <Edit3 size={17} />
+        </button>
+      </div>
+
+      <div>
+        <span className="profile-label">Name</span>
+        <h2 className="profile-name">
+          Yvan Santos
+          <button className="profile-edit-inline" type="button" aria-label="Edit name">
+            <Edit3 size={18} />
+          </button>
+        </h2>
+        <span className="profile-label" style={{ marginTop: 12 }}>Email</span>
+        <p className="profile-email">yvan.santos@example.com</p>
+      </div>
+
+      <div>
+        <span className="profile-label">Grade</span>
+        <h2 className="profile-grade">
+          10th Grade
+          <button className="profile-edit-inline" type="button" aria-label="Edit grade">
+            <Edit3 size={18} />
+          </button>
+        </h2>
+      </div>
+    </section>
+
+    <section className="profile-grid">
+      <article className="profile-card settings-panel">
+        <div className="panel-heading">
+          <span className="panel-icon">
+            <Target size={29} />
+          </span>
+          <div>
+            <h2 className="panel-title">Goals</h2>
+            <p className="panel-subtitle">What do you want to achieve?</p>
+          </div>
         </div>
 
-        {/* Tab switchers */}
-        <div style={{
-          display: 'flex',
-          background: 'rgba(255, 255, 255, 0.02)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: '8px',
-          padding: '4px'
-        }}>
-          {[
-            { id: 'profile', label: 'Student Profile', icon: User },
-            { id: 'preferences', label: 'Tutor Preferences', icon: Volume2 },
-            { id: 'notifications', label: 'Notifications Alerts', icon: Bell }
-          ].map(t => {
-            const Icon = t.icon;
+        <div className="goal-list">
+          {goals.map((goal) => {
+            const Icon = goal.icon;
             return (
-              <button
-                key={t.id}
-                onClick={() => {
-                  setActiveTab(t.id);
-                  setSavedMessage('');
-                }}
-                style={{
-                  background: activeTab === t.id ? 'rgba(99,102,241,0.15)' : 'transparent',
-                  border: 'none',
-                  color: activeTab === t.id ? '#fff' : 'var(--text-secondary)',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s'
-                }}
-              >
-                <Icon size={14} />
-                <span>{t.label}</span>
-              </button>
+              <div className="goal-row" key={goal.title}>
+                <span className="goal-icon">
+                  <Icon size={25} />
+                </span>
+                <div>
+                  <h3 className="goal-title">{goal.title}</h3>
+                  <p className="goal-subtitle">{goal.subtitle}</p>
+                </div>
+                <span className="goal-check">
+                  <Check size={14} strokeWidth={3} />
+                </span>
+              </div>
+            );
+          })}
+          <button type="button" className="add-goal">+ Add New Goal</button>
+        </div>
+      </article>
+
+      <article className="profile-card settings-panel">
+        <div className="panel-heading">
+          <span className="panel-icon">
+            <SlidersHorizontal size={29} />
+          </span>
+          <div>
+            <h2 className="panel-title">Study Preferences</h2>
+            <p className="panel-subtitle">Customize your learning experience</p>
+          </div>
+        </div>
+
+        <div className="preference-list">
+          {preferences.map((preference) => {
+            const Icon = preference.icon;
+            return (
+              <div className="preference-row" key={preference.label}>
+                <span className="preference-icon">
+                  <Icon size={20} />
+                </span>
+                <span className="preference-label">{preference.label}</span>
+                <div className="preference-select">
+                  <span>{preference.value}</span>
+                  <ChevronDown size={16} />
+                </div>
+              </div>
             );
           })}
         </div>
+      </article>
+    </section>
+
+    <section className="profile-card notifications-panel">
+      <div className="panel-heading" style={{ marginBottom: 14 }}>
+        <span className="panel-icon">
+          <Bell size={29} />
+        </span>
+        <div>
+          <h2 className="panel-title">Notifications</h2>
+          <p className="panel-subtitle">Manage how you receive updates</p>
+        </div>
       </div>
 
-      {savedMessage && (
-        <div style={{
-          background: 'rgba(16, 185, 129, 0.1)',
-          border: '1px solid rgba(16, 185, 129, 0.2)',
-          color: 'var(--color-success)',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          fontSize: '13.5px',
-          maxWidth: '600px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          animation: 'fadeIn 0.2s'
-        }}>
-          <CheckCircle size={16} />
-          <span>{savedMessage}</span>
-        </div>
-      )}
-
-      {/* 14. Student Profile Settings */}
-      {activeTab === 'profile' && (
-        <GlassCard style={{ padding: '30px', maxWidth: '600px' }}>
-          <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px' }}>Personal Information</h3>
-          
-          <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input
-                type="text"
-                required
-                className="form-input"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
+      {notifications.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div className="notification-row" key={item.title}>
+            <span className="notification-icon">
+              <Icon size={20} />
+            </span>
+            <div>
+              <h3 className="notification-title">{item.title}</h3>
+              <p className="notification-subtitle">{item.subtitle}</p>
             </div>
-
-            <div className="form-group">
-              <label className="form-label">School / Institution</label>
-              <input
-                type="text"
-                required
-                className="form-input"
-                value={school}
-                onChange={(e) => setSchool(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Grade / Level</label>
-              <select
-                value={grade}
-                onChange={(e) => setGrade(e.target.value)}
-                className="form-input"
-                style={{ background: 'rgba(0, 0, 0, 0.25)' }}
-              >
-                <option value="8th Grade">8th Grade (Pre-Algebra)</option>
-                <option value="9th Grade">9th Grade (Algebra 1)</option>
-                <option value="10th Grade">10th Grade (Geometry)</option>
-                <option value="11th Grade">11th Grade (Algebra 2)</option>
-              </select>
-            </div>
-
-            <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', marginTop: '8px' }}>
-              <Save size={16} />
-              <span>Save Profile</span>
-            </button>
-          </form>
-        </GlassCard>
-      )}
-
-      {/* 15. Preferences Settings (Speech, Persona, Theme) */}
-      {activeTab === 'preferences' && (
-        <GlassCard style={{ padding: '30px', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div>
-            <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '6px' }}>Tutor Interaction Preferences</h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Configure variables for TutorFlow Speech TTS output models.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Voice select */}
-            <div className="form-group">
-              <label className="form-label">Synthesized Voice model</label>
-              <select
-                value={voiceName}
-                onChange={(e) => setVoiceName(e.target.value)}
-                className="form-input"
-                style={{ background: 'rgba(0, 0, 0, 0.25)' }}
-              >
-                <option value="Default Female">Empathetic Female (Standard)</option>
-                <option value="Male Accent">Socratic Male (Deep)</option>
-                <option value="Robotic Assist">Synthesized Neural Assist</option>
-              </select>
-            </div>
-
-            {/* Speaking Rate & Pitch sliders */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              <div className="form-group">
-                <label className="form-label">Speaking Rate: {voiceSpeed}x</label>
-                <input
-                  type="range"
-                  min="0.7"
-                  max="1.5"
-                  step="0.1"
-                  value={voiceSpeed}
-                  onChange={(e) => setVoiceSpeed(e.target.value)}
-                  style={{ cursor: 'pointer', accentColor: '#6366f1' }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Voice Pitch: {voicePitch}</label>
-                <input
-                  type="range"
-                  min="0.7"
-                  max="1.3"
-                  step="0.1"
-                  value={voicePitch}
-                  onChange={(e) => setVoicePitch(e.target.value)}
-                  style={{ cursor: 'pointer', accentColor: '#6366f1' }}
-                />
-              </div>
-            </div>
-
-            {/* AI Personality selection */}
-            <div className="form-group">
-              <label className="form-label">AI Tutor Avatar Personality</label>
-              <select
-                value={aiPersonality}
-                onChange={(e) => setAiPersonality(e.target.value)}
-                className="form-input"
-                style={{ background: 'rgba(0, 0, 0, 0.25)' }}
-              >
-                <option value="Empathetic Tutor">Empathetic Coach (Encourages and breaks down steps)</option>
-                <option value="Strict Socratic">Strict Socratic (Responds strictly in math questions)</option>
-                <option value="Example-Driven Mentor">Example-Driven Mentor (Generates sample boxes first)</option>
-              </select>
-            </div>
-
-            {/* Theme selection */}
-            <div className="form-group">
-              <label className="form-label">Dashboard Theme</label>
-              <select
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                className="form-input"
-                style={{ background: 'rgba(0, 0, 0, 0.25)' }}
-              >
-                <option value="dark">Cybernetic Obsidian (Dark Mode - Default)</option>
-                <option value="light">Solarized Slate (Light Mode)</option>
-              </select>
-            </div>
-
-            <button onClick={handleSavePreferences} className="btn-primary" style={{ alignSelf: 'flex-start' }}>
-              <Save size={16} />
-              <span>Save Preferences</span>
+            <button type="button" className="toggle" aria-label={`${item.title} enabled`}>
+              <span />
             </button>
           </div>
-        </GlassCard>
-      )}
-
-      {/* 16. Notification Settings */}
-      {activeTab === 'notifications' && (
-        <GlassCard style={{ padding: '30px', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '6px' }}>Notification Alerts Configurations</h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Set communication channels to trigger spaced retention warnings.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>Daily Study Reminders</span>
-                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Triggers reminder alerts to retain study streaks.</span>
-              </div>
-              <input 
-                type="checkbox" 
-                checked={reminders} 
-                onChange={(e) => setReminders(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#6366f1' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0' }}>
-              <div>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>Spaced Review Alerts</span>
-                <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Warns when a core concept is decaying on forgetting curve.</span>
-              </div>
-              <input 
-                type="checkbox" 
-                checked={reviewAlerts} 
-                onChange={(e) => setReviewAlerts(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#6366f1' }}
-              />
-            </div>
-
-            <button onClick={handleSaveNotifications} className="btn-primary" style={{ alignSelf: 'flex-start', marginTop: '10px' }}>
-              <Save size={16} />
-              <span>Configure Notifications</span>
-            </button>
-          </div>
-        </GlassCard>
-      )}
-
-    </div>
-  );
-};
+        );
+      })}
+    </section>
+  </main>
+);
 
 export default Profile;

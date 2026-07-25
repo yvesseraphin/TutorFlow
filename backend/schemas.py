@@ -96,11 +96,15 @@ class ClassroomSessionResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class TeachingStyleUpdate(BaseModel):
+    teaching_style: str = Field(..., description="Socratic, Direct, Visual, Encouraging, Challenge")
+
 class ClassroomInteraction(BaseModel):
     user_input: str
     whiteboard_image_base64: Optional[str] = None # For OCR/Vision pipeline
     whiteboard_strokes: Optional[List[Any]] = None
     voice_audio_base64: Optional[str] = None # For Whisper
+    teaching_style: Optional[str] = "Socratic" # Optional style override
 
 class ClassroomAIResponse(BaseModel):
     explanation: str
@@ -112,6 +116,21 @@ class ClassroomAIResponse(BaseModel):
     evidence: Optional[str] = None
     strategy_choice: Optional[str] = None
     suggested_intervention: Optional[str] = None
+    teaching_style_active: str = "Socratic"
+    teacher_whiteboard_actions: List[Dict[str, Any]] = [] # AI drawing instructions for frontend whiteboard
+    teacher_audio_base64: Optional[str] = None # Voice audio response payload
+    student_understanding: Optional[Dict[str, Any]] = None # Real-time student strengths, weaknesses, metrics
+
+class LiveStudentAssessmentResponse(BaseModel):
+    user_id: int
+    mastery_score: float
+    confidence_score: float
+    strengths: List[str]
+    weaknesses: List[str]
+    vocal_hesitation: float
+    whiteboard_cognitive_load: float
+    active_teaching_style: str
+    active_misconceptions: List[str]
 
 # Cognitive Twin
 class CognitiveTwinResponse(BaseModel):

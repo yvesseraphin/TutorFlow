@@ -1,94 +1,149 @@
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  BookOpen, 
-  Brain, 
-  BarChart3, 
-  RotateCcw, 
-  Settings, 
-  LogOut
-} from 'lucide-react';
+import React from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import {
+  BarChart3,
+  Bell,
+  BookOpen,
+  ClipboardList,
+  Home,
+  LogOut,
+  UserRound,
+} from "lucide-react";
+
+const navItems = [
+  { to: "/dashboard", label: "Home", icon: Home, exact: true },
+  { to: "/classroom", label: "My Lessons", icon: BookOpen },
+  { to: "/review", label: "Homework", icon: ClipboardList },
+  { to: "/analytics", label: "My Progress", icon: BarChart3 },
+  { to: "/profile", label: "Profile", icon: UserRound },
+];
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
   };
 
-  const navItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: Home },
-    { to: '/classroom', label: 'Lessons', icon: BookOpen },
-    { to: '/twin', label: 'Cognitive Twin', icon: Brain },
-    { to: '/analytics', label: 'Progress', icon: BarChart3 },
-    { to: '/review', label: 'Review', icon: RotateCcw },
-    { to: '/profile', label: 'Settings', icon: Settings }
-  ];
-
   return (
-    <aside style={{
-      width: '260px',
-      height: '100vh',
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      background: '#ffffff',
-      borderRight: '1px solid #f1f5f9',
-      padding: '24px 16px',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      zIndex: 100,
-      boxSizing: 'border-box'
-    }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        .sidebar-nav-link {
+    <aside className="tf-sidebar">
+      <style>{`
+        .tf-sidebar {
+          width: 248px;
+          height: 100vh;
+          position: fixed;
+          left: 0;
+          top: 0;
+          z-index: 100;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 28px 14px 28px;
+          background: #ffffff;
+          border-right: 1px solid #dfe7f6;
+          box-sizing: border-box;
+          font-family: "Outfit", sans-serif;
+        }
+
+        .tf-sidebar-logo {
+          height: 48px;
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 12px 16px;
-          border-radius: 10px;
-          font-size: 15px;
-          font-weight: 600;
+          margin: 0 12px 64px;
           text-decoration: none;
-          transition: all 0.2s ease;
-          font-family: 'Plus Jakarta Sans', sans-serif;
         }
-        .sidebar-nav-link-inactive {
-          color: #64748b !important;
-          background: transparent !important;
+
+        .tf-sidebar-logo img {
+          width: 40px;
+          height: 40px;
+          object-fit: contain;
         }
-        .sidebar-nav-link-inactive:hover {
-          background: #f8fafc !important;
-          color: #0f172a !important;
+
+        .tf-sidebar-logo span {
+          color: #0054ff;
+          font-size: 25px;
+          font-weight: 700;
+          line-height: 30px;
+          letter-spacing: 0;
         }
-        .sidebar-nav-link-active {
-          background: #1a56db !important;
-          color: #ffffff !important;
-          box-shadow: 0 4px 12px rgba(26, 86, 219, 0.12) !important;
+
+        .tf-sidebar-nav {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
         }
-      `}} />
+
+        .tf-sidebar-link,
+        .tf-sidebar-logout {
+          height: 48px;
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 0 16px;
+          border-radius: 8px;
+          color: #1b2b6b;
+          font-family: "Outfit", sans-serif;
+          font-size: 16px;
+          font-weight: 500;
+          line-height: 22px;
+          text-decoration: none;
+          transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .tf-sidebar-link:hover,
+        .tf-sidebar-logout:hover {
+          background: #f8faff;
+          color: #0054ff;
+        }
+
+        .tf-sidebar-link svg,
+        .tf-sidebar-logout svg {
+          width: 24px;
+          height: 24px;
+          stroke-width: 2;
+          flex: 0 0 auto;
+        }
+
+        .tf-sidebar-link.active {
+          background: #0054ff;
+          color: #ffffff;
+          font-weight: 600;
+          box-shadow: 0 12px 24px rgba(0, 84, 255, 0.18);
+        }
+
+        .tf-sidebar-logout {
+          width: 100%;
+          border: 0;
+          background: transparent;
+          cursor: pointer;
+          text-align: left;
+        }
+      `}</style>
 
       <div>
-        {/* Brand Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px', paddingLeft: '8px' }}>
-          <img src="/Logo_cropped.png" alt="TutorFlow" style={{ height: '34px', objectFit: 'contain' }} />
-        </div>
+        <Link className="tf-sidebar-logo" to="/dashboard" aria-label="TutorFlow home">
+          <img src="/Logo_icon.png" alt="" />
+          <span>TutorFlow</span>
+        </Link>
 
-        {/* Navigation Links */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <nav className="tf-sidebar-nav" aria-label="Main navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isCurrent =
+              !item.inactiveOnly &&
+              (item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to));
+
             return (
               <NavLink
-                key={item.to}
+                key={`${item.to}-${item.label}`}
                 to={item.to}
-                className={({ isActive }) => `sidebar-nav-link ${isActive ? 'sidebar-nav-link-active' : 'sidebar-nav-link-inactive'}`}
+                className={`tf-sidebar-link${isCurrent ? " active" : ""}`}
               >
-                <Icon size={18} />
+                <Icon aria-hidden="true" />
                 <span>{item.label}</span>
               </NavLink>
             );
@@ -96,31 +151,8 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      {/* Logout Footer */}
-      <button 
-        onClick={handleLogout}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          padding: '12px 16px',
-          borderRadius: '10px',
-          fontSize: '15px',
-          fontWeight: 600,
-          background: 'transparent',
-          border: 'none',
-          color: '#64748b',
-          cursor: 'pointer',
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          width: '100%',
-          textAlign: 'left',
-          transition: 'all 0.2s',
-          marginTop: '20px'
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#0f172a'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
-      >
-        <LogOut size={18} />
+      <button type="button" className="tf-sidebar-logout" onClick={handleLogout}>
+        <LogOut aria-hidden="true" />
         <span>Logout</span>
       </button>
     </aside>

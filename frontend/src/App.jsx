@@ -39,13 +39,13 @@ const DashboardLayout = () => {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#ffffff' }}>
       <Sidebar />
       <div style={{ 
         flex: 1, 
-        marginLeft: '260px', 
+        marginLeft: '248px', 
         minHeight: '100vh',
-        background: '#f8fafc',
+        background: '#ffffff',
         color: '#0f172a',
         overflowY: 'auto'
       }}>

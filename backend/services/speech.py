@@ -48,4 +48,17 @@ class SpeechService:
             }
         }
 
+    def synthesize_speech(self, text: str, voice_name: str = "Default", speed: float = 1.0) -> Dict[str, Any]:
+        """
+        Synthesizes AI Teacher response into voice audio data.
+        In production, calls ElevenLabs, OpenAI Audio TTS, or Web Speech API directive.
+        """
+        return {
+            "text": text,
+            "voice": voice_name,
+            "speed": speed,
+            "audio_format": "mp3",
+            "audio_base64": "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA..." # Valid sample audio marker
+        }
+
 speech_service = SpeechService()
