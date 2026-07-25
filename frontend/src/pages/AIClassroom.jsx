@@ -1984,7 +1984,7 @@ const WhiteboardSidebar = ({ activeTool, setActiveTool, onClear }) => {
   );
 };
 
-const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActiveColor, clearTrigger }) => {
+const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActiveColor, clearTrigger, lessonTitle, lessonSteps }) => {
   const containerRef = React.useRef(null);
 
   const [lines, setLines] = useState([]);
@@ -2155,44 +2155,25 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
             </Stage>
           )}
         </div>
-        <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", userSelect: "none" }}>
-          <h3>Solving Linear Equations</h3>
-          <div className="equation-block">
-            <p className="blue-write">Example 1:</p>
-            <p style={{ textAlign: "center" }}>2x + 3 = 11</p>
-            <p className="blue-write">Step 1: Subtract 3 from both sides</p>
-            <p style={{ textAlign: "center" }}>
-              2x + 3 <span className="red-write">- 3</span> = 11 <span className="red-write">- 3</span>
-            </p>
-            <p style={{ textAlign: "center" }}>2x = 8</p>
-            <p className="blue-write">Step 2: Divide both sides by 2</p>
-            <p style={{ textAlign: "center" }}>
-              <span style={{ textDecoration: "underline" }}>2x</span> ={" "}
-              <span style={{ textDecoration: "underline" }}>8</span>
-            </p>
-            <p>
-              <span className="boxed-answer">x = 4</span>
-              <span className="green-write">✓ Solution!</span>
-            </p>
-            <div className="board-divider" />
-            <p className="blue-write">Example 2:</p>
-            <p style={{ textAlign: "center" }}>3x - 5 = 10</p>
-            <p style={{ textAlign: "center" }}>
-              3x - 5 <span className="red-write">+ 5</span> = 10 <span className="red-write">+ 5</span>
-            </p>
-            <p style={{ textAlign: "center" }}>3x = 15</p>
-            <p style={{ textAlign: "center" }}>
-              <span style={{ border: "2px solid #ef4444", borderRadius: "50%", padding: "2px 28px" }}>x = 5</span>
-            </p>
-            <p className="blue-write">Correct solution:</p>
-            <p>3x = 15 ⇒ x = 15/3 ⇒ <span className="boxed-answer" style={{ marginLeft: 12 }}>x = 5</span></p>
+        {/* Lesson content overlay — driven by props, blank when no content provided */}
+        {(lessonTitle || (lessonSteps && lessonSteps.length > 0)) && (
+          <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", userSelect: "none" }}>
+            {lessonTitle && <h3>{lessonTitle}</h3>}
+            {lessonSteps && lessonSteps.length > 0 && (
+              <div className="equation-block">
+                {lessonSteps.map((step, idx) => (
+                  <p
+                    key={idx}
+                    style={{ textAlign: step.align || "left" }}
+                    className={step.style || ""}
+                  >
+                    {step.text}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="error-note">
-            Careful! You need to
-            <br />
-            divide by 3, not 1.
-          </div>
-        </div>
+        )}
 
         <div className="drawing-toolbar" style={{ zIndex: 10 }}>
           {markers.map((m) => (
@@ -2267,11 +2248,13 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
   );
 };
 
-const LiveLesson = ({ onEnd }) => {
+const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", lessonProgress = 0 }) => {
   const [activeRailTab, setActiveRailTab] = useState("Whiteboard");
   const [activeTool, setActiveTool] = useState("pen");
   const [activeColor, setActiveColor] = useState("#0054ff");
   const [clearTrigger, setClearTrigger] = useState(0);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
 
   const railItems = [
     { label: "Overview", icon: Home },
@@ -2297,10 +2280,10 @@ const LiveLesson = ({ onEnd }) => {
       <header className="live-topbar">
         <div className="live-title">
           <h1>
-            Linear Equations <span className="live-dot">•</span>
+            {lessonTitle} <span className="live-dot">•</span>
             <span style={{ color: "#0054ff" }}>Live Lesson</span>
           </h1>
-          <p>Module 3 • Lesson 3</p>
+          {lessonSubtitle && <p>{lessonSubtitle}</p>}
         </div>
         <div className="top-actions">
           <button type="button" className="top-action">
@@ -2341,12 +2324,12 @@ const LiveLesson = ({ onEnd }) => {
           <h3>Lesson Progress</h3>
           <div className="live-progress-row">
             <span />
-            <span>68%</span>
+            <span>{lessonProgress}%</span>
           </div>
           <div className="live-progress-track">
-            <div className="live-progress-fill" />
+            <div className="live-progress-fill" style={{ width: `${lessonProgress}%` }} />
           </div>
-          <p style={{ margin: 0, color: "#334f87", fontSize: 12 }}>You're doing great! 🎉</p>
+          {lessonProgress >= 50 && <p style={{ margin: 0, color: "#334f87", fontSize: 12 }}>You're doing great! 🎉</p>}
         </div>
       </aside>
 
@@ -2361,7 +2344,7 @@ const LiveLesson = ({ onEnd }) => {
             <span className="speaking-badge">• Speaking</span>
           </article>
           <article className="teacher-message">
-            Today we are learning how to solve linear equations.
+            {lessonTitle ? `Today we are learning: ${lessonTitle}.` : "Welcome to your AI lesson!"}
           </article>
           <div className="teacher-controls">
             {[
@@ -2403,7 +2386,9 @@ const LiveLesson = ({ onEnd }) => {
             setActiveTool={setActiveTool} 
             activeColor={activeColor}
             setActiveColor={setActiveColor}
-            clearTrigger={clearTrigger} 
+            clearTrigger={clearTrigger}
+            lessonTitle={lessonTitle}
+            lessonSteps={[]}
           />
         )}
       </section>
@@ -2421,47 +2406,65 @@ const LiveLesson = ({ onEnd }) => {
             <button type="button" className="chat-tab">Transcript</button>
           </div>
           <div className="chat-scroll">
-            {[
-              ["TutorFlow AI", "10:02 AM", "Let's solve this together. Remember, we want to isolate the variable on one side."],
-              ["TutorFlow AI", "10:04 AM", "Good question! We subtract 3 from both sides to keep the equation balanced."],
-              ["TutorFlow AI", "10:05 AM", "Great! Let's try the next one together. I'll guide you step by step."],
-            ].map((message) => (
-              <div className="chat-message" key={message[1]}>
-                <div className="chat-avatar" />
-                <div>
-                  <div className="message-head">
-                    <span>{message[0]}</span>
-                    <span className="message-time">{message[1]}</span>
+            {chatMessages.length === 0 && (
+              <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+                No messages yet. Ask a question below!
+              </p>
+            )}
+            {chatMessages.map((msg, idx) => (
+              msg.sender === "ai" ? (
+                <div className="chat-message" key={idx}>
+                  <div className="chat-avatar" />
+                  <div>
+                    <div className="message-head">
+                      <span>TutorFlow AI</span>
+                      <span className="message-time">{msg.time}</span>
+                    </div>
+                    <p style={{ margin: 0 }}>{msg.text}</p>
                   </div>
-                  <p style={{ margin: 0 }}>{message[2]}</p>
                 </div>
-              </div>
+              ) : (
+                <div className="student-bubble" key={idx}>
+                  <div className="message-head">
+                    <span>You</span>
+                    <span className="message-time">{msg.time}</span>
+                  </div>
+                  {msg.text}
+                </div>
+              )
             ))}
-            <div className="student-bubble">
-              <div className="message-head">
-                <span>You</span>
-                <span className="message-time">10:03 AM</span>
-              </div>
-              I don't understand why we subtract 3 from both sides.
-            </div>
-            <div className="student-bubble">
-              <div className="message-head">
-                <span>You</span>
-                <span className="message-time">10:05 AM</span>
-              </div>
-              Ohh, that makes sense now!
-            </div>
             <div className="quick-replies">
-              <button type="button">Explain again</button>
-              <button type="button">More examples</button>
-              <button type="button">What is a linear equation?</button>
+              <button type="button" onClick={() => setChatInput("Explain again")}>Explain again</button>
+              <button type="button" onClick={() => setChatInput("More examples")}>More examples</button>
+              <button type="button" onClick={() => setChatInput("I don't understand")}>I don't understand</button>
             </div>
           </div>
           <div className="chat-input-wrap">
-            <input className="chat-input" placeholder="Type a message..." />
+            <input
+              className="chat-input"
+              placeholder="Type a message..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && chatInput.trim()) {
+                  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  setChatMessages(prev => [...prev, { sender: "student", text: chatInput.trim(), time: now }]);
+                  setChatInput("");
+                }
+              }}
+            />
             <div className="chat-input-actions">
               <Mic size={18} />
-              <Send size={18} />
+              <Send
+                size={18}
+                style={{ cursor: chatInput.trim() ? "pointer" : "default" }}
+                onClick={() => {
+                  if (!chatInput.trim()) return;
+                  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  setChatMessages(prev => [...prev, { sender: "student", text: chatInput.trim(), time: now }]);
+                  setChatInput("");
+                }}
+              />
             </div>
           </div>
         </aside>
@@ -2475,7 +2478,17 @@ const AIClassroom = () => {
   const [liveLesson, setLiveLesson] = useState(false);
 
   if (liveLesson) {
-    return <LiveLesson onEnd={() => setLiveLesson(false)} />;
+    const title = selectedSubject ? selectedSubject.name : "Live Lesson";
+    const subtitle = selectedSubject ? `${selectedSubject.subject || "Algebra"} • ${selectedSubject.module || ""}` : "";
+    const progress = selectedSubject ? (selectedSubject.progress || 0) : 0;
+    return (
+      <LiveLesson
+        onEnd={() => setLiveLesson(false)}
+        lessonTitle={title}
+        lessonSubtitle={subtitle}
+        lessonProgress={progress}
+      />
+    );
   }
 
   if (selectedSubject) {
@@ -2501,11 +2514,10 @@ const AIClassroom = () => {
           <div className="lesson-hero">
             <div className="lesson-icon-large">ax+by=c</div>
             <div>
-              <p className="lesson-kicker">Algebra • Module 3 • Lesson 3</p>
-              <h1 className="lesson-title-large">Linear Equations</h1>
+              <p className="lesson-kicker">{selectedSubject.name} • {selectedSubject.level || "Beginner"}</p>
+              <h1 className="lesson-title-large">{selectedSubject.name}</h1>
               <p className="lesson-description-large">
-                Learn how to solve linear equations in one variable and apply them to
-                real-world problems.
+                {selectedSubject.description}
               </p>
               <div className="lesson-meta">
                 <span className="lesson-meta-item">
@@ -2612,11 +2624,10 @@ const AIClassroom = () => {
           <article className="detail-card side-card">
             <h2>Lesson Details</h2>
             {[
-              { label: "Subject", value: "Algebra", icon: BookOpen },
-              { label: "Module", value: "Module 3: Linear Equations", icon: GraduationCap },
-              { label: "Lesson", value: "Lesson 3 of 9", icon: Calculator },
-              { label: "Level", value: "Beginner", icon: BarChart3 },
-              { label: "Estimated Time", value: "35 minutes", icon: Clock3 },
+              { label: "Subject", value: selectedSubject.name, icon: BookOpen },
+              { label: "Level", value: selectedSubject.level || "Beginner", icon: BarChart3 },
+              { label: "Lessons", value: selectedSubject.lessons ? `${selectedSubject.lessons} lessons` : "—", icon: Calculator },
+              { label: "Estimated Time", value: selectedSubject.lessons ? `${selectedSubject.lessons * 3} min` : "—", icon: Clock3 },
             ].map((item) => {
               const Icon = item.icon;
               return (

@@ -19,32 +19,26 @@ class SpeechService:
         if not audio_base64:
             return {"text": "", "confidence": 0.0}
             
-        # In actual system:
-        # Decode audio_base64, save to temp file, pass to openai.Audio.transcribe or local whisper model
-        
-        # Robust mock transcription with high relevance to algebra teaching sessions
-        sample_transcripts = [
-            "I don't think I understand why three times parenthesis x plus two becomes three x plus six.",
-            "Can we review why the sign changes from negative to positive here?",
-            "I'm trying to solve three x plus two equals eleven. Do I subtract two first?",
-            "Yes, I see. So we do the same thing to both sides of the equation."
-        ]
-        
-        selected_text = random.choice(sample_transcripts)
-        
-        # Analyze voice characteristics (WPM, pitch fluctuations)
-        wpm = random.randint(110, 140)
-        filler_count = random.randint(1, 4)
-        hesitation_index = round(random.uniform(0.1, 0.6), 2)
-        
+        # Production path:
+        #   audio_bytes = base64.b64decode(audio_base64.split(",")[-1])
+        #   with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
+        #       f.write(audio_bytes)
+        #       tmp_path = f.name
+        #   result = openai.audio.transcriptions.create(
+        #       model="whisper-1", file=open(tmp_path, "rb")
+        #   )
+        #   return {"text": result.text, "confidence": 1.0, "analytics": {...}}
+
+        # Whisper / real transcription not yet configured — return empty so the
+        # session handler falls back to the student's typed chat input.
         return {
-            "text": selected_text,
-            "confidence": 0.96,
+            "text": "",
+            "confidence": 0.0,
             "analytics": {
-                "words_per_minute": wpm,
-                "filler_words_count": filler_count,
-                "confidence_level": round(1.0 - (hesitation_index * 0.4), 2),
-                "hesitation_index": hesitation_index
+                "words_per_minute": 0,
+                "filler_words_count": 0,
+                "confidence_level": 0.0,
+                "hesitation_index": 0.0
             }
         }
 

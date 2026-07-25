@@ -24,17 +24,23 @@ class VisionService:
         """
         Parses a whiteboard screenshot (base64) and extracts text/equations.
         Integrates with PyTesseract or cloud OCR systems.
+
+        Production path:
+          image_bytes = base64.b64decode(base64_image.split(",")[-1])
+          np_arr = np.frombuffer(image_bytes, np.uint8)
+          img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+          # Pre-process: grayscale, threshold, denoise
+          gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+          _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+          # Pass to Tesseract or Google Vision API and return extracted text.
         """
         if not base64_image:
             return ""
-        
-        # In a real environment:
-        # image_bytes = base64.b64decode(base64_image.split(",")[-1])
-        # Decode using OpenCV, pass to Tesseract or Google Vision API.
-        
-        # Safe mock for common equations drawn in our React app
-        # If the student is drawing on our whiteboard, we can also parse their stroke paths
-        return "3(x + 2) = 3x + 2"
+
+        # OCR is not yet implemented — return an empty string so the AI
+        # service gracefully falls back to the student's typed/voice input
+        # instead of injecting a fabricated equation.
+        return ""
 
     def analyze_strokes(self, strokes: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
