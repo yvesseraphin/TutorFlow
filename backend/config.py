@@ -1,28 +1,33 @@
-import os
-try:
-    from pydantic_settings import BaseSettings
-except ImportError:
-    from pydantic import BaseModel as BaseSettings
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "TutorFlow Backend"
-    API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "tutorflow-super-secret-key-for-jwt-tokens-hackathon-2026")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
-    
-    # Database configuration (defaults to SQLite, can be overridden by PostgreSQL URL)
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./tutorflow.db")
-    
-    # Redis configuration
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    USE_MOCK_REDIS: bool = os.getenv("USE_MOCK_REDIS", "True").lower() == "true"
-    
-    # AI API Keys
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    CLAUDE_API_KEY: str = os.getenv("CLAUDE_API_KEY", "")
-    
-    class Config:
-        case_sensitive = True
+    project_name: str = "TutorFlow API"
+    api_v1_str: str = "/api/v1"
+    frontend_origin: str = "http://localhost:5173"
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+    openai_api_key: str = ""
+    openai_chat_model: str = "gpt-4.1-mini"
+    openai_realtime_model: str = "gpt-realtime"
 
-settings = Settings()
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    def require_supabase(self) -> None:
+        if not all((self.supabase_url, self.supabase_anon_key, self.supabase_service_role_key)):
+            raise RuntimeError("Supabase is not configured. Add SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY to backend/.env.")
+
+    def require_openai(self) -> None:
+        if not self.openai_api_key:
+            raise RuntimeError("OpenAI is not configured. Add OPENAI_API_KEY to backend/.env.")
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()

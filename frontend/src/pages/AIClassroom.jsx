@@ -33,13 +33,11 @@ import {
   Search,
   Send,
   Settings,
-  Sparkles,
   Shapes,
   Trash2,
   Trophy,
   Type,
   Undo2,
-  User,
   Video,
   Volume2,
 } from "lucide-react";
@@ -95,6 +93,39 @@ const subjects = [
     comingSoon: true,
   },
 ];
+
+const sortOptions = [
+  { value: "recent", label: "Recently Accessed" },
+  { value: "progress-desc", label: "Progress: High to Low" },
+  { value: "progress-asc", label: "Progress: Low to High" },
+  { value: "lessons-desc", label: "Most Lessons" },
+  { value: "name", label: "Name: A to Z" },
+  { value: "level", label: "Level" },
+];
+
+const sortSubjects = (sortBy) => {
+  const availableSubjects = subjects.filter((subject) => !subject.comingSoon);
+  const comingSoonSubjects = subjects.filter((subject) => subject.comingSoon);
+
+  const sorted = [...availableSubjects].sort((a, b) => {
+    switch (sortBy) {
+      case "progress-desc":
+        return b.progress - a.progress;
+      case "progress-asc":
+        return a.progress - b.progress;
+      case "lessons-desc":
+        return b.lessons - a.lessons;
+      case "name":
+        return a.name.localeCompare(b.name);
+      case "level":
+        return a.level.localeCompare(b.level);
+      default:
+        return subjects.indexOf(a) - subjects.indexOf(b);
+    }
+  });
+
+  return [...sorted, ...comingSoonSubjects];
+};
 
 const styles = `
   .lessons-page {
@@ -162,18 +193,6 @@ const styles = `
     border-radius: 50%;
     background: #0054ff;
     box-shadow: 0 0 0 3px #ffffff;
-  }
-
-  .lessons-avatar {
-    width: 61px;
-    height: 61px;
-    border: 0;
-    border-radius: 50%;
-    background: #eef4ff;
-    color: #0054ff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .lessons-content {
@@ -471,30 +490,6 @@ const styles = `
   .flow-arrow {
     margin-top: 35px;
     color: #334f87;
-  }
-
-  .tip-banner {
-    min-height: 78px;
-    padding: 18px 20px;
-    border: 1px solid #dce9ff;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #f7faff, #eef4ff);
-    display: flex;
-    align-items: center;
-    gap: 18px;
-  }
-
-  .tip-banner h3 {
-    margin: 0 0 5px;
-    color: #020b3d;
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .tip-banner p {
-    margin: 0;
-    color: #263d73;
-    font-size: 14px;
   }
 
   .detail-sidebar {
@@ -1249,16 +1244,46 @@ const styles = `
   .sort-select {
     height: 48px;
     min-width: 224px;
-    padding: 0 17px;
-    border: 1px solid #dce6f8;
+    padding: 0 46px 0 17px;
+    border: 1px solid #E2E8F0;
     border-radius: 10px;
     background: #ffffff;
-    color: #020b3d;
-    display: inline-flex;
-    align-items: center;
-    justify-content: space-between;
+    color: #64748B;
+    appearance: none;
+    cursor: pointer;
+    font-family: "Outfit", sans-serif;
     font-size: 17px;
-    font-weight: 500;
+    font-weight: 400;
+  }
+
+  .sort-select:hover {
+    border-color: #cbd5e1;
+  }
+
+  .sort-select:focus {
+    outline: none;
+    border-color: #1a56db;
+    box-shadow: none;
+  }
+
+  .sort-select option {
+    font-family: "Outfit", sans-serif;
+    font-weight: 400;
+    color: #64748B;
+    background: #ffffff;
+  }
+
+  .sort-control {
+    position: relative;
+  }
+
+  .sort-chevron {
+    position: absolute;
+    top: 50%;
+    right: 17px;
+    color: #9aa9c3;
+    pointer-events: none;
+    transform: translateY(-50%);
   }
 
   .subject-grid {
@@ -2249,7 +2274,7 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
 };
 
 const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", lessonProgress = 0 }) => {
-  const [activeRailTab, setActiveRailTab] = useState("Whiteboard");
+  const [activeRailTab, setActiveRailTab] = useState("Overview");
   const [activeTool, setActiveTool] = useState("pen");
   const [activeColor, setActiveColor] = useState("#0054ff");
   const [clearTrigger, setClearTrigger] = useState(0);
@@ -2476,6 +2501,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 const AIClassroom = () => {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [liveLesson, setLiveLesson] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
 
   if (liveLesson) {
     const title = selectedSubject ? selectedSubject.name : "Live Lesson";
@@ -2499,9 +2525,6 @@ const AIClassroom = () => {
         <div className="detail-top-actions">
           <button type="button" className="lessons-bell" aria-label="Notifications">
             <Bell size={30} strokeWidth={1.75} />
-          </button>
-          <button type="button" className="lessons-avatar" aria-label="Profile">
-            <User size={35} fill="currentColor" strokeWidth={0} />
           </button>
         </div>
 
@@ -2598,13 +2621,6 @@ const AIClassroom = () => {
               </div>
             </article>
 
-            <aside className="tip-banner">
-              <Sparkles size={30} color="#0054ff" />
-              <div>
-                <h3>Tip</h3>
-                <p>Take notes on the key steps and ask questions anytime during the lesson.</p>
-              </div>
-            </aside>
           </div>
         </section>
 
@@ -2673,9 +2689,6 @@ const AIClassroom = () => {
           <button type="button" className="lessons-bell" aria-label="Notifications">
             <Bell size={30} strokeWidth={1.75} />
           </button>
-          <button type="button" className="lessons-avatar" aria-label="Profile">
-            <User size={35} fill="currentColor" strokeWidth={0} />
-          </button>
         </div>
       </header>
 
@@ -2684,15 +2697,24 @@ const AIClassroom = () => {
           <h2 className="subjects-title">Your Subjects</h2>
           <div className="sort-wrap">
             <span>Sort by</span>
-            <button type="button" className="sort-select">
-              Recently Accessed
-              <ChevronDown size={20} color="#9aa9c3" />
-            </button>
+            <div className="sort-control">
+              <select
+                className="sort-select"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                aria-label="Sort subjects"
+              >
+                {sortOptions.map((option) => (
+                  <option value={option.value} key={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="sort-chevron" size={20} aria-hidden="true" />
+            </div>
           </div>
         </div>
 
         <div className="subject-grid">
-          {subjects.map((subject) => (
+          {sortSubjects(sortBy).map((subject) => (
             <SubjectCard subject={subject} key={subject.name} onOpen={setSelectedSubject} />
           ))}
         </div>

@@ -290,7 +290,7 @@ const SignUp = () => {
         const data = await response.json();
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        navigate("/welcome");
+        navigate("/dashboard");
       } else {
         const errData = await response.json();
         throw new Error(errData.detail || "Sign up failed");
@@ -313,7 +313,7 @@ const SignUp = () => {
       };
       localStorage.setItem("token", "mock-signup-jwt-token");
       localStorage.setItem("user", JSON.stringify(mockUser));
-      navigate("/welcome");
+      navigate("/dashboard");
     } finally {
       setLoading(false);
     }
@@ -336,7 +336,7 @@ const SignUp = () => {
     };
     localStorage.setItem("token", "mock-google-token");
     localStorage.setItem("user", JSON.stringify(mockUser));
-    navigate("/welcome");
+    navigate("/dashboard");
   };
 
   return (

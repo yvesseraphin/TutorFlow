@@ -10,7 +10,6 @@ import {
   Play,
   RotateCcw,
   Target,
-  User,
 } from "lucide-react";
 
 const quickCards = [
@@ -157,26 +156,13 @@ const styles = `
     box-shadow: 0 0 0 3px #ffffff;
   }
 
-  .tf-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: 0;
-    background: #eef4ff;
-    color: #2563eb;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
-  }
-
   .tf-hero {
     position: relative;
     min-height: 226px;
     border: 1px solid #cfe0ff;
     border-radius: 17px;
     overflow: hidden;
-    background: url("/background_hero.png") center / cover no-repeat;
+    background: url("/background_hero.png") center 38% / cover no-repeat;
     box-shadow: 0 20px 50px rgba(37, 99, 235, 0.08);
     display: grid;
     grid-template-columns: 240px 1fr 320px;
@@ -421,8 +407,6 @@ const styles = `
   }
 
   .tf-lesson-card.active {
-    border: 2px solid #0054ff;
-    padding: 18px 17px 16px;
     box-shadow: 0 8px 24px rgba(37, 99, 235, 0.06);
   }
 
@@ -615,9 +599,6 @@ const StudentDashboard = () => {
         <div className="tf-top-actions">
           <button className="tf-bell" type="button" aria-label="Notifications">
             <Bell size={30} strokeWidth={1.75} />
-          </button>
-          <button className="tf-avatar" type="button" aria-label="Profile">
-            <User size={35} fill="currentColor" strokeWidth={0} />
           </button>
         </div>
       </header>

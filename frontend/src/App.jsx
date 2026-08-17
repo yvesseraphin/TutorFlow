@@ -6,16 +6,10 @@ import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
-import WelcomeAI from './pages/WelcomeAI';
-import SubjectSelection from './pages/SubjectSelection';
-import DiagnosticAssessment from './pages/DiagnosticAssessment';
-import CognitiveProfileSetup from './pages/CognitiveProfileSetup';
 import StudentDashboard from './pages/StudentDashboard';
 import AIClassroom from './pages/AIClassroom';
 import CognitiveTwinDashboard from './pages/CognitiveTwinDashboard';
 import AIReasoningCenter from './pages/AIReasoningCenter';
-import ProgressDashboard from './pages/ProgressDashboard';
-import ReviewCenter from './pages/ReviewCenter';
 import Profile from './pages/Profile';
 
 // Dashboard layout wrapping authenticated pages with Sidebar
@@ -43,7 +37,7 @@ const DashboardLayout = () => {
       <Sidebar />
       <div style={{ 
         flex: 1, 
-        marginLeft: '248px', 
+        marginLeft: '272px',
         minHeight: '100vh',
         background: '#ffffff',
         color: '#0f172a',
@@ -58,14 +52,10 @@ const DashboardLayout = () => {
 function App() {
   return (
     <Routes>
-      {/* Authentication & Onboarding Routes */}
+      {/* Authentication Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/welcome" element={<WelcomeAI />} />
-      <Route path="/subjects" element={<SubjectSelection />} />
-      <Route path="/diagnostic" element={<DiagnosticAssessment />} />
-      <Route path="/profile-setup" element={<CognitiveProfileSetup />} />
 
       {/* Main Cockpit Hub Layout */}
       <Route element={<DashboardLayout />}>
@@ -73,8 +63,6 @@ function App() {
         <Route path="/classroom" element={<AIClassroom />} />
         <Route path="/twin" element={<CognitiveTwinDashboard />} />
         <Route path="/reasoning" element={<AIReasoningCenter />} />
-        <Route path="/analytics" element={<ProgressDashboard />} />
-        <Route path="/review" element={<ReviewCenter />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
 

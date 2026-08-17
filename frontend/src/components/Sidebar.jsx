@@ -1,10 +1,8 @@
 import React from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
-  BarChart3,
   Bell,
   BookOpen,
-  ClipboardList,
   Home,
   LogOut,
   UserRound,
@@ -13,8 +11,6 @@ import {
 const navItems = [
   { to: "/dashboard", label: "Home", icon: Home, exact: true },
   { to: "/classroom", label: "My Lessons", icon: BookOpen },
-  { to: "/review", label: "Homework", icon: ClipboardList },
-  { to: "/analytics", label: "My Progress", icon: BarChart3 },
   { to: "/profile", label: "Profile", icon: UserRound },
 ];
 
@@ -32,7 +28,7 @@ const Sidebar = () => {
     <aside className="tf-sidebar">
       <style>{`
         .tf-sidebar {
-          width: 248px;
+          width: 272px;
           height: 100vh;
           position: fixed;
           left: 0;
@@ -64,7 +60,7 @@ const Sidebar = () => {
         }
 
         .tf-sidebar-logo span {
-          color: #0054ff;
+          color: #1D4ED8;
           font-size: 25px;
           font-weight: 700;
           line-height: 30px;
@@ -96,8 +92,8 @@ const Sidebar = () => {
 
         .tf-sidebar-link:hover,
         .tf-sidebar-logout:hover {
-          background: #f8faff;
-          color: #0054ff;
+          background: #f3f4f6;
+          color: #1f2937;
         }
 
         .tf-sidebar-link svg,
