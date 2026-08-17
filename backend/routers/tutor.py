@@ -1,3 +1,4 @@
+import json
 import uuid
 
 import httpx
@@ -6,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from backend.config import settings
 from backend.services.supabase import admin_client, current_user
-from backend.services.tutor import detect_weakness, respond
+from backend.services.tutor import TUTOR_SYSTEM_PROMPT, detect_weakness, respond
 
 router = APIRouter(prefix="/tutor", tags=["AI Tutor"])
 
@@ -94,7 +95,7 @@ async def realtime_connect(offer: RealtimeOffer, _: dict = Depends(current_user)
         response = await client.post(
             "https://api.openai.com/v1/realtime/calls",
             headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-            files={"sdp": ("offer.sdp", offer.sdp, "application/sdp"), "session": (None, __import__("json").dumps(session), "application/json")},
+            files={"sdp": ("offer.sdp", offer.sdp, "application/sdp"), "session": (None, json.dumps(session), "application/json")},
         )
     if response.is_error:
         raise HTTPException(status_code=502, detail="Unable to start realtime lesson")
