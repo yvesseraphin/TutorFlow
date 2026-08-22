@@ -166,9 +166,9 @@ cd TutorFlow
 
 5. Start the FastAPI development server:
    ```bash
-   uvicorn main:app --reload --port 8000
+   uvicorn main:app --reload --port 8080
    ```
-   The backend API will now be running at `http://localhost:8000`. You can test health at `http://localhost:8000/health` or view Swagger docs at `http://localhost:8000/docs`.
+   The backend API will now be running at `http://localhost:8080`. You can test health at `http://localhost:8080/health` or view Swagger docs at `http://localhost:8080/docs`.
 
 ---
 
