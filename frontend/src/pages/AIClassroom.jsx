@@ -47,7 +47,7 @@ const subjects = [
   {
     name: "Algebra",
     description: "Build strong foundations in algebra.",
-    progress: 68,
+    progress: 0,
     lessons: 12,
     level: "Beginner",
     icon: Calculator,
@@ -55,7 +55,7 @@ const subjects = [
   {
     name: "Functions",
     description: "Understand relations, functions and graphs.",
-    progress: 45,
+    progress: 0,
     lessons: 10,
     level: "Intermediate",
     icon: FunctionSquare,
@@ -63,7 +63,7 @@ const subjects = [
   {
     name: "Geometry",
     description: "Explore shapes, angles and theorems.",
-    progress: 30,
+    progress: 0,
     lessons: 8,
     level: "Beginner",
     icon: Shapes,
@@ -71,7 +71,7 @@ const subjects = [
   {
     name: "Statistics",
     description: "Learn data, graphs and probability.",
-    progress: 20,
+    progress: 0,
     lessons: 7,
     level: "Beginner",
     icon: BarChart3,
@@ -79,7 +79,7 @@ const subjects = [
   {
     name: "Pre-Algebra",
     description: "Review essential math skills.",
-    progress: 75,
+    progress: 0,
     lessons: 9,
     level: "Review",
     icon: Divide,
@@ -104,9 +104,9 @@ const sortOptions = [
   { value: "level", label: "Level" },
 ];
 
-const sortSubjects = (sortBy) => {
-  const availableSubjects = subjects.filter((subject) => !subject.comingSoon);
-  const comingSoonSubjects = subjects.filter((subject) => subject.comingSoon);
+const sortSubjects = (sortBy, list = subjects) => {
+  const availableSubjects = list.filter((subject) => !subject.comingSoon);
+  const comingSoonSubjects = list.filter((subject) => subject.comingSoon);
 
   const sorted = [...availableSubjects].sort((a, b) => {
     switch (sortBy) {
@@ -121,7 +121,7 @@ const sortSubjects = (sortBy) => {
       case "level":
         return a.level.localeCompare(b.level);
       default:
-        return subjects.indexOf(a) - subjects.indexOf(b);
+        return list.indexOf(a) - list.indexOf(b);
     }
   });
 
@@ -2633,6 +2633,33 @@ const AIClassroom = () => {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [liveLesson, setLiveLesson] = useState(false);
   const [sortBy, setSortBy] = useState("recent");
+  const [subjectsList, setSubjectsList] = useState(subjects);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user?.id) {
+      api(`/analytics/dashboard/${user.id}`)
+        .then((data) => {
+          if (data?.skill_mastery && Array.isArray(data.skill_mastery)) {
+            setSubjectsList((prev) =>
+              prev.map((sub) => {
+                if (sub.comingSoon) return sub;
+                const match = data.skill_mastery.find(
+                  (s) =>
+                    s.skill?.toLowerCase().includes(sub.name.toLowerCase()) ||
+                    sub.name.toLowerCase().includes(s.skill?.toLowerCase())
+                );
+                return {
+                  ...sub,
+                  progress: match ? Math.round(match.mastery * 100) : 0,
+                };
+              })
+            );
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   if (liveLesson) {
     const title = selectedSubject ? selectedSubject.name : "Live Lesson";
@@ -2845,11 +2872,10 @@ const AIClassroom = () => {
         </div>
 
         <div className="subject-grid">
-          {sortSubjects(sortBy).map((subject) => (
+          {sortSubjects(sortBy, subjectsList).map((subject) => (
             <SubjectCard subject={subject} key={subject.name} onOpen={setSelectedSubject} />
           ))}
         </div>
-
       </section>
     </main>
   );

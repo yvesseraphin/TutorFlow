@@ -119,18 +119,18 @@ const styles = `
     padding: 0 25px;
     border: 0;
     border-radius: 10px;
-    background: #0054ff;
+    background: #000000;
     color: #ffffff;
     font-family: "Outfit", sans-serif;
     font-size: 18px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 10px 24px rgba(0, 84, 255, 0.22);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
     transition: background 0.18s ease, transform 0.18s ease;
   }
 
   .tf-primary-btn:hover {
-    background: #1d4ed8;
+    background: #18181b;
     transform: translateY(-1px);
   }
 
@@ -139,7 +139,7 @@ const styles = `
     height: 25px;
     border-radius: 50%;
     background: #ffffff;
-    color: #2563eb;
+    color: #000000;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -355,10 +355,11 @@ const styles = `
   .tf-progress-ring.muted span { color: #6b7a9b; }
 
   .tf-empty-state {
-    padding: 40px 0;
+    padding: 44px 0;
     text-align: center;
-    color: #94a3b8;
-    font-size: 15px;
+    color: #1e293b;
+    font-size: 19px;
+    font-weight: 500;
   }
 
   .tf-skeleton {
