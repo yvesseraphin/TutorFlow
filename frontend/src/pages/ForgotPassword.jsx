@@ -2,27 +2,28 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Send } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
+import { api } from '../lib/api';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
+    setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/auth/forgot-password', {
+      await api('/auth/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await response.json();
-      setMessage(data.message || 'Password reset email sent!');
+      setMessage('If an account exists for this address, reset instructions have been sent.');
     } catch (err) {
-      setMessage(`Mock reset email successfully sent to: ${email}`);
+      setError(err.message || 'Unable to request a password reset.');
     } finally {
       setLoading(false);
     }
@@ -61,6 +62,7 @@ const ForgotPassword = () => {
             {message}
           </div>
         )}
+        {error && <p style={{ color: '#b91c1c', fontSize: '13px' }}>{error}</p>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ marginBottom: '24px' }}>

@@ -306,7 +306,7 @@ const Login = () => {
     setError("");
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/login", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1"}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -321,51 +321,16 @@ const Login = () => {
         throw new Error(errData.detail || "Invalid credentials");
       }
     } catch (err) {
-      console.warn("Backend unavailable – using demo session", err);
-      if (email && password) {
-        const mockUser = {
-          id: 99,
-          email,
-          full_name: "Yvan",
-          school: "TutorFlow Academy",
-          grade: "9th Grade",
-          learning_goals: ["Master Linear Equations", "Quadratic expansion"],
-          current_streak: 7,
-          mastery_score: 78.0,
-          confidence_score: 72.0,
-          voice_settings: { voiceName: "Default", speed: 1.0, pitch: 1.0 },
-          ai_personality: "Empathetic Tutor",
-          theme: "dark",
-        };
-        localStorage.setItem("token", "mock-jwt-token-tutorflow");
-        localStorage.setItem("user", JSON.stringify(mockUser));
-        navigate("/dashboard");
-      } else {
-        setError("Please enter both email and password.");
-      }
+      setError(err.message || "Unable to sign in. Please try again.");
+      return;
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    const mockUser = {
-      id: 100,
-      email: "yvan.google@tutorflow.ai",
-      full_name: "Yvan",
-      school: "TutorFlow Academy",
-      grade: "9th Grade",
-      learning_goals: ["Master Linear Equations", "Quadratic expansion"],
-      current_streak: 7,
-      mastery_score: 78.0,
-      confidence_score: 72.0,
-      voice_settings: { voiceName: "Default", speed: 1.0, pitch: 1.0 },
-      ai_personality: "Empathetic Tutor",
-      theme: "dark",
-    };
-    localStorage.setItem("token", "mock-google-token");
-    localStorage.setItem("user", JSON.stringify(mockUser));
-    navigate("/dashboard");
+    setError("Google sign-in is not configured yet.");
+    return;
   };
 
   return (

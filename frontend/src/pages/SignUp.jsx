@@ -273,7 +273,7 @@ const SignUp = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/signup", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1"}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -296,47 +296,16 @@ const SignUp = () => {
         throw new Error(errData.detail || "Sign up failed");
       }
     } catch (err) {
-      console.warn("Backend failed, using mock signup", err);
-      const mockUser = {
-        id: 101,
-        email,
-        full_name: fullName || "New Learner",
-        school: "TutorFlow Academy",
-        grade: grade,
-        learning_goals: ["Build strong fundamentals"],
-        current_streak: 1,
-        mastery_score: 0.0,
-        confidence_score: 50.0,
-        voice_settings: { voiceName: "Default", speed: 1.0, pitch: 1.0 },
-        ai_personality: "Empathetic Tutor",
-        theme: "dark",
-      };
-      localStorage.setItem("token", "mock-signup-jwt-token");
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      navigate("/dashboard");
+      setError(err.message || "Unable to create your account. Please try again.");
+      return;
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignUp = () => {
-    const mockUser = {
-      id: 102,
-      email: "google.user@tutorflow.ai",
-      full_name: "Google Learner",
-      school: "TutorFlow Academy",
-      grade: grade,
-      learning_goals: ["Master Equations"],
-      current_streak: 1,
-      mastery_score: 0.0,
-      confidence_score: 50.0,
-      voice_settings: { voiceName: "Default", speed: 1.0, pitch: 1.0 },
-      ai_personality: "Empathetic Tutor",
-      theme: "dark",
-    };
-    localStorage.setItem("token", "mock-google-token");
-    localStorage.setItem("user", JSON.stringify(mockUser));
-    navigate("/dashboard");
+    setError("Google sign-in is not configured yet.");
+    return;
   };
 
   return (

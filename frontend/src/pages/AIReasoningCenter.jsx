@@ -11,11 +11,13 @@ import {
   Database
 } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
+import { api } from '../lib/api';
 
 const AIReasoningCenter = () => {
   const [insight, setInsight] = useState(null);
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchReasoningData();
@@ -23,20 +25,14 @@ const AIReasoningCenter = () => {
 
   const fetchReasoningData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const insRes = await fetch('http://localhost:8000/api/v1/reasoning/active-insight', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const insData = await insRes.json();
+      const insData = await api('/reasoning/active-insight');
       setInsight(insData);
 
-      const rulesRes = await fetch('http://localhost:8000/api/v1/reasoning/rules', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const rulesData = await rulesRes.json();
+      const rulesData = await api('/reasoning/rules');
       setRules(rulesData);
     } catch (err) {
-      console.warn('Backend offline, loading mock XAI dataset.');
+      setError(err.message || 'Unable to load reasoning data.');
+      return;
       setInsight({
         current_misconception: "Distributive-law confusion",
         confidence: 0.93,
@@ -80,6 +76,8 @@ const AIReasoningCenter = () => {
       </div>
     );
   }
+
+  if (error) return <div style={{ padding: '24px', color: '#b91c1c' }}>{error}</div>;
 
   return (
     <div className="animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '30px' }}>

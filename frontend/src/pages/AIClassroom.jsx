@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Stage, Layer, Line } from "react-konva";
+import { api } from "../lib/api";
 import {
   ArrowRight,
   BarChart3,
@@ -2280,6 +2281,42 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const [clearTrigger, setClearTrigger] = useState(0);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [sessionId, setSessionId] = useState(null);
+  const [chatError, setChatError] = useState("");
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    api('/tutor/sessions', { method: 'POST', body: JSON.stringify({ topic: lessonTitle }) })
+      .then((session) => { if (active) setSessionId(session.id); })
+      .catch((err) => { if (active) setChatError(err.message || 'Unable to start this lesson.'); });
+    return () => { active = false; };
+  }, [lessonTitle]);
+
+  const sendMessage = async () => {
+    const content = chatInput.trim();
+    if (!content || !sessionId || sending) return;
+    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    setChatMessages((messages) => [...messages, { sender: "student", text: content, time: now }]);
+    setChatInput("");
+    setSending(true);
+    setChatError("");
+    try {
+      const result = await api(`/tutor/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ content }) });
+      setChatMessages((messages) => [...messages, { sender: "ai", text: result.message.content, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
+    } catch (err) {
+      setChatError(err.message || 'Unable to send your message.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleEnd = async () => {
+    if (sessionId) {
+      try { await api(`/tutor/sessions/${sessionId}/complete`, { method: 'PATCH' }); } catch (_) { /* Session can be completed later. */ }
+    }
+    onEnd();
+  };
 
   const railItems = [
     { label: "Overview", icon: Home },
@@ -2321,7 +2358,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <button type="button" className="top-action icon-action">
             <Settings size={19} />
           </button>
-          <button type="button" className="end-lesson" onClick={onEnd}>
+          <button type="button" className="end-lesson" onClick={handleEnd}>
             <Phone size={18} />
             End Lesson
           </button>
@@ -2431,6 +2468,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             <button type="button" className="chat-tab">Transcript</button>
           </div>
           <div className="chat-scroll">
+            {chatError && <p style={{ color: '#b91c1c', fontSize: 13 }}>{chatError}</p>}
             {chatMessages.length === 0 && (
               <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
                 No messages yet. Ask a question below!
@@ -2471,11 +2509,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && chatInput.trim()) {
-                  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                  setChatMessages(prev => [...prev, { sender: "student", text: chatInput.trim(), time: now }]);
-                  setChatInput("");
-                }
+                if (e.key === "Enter") sendMessage();
               }}
             />
             <div className="chat-input-actions">
@@ -2484,10 +2518,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 size={18}
                 style={{ cursor: chatInput.trim() ? "pointer" : "default" }}
                 onClick={() => {
-                  if (!chatInput.trim()) return;
-                  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                  setChatMessages(prev => [...prev, { sender: "student", text: chatInput.trim(), time: now }]);
-                  setChatInput("");
+                  sendMessage();
                 }}
               />
             </div>

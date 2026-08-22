@@ -13,11 +13,13 @@ import {
 } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import KnowledgeGraph from '../components/KnowledgeGraph';
+import { api } from '../lib/api';
 
 const CognitiveTwinDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, map, history, patterns, predictions
   const [twinData, setTwinData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchTwinData();
@@ -25,14 +27,11 @@ const CognitiveTwinDashboard = () => {
 
   const fetchTwinData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/v1/twin/profile', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await api('/twin/profile');
       setTwinData(data);
     } catch (err) {
-      console.warn('Backend offline, loading mock twin datasets.');
+      setError(err.message || 'Unable to load your cognitive twin.');
+      return;
       setTwinData({
         learning_style: { "Visual": 60.0, "Analytical": 25.0, "Example-driven": 15.0 },
         forgetting_curve: {
@@ -68,6 +67,8 @@ const CognitiveTwinDashboard = () => {
       </div>
     );
   }
+
+  if (error) return <div style={{ padding: '24px', color: '#b91c1c' }}>{error}</div>;
 
   return (
     <div className="animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>

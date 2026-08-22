@@ -31,6 +31,23 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
+### Required configuration
+
+The API requires a Supabase project with Email/Password authentication enabled. Run `backend/supabase/schema.sql` in its SQL editor, then copy `backend/.env.example` to `backend/.env` and provide the Supabase and OpenAI keys. Copy `frontend/.env.example` to `frontend/.env` when the API is not running at the default local address.
+
+The application no longer creates demo accounts or mock learning data when the backend is unavailable. Configure the services before signing in.
+
+### Verification
+
+```bash
+cd frontend
+npm run build
+
+cd ../backend
+python -m pip install -r requirements.txt
+python -m uvicorn backend.main:app --reload --port 8000
+```
+
 ## License
 
 © 2026 TutorFlow AI. All rights reserved.

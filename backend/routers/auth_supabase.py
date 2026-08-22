@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 
 from backend.services.supabase import admin_client, current_user, public_client
+from backend.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -10,6 +11,10 @@ class Credentials(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     full_name: str | None = Field(default=None, max_length=120)
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
 
 
 def session_payload(session, user) -> dict:
@@ -48,6 +53,17 @@ def login(credentials: Credentials):
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(_: dict = Depends(current_user)):
     # Supabase access tokens are JWTs; the frontend removes local session tokens on logout.
+    return None
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+def forgot_password(credentials: PasswordResetRequest):
+    # Kept deliberately non-enumerating: Supabase returns success whether or not
+    # the address belongs to an account.
+    try:
+        public_client().auth.reset_password_for_email(str(credentials.email), {"redirect_to": settings.password_reset_redirect_url})
+    except Exception:
+        pass
     return None
 
 

@@ -16,20 +16,8 @@ import Profile from './pages/Profile';
 const DashboardLayout = () => {
   const token = localStorage.getItem('token');
   
-  // Guard for hackathon ease: fallback to allow navigation if token is missing but logs are simulated
-  // If we really want security, we redirect to login, but for a local hackathon review, we can auto-seed token.
   if (!token) {
-    // Auto-seed mock token on initial refresh so judges can test instantly without typing
-    localStorage.setItem('token', 'tutorflow-demo-token');
-    localStorage.setItem('user', JSON.stringify({
-      full_name: 'Alex Mercer',
-      grade: '9th Grade',
-      current_streak: 4,
-      mastery_score: 74.0,
-      confidence_score: 68.0,
-      school: 'TutorFlow Academy',
-      learning_goals: ['Isolating Linear Values', 'Distributive Property']
-    }));
+    return <Navigate to="/login" replace />;
   }
 
   return (
