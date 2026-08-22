@@ -1,15 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
-/* ─── Context ─── */
 const NotifContext = createContext(null);
-
-/* Auto-dismiss duration: 3.5 seconds for a clean, non-intrusive display */
 const DURATION = 3500;
 
-/* ─── Provider ─── */
 export const NotificationProvider = ({ children }) => {
-  const [notif, setNotif] = useState(null);   // { type, message, id }
+  const [notif, setNotif] = useState(null);
   const [visible, setVisible] = useState(false);
   const timerRef = useRef(null);
 
@@ -42,14 +38,12 @@ export const NotificationProvider = ({ children }) => {
   );
 };
 
-/* ─── Hook ─── */
 export const useNotification = () => {
   const ctx = useContext(NotifContext);
   if (!ctx) throw new Error("useNotification must be used inside <NotificationProvider>");
   return ctx;
 };
 
-/* ─── Banner UI (Fully black background & border, white text, X icon, top-to-bottom slide) ─── */
 const Banner = ({ notif, visible, onDismiss }) => {
   if (!notif) return null;
 
@@ -143,5 +137,3 @@ const Banner = ({ notif, visible, onDismiss }) => {
     </>
   );
 };
-
-
