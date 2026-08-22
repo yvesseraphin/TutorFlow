@@ -44,17 +44,12 @@ const DashboardLayout = () => {
       return false;
     };
 
-    if (localStorage.getItem('token')) {
-      setChecking(false);
-      return;
-    }
-
     // Check existing or URL OAuth session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (processSession(session)) return;
 
       // Extract code if present
-      const code = new URLSearchParams(window.location.search).get('code');
+      const code = new URLSearchParams(window.location.search).get("code");
       if (code) {
         supabase.auth.exchangeCodeForSession(code).then(({ data }) => {
           if (processSession(data?.session)) return;
@@ -67,14 +62,15 @@ const DashboardLayout = () => {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (processSession(session)) {
-        subscription.unsubscribe();
+        if (isMounted) setChecking(false);
       }
     });
 
     return () => {
       isMounted = false;
+      subscription?.unsubscribe();
     };
   }, []);
 

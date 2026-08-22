@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Stage, Layer, Line } from "react-konva";
+import { api } from "../lib/api";
+import { AudioStreamPlayer, AudioStreamRecorder, unlockAudioContext } from "../lib/liveAudio";
 import {
+  Activity,
   ArrowRight,
   BarChart3,
   Bell,
@@ -14,6 +17,7 @@ import {
   Eraser,
   File,
   FileText,
+  Flame,
   GraduationCap,
   FunctionSquare,
   Hand,
@@ -22,6 +26,7 @@ import {
   Expand,
   LogOut,
   Mic,
+  MicOff,
   MoreHorizontal,
   MousePointer2,
   PenLine,
@@ -29,70 +34,68 @@ import {
   Play,
   PlaySquare,
   Plus,
+  Radio,
   Redo2,
   Search,
   Send,
   Settings,
   Shapes,
+  Sparkles,
+  Square,
   Trash2,
   Trophy,
   Type,
   Undo2,
   Video,
   Volume2,
+  VolumeX,
+  Zap,
 } from "lucide-react";
 
-const subjects = [
-  {
-    name: "Algebra",
-    description: "Build strong foundations in algebra.",
-    progress: 68,
-    lessons: 12,
-    level: "Beginner",
-    icon: Calculator,
+
+const SUBJECT_DETAILS = {
+  "Pre-Algebra": {
+    badge: "÷ × + −",
+    cardDescription: "Review essential math skills.",
+    detailDescription: "Review arithmetic, order of operations (PEMDAS), signed numbers, fractions, and introductory ratios.",
+    board: ["(3 + 5) × 2", "8 × 2", "= 16"],
   },
-  {
-    name: "Functions",
-    description: "Understand relations, functions and graphs.",
-    progress: 45,
-    lessons: 10,
-    level: "Intermediate",
-    icon: FunctionSquare,
+  "Algebra": {
+    badge: "ax+by=c",
+    cardDescription: "Build strong foundations in algebra.",
+    detailDescription: "Master variables, expressions, combining like terms, and solving linear equations step by step.",
+    board: ["2x + 3 = 11", "2x = 8", "x = 4"],
   },
-  {
-    name: "Geometry",
-    description: "Explore shapes, angles and theorems.",
-    progress: 30,
-    lessons: 8,
-    level: "Beginner",
-    icon: Shapes,
+  "Functions": {
+    badge: "f(x)=y",
+    cardDescription: "Understand relations, functions and graphs.",
+    detailDescription: "Understand mathematical relations, function notation, domain and range, function tables, and linear graphs.",
+    board: ["f(x) = 2x + 1", "f(3) = 2(3) + 1", "f(3) = 7"],
   },
-  {
-    name: "Statistics",
-    description: "Learn data, graphs and probability.",
-    progress: 20,
-    lessons: 7,
-    level: "Beginner",
-    icon: BarChart3,
+  "Geometry": {
+    badge: "A=½bh",
+    cardDescription: "Explore shapes, angles and theorems.",
+    detailDescription: "Explore geometric shapes, angles, triangle theorems, area, volume, and spatial reasoning.",
+    board: ["A = ½ × b × h", "b = 6, h = 4", "A = 12"],
   },
-  {
-    name: "Pre-Algebra",
-    description: "Review essential math skills.",
-    progress: 75,
-    lessons: 9,
-    level: "Review",
-    icon: Divide,
+  "Statistics": {
+    badge: "x̄=Σx/n",
+    cardDescription: "Learn data, graphs and probability.",
+    detailDescription: "Analyze data displays, measures of central tendency (mean, median, mode), graphs, and probability.",
+    board: ["Mean = Σx / n", "(4 + 8 + 6) / 3", "x̄ = 6"],
   },
-  {
-    name: "More Subjects",
-    description: "Coming soon.",
-    progress: null,
-    lessons: null,
-    level: null,
-    icon: MoreHorizontal,
-    comingSoon: true,
-  },
-];
+};
+
+const getSubjectDetails = (subjectName) => {
+  return SUBJECT_DETAILS[subjectName] || {
+    badge: "ax+by=c",
+    cardDescription: `Learn ${subjectName} concepts.`,
+    detailDescription: `Master key concepts and step-by-step problem solving in ${subjectName}.`,
+    board: ["2x + 3 = 11", "2x = 8", "x = 4"],
+  };
+};
+
+
 
 const sortOptions = [
   { value: "recent", label: "Recently Accessed" },
@@ -965,17 +968,21 @@ const styles = `
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     overflow: hidden;
-    display: grid;
-    grid-template-rows: 48px minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
     min-height: 0;
+    height: 100%;
   }
 
   .whiteboard-header {
+    height: 48px;
+    min-height: 48px;
     border-bottom: 1px solid #eef2f7;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 14px;
+    background: #ffffff;
   }
 
   .whiteboard-header h2 {
@@ -1001,6 +1008,7 @@ const styles = `
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
   }
 
   .tool-button.active {
@@ -1010,7 +1018,8 @@ const styles = `
 
   .board-canvas {
     position: relative;
-    padding: 28px 38px 76px;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
     background: #ffffff;
     font-family: "Comic Sans MS", "Bradley Hand ITC", cursive;
@@ -1064,18 +1073,19 @@ const styles = `
 
   .drawing-toolbar {
     position: absolute;
-    left: 34px;
-    right: 34px;
-    bottom: 18px;
-    height: 58px;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    height: 52px;
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #ffffff;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     display: flex;
     align-items: center;
-    gap: 18px;
-    padding: 0 18px;
+    gap: 12px;
+    padding: 0 14px;
+    z-index: 20;
   }
 
   .marker {
@@ -1094,9 +1104,12 @@ const styles = `
   .chat-panel {
     border-left: 1px solid #eef2f7;
     padding-top: 96px;
-    display: grid;
-    grid-template-rows: 48px minmax(0, 1fr) 104px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
     background: #ffffff;
+    overflow: hidden;
   }
 
   .chat-tabs {
@@ -1127,11 +1140,13 @@ const styles = `
     margin: 0 14px;
     border-left: 1px solid #e2e8f0;
     border-right: 1px solid #e2e8f0;
-    padding: 22px 16px;
-    overflow: auto;
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 16px;
   }
 
   .chat-message {
@@ -1857,13 +1872,153 @@ const SubjectCard = ({ subject, onOpen }) => {
   );
 };
 
-const VoiceBars = ({ muted = false }) => (
-  <div className={`voice-bars${muted ? " muted" : ""}`} aria-hidden="true">
+
+// Convert raw math expressions & LaTeX symbols into concise, natural spoken dialogue for real-time voice
+const cleanTextForSpeech = (text) => {
+  if (!text) return "";
+  
+  let cleaned = text
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 over $2")
+    .replace(/\\sqrt\{([^}]+)\}/g, "square root of $1")
+    .replace(/\\sqrt\s*([a-zA-Z0-9]+)/g, "square root of $1")
+    .replace(/\\times/g, " times ")
+    .replace(/\\div/g, " divided by ")
+    .replace(/\\pm/g, " plus or minus ")
+    .replace(/\\cdot/g, " times ")
+    .replace(/\\le|\\leq/g, " less than or equal to ")
+    .replace(/\\ge|\\geq/g, " greater than or equal to ")
+    .replace(/\\ne|\\neq/g, " is not equal to ")
+    .replace(/\\pi/g, " pi ")
+    .replace(/\\theta/g, " theta ")
+    .replace(/\\alpha/g, " alpha ")
+    .replace(/\\beta/g, " beta ")
+    .replace(/\\infty/g, " infinity ")
+    .replace(/([a-zA-Z0-9]+)\^2/g, "$1 squared")
+    .replace(/([a-zA-Z0-9]+)\^3/g, "$1 cubed")
+    .replace(/([a-zA-Z0-9]+)\^([a-zA-Z0-9]+)/g, "$1 to the power of $2")
+    .replace(/\$\$/g, "")
+    .replace(/\$/g, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/#+\s+/g, "")
+    .replace(/[*•-]\s+/g, "")
+    .replace(/\\/g, "")
+    .replace(/[\n\r]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Extract the first crisp conversational sentence / question (max 20 words) for fast, snappy spoken dialogue like ChatGPT Voice
+  const sentences = cleaned.match(/[^.!?]+[.!?]+/g) || [cleaned];
+  const firstSentence = (sentences[0] || cleaned).trim();
+  const words = firstSentence.split(" ");
+  if (words.length > 20) {
+    return words.slice(0, 18).join(" ") + "...";
+  }
+  return firstSentence;
+};
+
+// Translate LaTeX symbols and math equations into clean, beautiful HTML/JSX
+const parseMathSymbols = (str) => {
+  if (!str) return str;
+  return str
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 / $2")
+    .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
+    .replace(/\\sqrt\s*([a-zA-Z0-9]+)/g, "√$1")
+    .replace(/\\times/g, "×")
+    .replace(/\\div/g, "÷")
+    .replace(/\\pm/g, "±")
+    .replace(/\\cdot/g, "·")
+    .replace(/\\le|\\leq/g, "≤")
+    .replace(/\\ge|\\geq/g, "≥")
+    .replace(/\\ne|\\neq/g, "≠")
+    .replace(/\\pi/g, "π")
+    .replace(/\\theta/g, "θ")
+    .replace(/\\alpha/g, "α")
+    .replace(/\\beta/g, "β")
+    .replace(/\\infty/g, "∞");
+};
+
+const formatAIText = (text) => {
+  if (!text) return null;
+  const lines = text.split("\n");
+  
+  return lines.map((line, lIdx) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={lIdx} style={{ height: 4 }} />;
+
+    const isBullet = trimmed.startsWith("* ") || trimmed.startsWith("- ") || trimmed.startsWith("• ");
+    const lineContent = isBullet ? trimmed.replace(/^[*•-]\s+/, "") : trimmed;
+
+    // Split by Markdown formatting AND Math expressions ($...$ or $$...$$)
+    const parts = lineContent.split(/(\$\$.*?\$\$|\$.*?\$|\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    const renderedParts = parts.map((part, pIdx) => {
+      if ((part.startsWith("$$") && part.endsWith("$$") && part.length > 4) ||
+          (part.startsWith("$") && part.endsWith("$") && part.length > 2)) {
+        const rawMath = part.replace(/^\$+|\$+$/g, "");
+        const cleanMath = parseMathSymbols(rawMath);
+        return (
+          <span
+            key={pIdx}
+            style={{
+              fontFamily: "'Courier New', Courier, monospace",
+              fontWeight: 600,
+              color: "#0054ff",
+              background: "#eef4ff",
+              padding: "2px 6px",
+              borderRadius: 4,
+              display: "inline-block",
+              margin: "0 2px",
+            }}
+          >
+            {cleanMath}
+          </span>
+        );
+      }
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+        return <strong key={pIdx} style={{ fontWeight: 700, color: "#0054ff" }}>{parseMathSymbols(part.slice(2, -2))}</strong>;
+      }
+      if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+        return <strong key={pIdx} style={{ fontWeight: 600 }}>{parseMathSymbols(part.slice(1, -1))}</strong>;
+      }
+      if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+        return <code key={pIdx} style={{ background: "#eef4ff", color: "#0054ff", padding: "2px 6px", borderRadius: 4, fontFamily: "monospace" }}>{parseMathSymbols(part.slice(1, -1))}</code>;
+      }
+      return parseMathSymbols(part);
+    });
+
+    if (isBullet) {
+      return (
+        <div key={lIdx} style={{ display: "flex", gap: 8, alignItems: "flex-start", margin: "4px 0" }}>
+          <span style={{ color: "#0054ff", fontWeight: 700, lineHeight: "22px" }}>•</span>
+          <div style={{ flex: 1 }}>{renderedParts}</div>
+        </div>
+      );
+    }
+
+    return (
+      <p key={lIdx} style={{ margin: "0 0 6px 0", lineHeight: "22px" }}>
+        {renderedParts}
+      </p>
+    );
+  });
+};
+
+const VoiceBars = ({ muted = false, active = false }) => (
+  <div className={`voice-bars${muted || !active ? " muted" : ""}`} aria-hidden="true">
     {[8, 14, 9, 18, 11, 16, 7, 15, 10, 18, 8, 13].map((height, index) => (
-      <span key={index} style={{ height }} />
+      <span
+        key={index}
+        style={{
+          height: (muted || !active) ? 4 : height,
+          animationPlayState: (muted || !active) ? "paused" : "running",
+          transition: "height 0.2s ease",
+        }}
+      />
     ))}
   </div>
 );
+
 
 const ContentListView = ({ type, topic = "Algebra" }) => {
   const [activeTab, setActiveTab] = useState("All");
@@ -1893,29 +2048,7 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
     };
   }, [type, topic]);
 
-  const mockData = {
-    Resources: [
-      { id: 1, title: "Linear Equations - Study Guide", desc: "A comprehensive guide covering key concepts, formulas, and step-by-step methods.", type: "pdf", size: "2.4 MB" },
-      { id: 2, title: "Introduction to Linear Equations", desc: "Watch this short video to understand what linear equations are and how they work.", type: "video", size: "8:12" },
-      { id: 3, title: "Practice Worksheet 1", desc: "Solve basic linear equations with one variable. Includes solutions.", type: "pdf", size: "1.1 MB" },
-      { id: 4, title: "Real-World Examples", desc: "See how linear equations are used in everyday life with real-world problems.", type: "pdf", size: "1.6 MB" },
-      { id: 5, title: "Solving Linear Equations - Full Lesson", desc: "Complete lesson walkthrough with examples and explanations.", type: "video", size: "24:18" },
-      { id: 6, title: "Quick Reference Sheet", desc: "Formulas and steps summary for quick revision.", type: "pdf", size: "0.6 MB" },
-    ],
-    "Lesson Notes": [
-      { id: 1, title: "Class Notes - Module 3 Lesson 1", desc: "Introduction to algebra and variables.", type: "pdf", size: "1.2 MB" },
-      { id: 2, title: "Class Notes - Module 3 Lesson 2", desc: "Balancing equations and simple operations.", type: "pdf", size: "1.5 MB" },
-      { id: 3, title: "Teacher's Highlights", desc: "Important things to remember for the upcoming quiz.", type: "pdf", size: "0.8 MB" },
-    ],
-    Homework: [
-      { id: 1, title: "Homework Assignment 3", desc: "Complete problems 1-15 in the workbook.", type: "pdf", size: "1.0 MB" },
-      { id: 2, title: "Extra Credit - Word Problems", desc: "Optional word problems for extra credit points.", type: "pdf", size: "0.5 MB" },
-      { id: 3, title: "Video Solution Guide", desc: "Step by step video solving the homework problems.", type: "video", size: "12:05" },
-    ]
-  };
-
   const tabs = ["All " + type, "Guides", "Worksheets", "Videos", "Examples", "Practice"];
-  const items = mockData[type] || mockData.Resources;
 
   return (
     <div className="content-list-view">
@@ -1940,23 +2073,35 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
       </div>
 
       <div className="content-cards-container">
-        {items.map(item => (
-          <div className="content-card" key={item.id}>
-            <div className="content-card-icon">
-              {item.type === "video" ? <PlaySquare size={28} strokeWidth={1.5} /> : <File size={28} strokeWidth={1.5} />}
-            </div>
-            <div className="content-card-info">
-              <h3 className="content-card-title">{item.title}</h3>
-              <p className="content-card-desc">{item.desc}</p>
-              <p className="content-card-meta">
-                <span>{item.type === "video" ? "Video" : "PDF"}</span>
-                <span>•</span>
-                <span>{item.size}</span>
-              </p>
-            </div>
-            <button className="content-card-btn">View</button>
+        {loading ? (
+          <div style={{ padding: "32px 0", textAlign: "center" }}>
+            <p style={{ color: "#64748b", fontSize: 14 }}>Loading {type.toLowerCase()} from database...</p>
           </div>
-        ))}
+        ) : materials.length === 0 ? (
+          <div style={{ padding: "40px 24px", textAlign: "center", border: "1px dashed #cbd5e1", borderRadius: 12, background: "#f8fafc", margin: "16px 0", width: "100%" }}>
+            <FileText size={36} color="#94a3b8" style={{ marginBottom: 12 }} />
+            <h3 style={{ margin: "0 0 6px 0", color: "#0f172a", fontSize: 16, fontWeight: 600 }}>No {type} yet for {topic}</h3>
+            <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>Study guides and materials will appear here when created in your database.</p>
+          </div>
+        ) : (
+          materials.map(item => (
+            <div className="content-card" key={item.id}>
+              <div className="content-card-icon">
+                {item.content_type === "video" ? <PlaySquare size={28} strokeWidth={1.5} /> : <File size={28} strokeWidth={1.5} />}
+              </div>
+              <div className="content-card-info">
+                <h3 className="content-card-title">{item.title}</h3>
+                <p className="content-card-desc">{item.description}</p>
+                <p className="content-card-meta">
+                  <span>{item.content_type || "PDF"}</span>
+                  <span>•</span>
+                  <span>{item.file_size || "1.0 MB"}</span>
+                </p>
+              </div>
+              <button className="content-card-btn">View</button>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -2034,14 +2179,28 @@ const WhiteboardSidebar = ({ activeTool, setActiveTool, onClear }) => {
   );
 };
 
-const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActiveColor, clearTrigger, lessonTitle, lessonSteps }) => {
+const InteractiveWhiteboard = ({
+  activeTool,
+  setActiveTool,
+  activeColor,
+  setActiveColor,
+  clearTrigger,
+  lessonTitle,
+  lessonSteps,
+  onCanvasFrame,
+  aiHighlights = [],
+  aiHints = [],
+  isLiveConnected = false,
+}) => {
   const containerRef = React.useRef(null);
+  const stageRef = React.useRef(null);
 
   const [lines, setLines] = useState([]);
   const [history, setHistory] = useState([[]]);
   const [historyStep, setHistoryStep] = useState(0);
   const isDrawing = React.useRef(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const debounceTimerRef = React.useRef(null);
 
   React.useEffect(() => {
     const container = containerRef.current;
@@ -2058,12 +2217,30 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
     return () => observer.disconnect();
   }, []);
 
+  const emitFrame = React.useCallback((triggerTurn = false) => {
+    if (!stageRef.current || !onCanvasFrame) return;
+    try {
+      const dataUrl = stageRef.current.toDataURL({ mimeType: "image/jpeg", quality: 0.6, pixelRatio: 1 });
+      onCanvasFrame(dataUrl, triggerTurn);
+    } catch (e) {
+      console.warn("Canvas frame capture error:", e);
+    }
+  }, [onCanvasFrame]);
+
+  const scheduleEmitFrame = React.useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      emitFrame(false);
+    }, 800);
+  }, [emitFrame]);
+
   React.useEffect(() => {
     if (clearTrigger > 0) {
       saveHistory([]);
       setLines([]);
+      scheduleEmitFrame();
     }
-  }, [clearTrigger]);
+  }, [clearTrigger, scheduleEmitFrame]);
 
   const saveHistory = (newLines) => {
     const nextHistory = history.slice(0, historyStep + 1);
@@ -2089,10 +2266,7 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
     const point = stage.getPointerPosition();
     let lastLine = lines[lines.length - 1];
 
-    // add point
     lastLine.points = lastLine.points.concat([point.x, point.y]);
-
-    // replace last
     lines.splice(lines.length - 1, 1, lastLine);
     setLines(lines.concat());
   };
@@ -2101,12 +2275,14 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
     if (!isDrawing.current) return;
     isDrawing.current = false;
     saveHistory(lines);
+    scheduleEmitFrame();
   };
 
   const handleUndo = () => {
     if (historyStep > 0) {
       setHistoryStep(historyStep - 1);
       setLines(history[historyStep - 1]);
+      scheduleEmitFrame();
     }
   };
 
@@ -2114,12 +2290,14 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
     if (historyStep < history.length - 1) {
       setHistoryStep(historyStep + 1);
       setLines(history[historyStep + 1]);
+      scheduleEmitFrame();
     }
   };
 
   const handleClear = () => {
     saveHistory([]);
     setLines([]);
+    scheduleEmitFrame();
   };
 
   const headerTools = [
@@ -2147,7 +2325,28 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
   return (
     <article className="whiteboard-card">
       <div className="whiteboard-header">
-        <h2>Whiteboard</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h2>Whiteboard</h2>
+          {isLiveConnected && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "3px 10px",
+                borderRadius: 20,
+                background: "#eff6ff",
+                color: "#0054ff",
+                fontSize: 12,
+                fontWeight: 600,
+                border: "1px solid #bfdbfe",
+              }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#0054ff", animation: "pulse 1.5s infinite" }} />
+              AI Watching Live
+            </span>
+          )}
+        </div>
         <div className="tool-row">
           {headerTools.map((item) => {
             const Icon = item.icon;
@@ -2178,6 +2377,7 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
         >
           {dimensions.width > 0 && dimensions.height > 0 && (
             <Stage
+              ref={stageRef}
               width={dimensions.width}
               height={dimensions.height}
               onPointerDown={handlePointerDown}
@@ -2205,7 +2405,67 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
             </Stage>
           )}
         </div>
-        {/* Lesson content overlay — driven by props, blank when no content provided */}
+
+        {/* AI Live Teacher Annotations / Highlights */}
+        {aiHighlights.map((hl, idx) => (
+          <div
+            key={hl.id || idx}
+            style={{
+              position: "absolute",
+              left: `${hl.x}%`,
+              top: `${hl.y}%`,
+              width: `${hl.width || 24}%`,
+              height: `${hl.height || 16}%`,
+              border: "3px dashed #ef4444",
+              borderRadius: 12,
+              backgroundColor: "rgba(239, 68, 68, 0.12)",
+              boxShadow: "0 0 16px rgba(239, 68, 68, 0.3)",
+              pointerEvents: "none",
+              zIndex: 6,
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "flex-end",
+              padding: "4px 8px",
+              animation: "pulse 1.5s infinite ease-in-out",
+            }}
+          >
+            {hl.label && (
+              <span style={{ background: "#ef4444", color: "#fff", fontSize: 11, fontWeight: 700, borderRadius: 4, padding: "2px 6px" }}>
+                {hl.label}
+              </span>
+            )}
+          </div>
+        ))}
+
+        {/* AI Live Teacher Hint Tooltip */}
+        {aiHints.map((hint, idx) => (
+          <div
+            key={hint.id || idx}
+            style={{
+              position: "absolute",
+              left: `${hint.x || 10}%`,
+              top: `${hint.y || 10}%`,
+              background: "linear-gradient(135deg, #0054ff, #4338ca)",
+              color: "#ffffff",
+              padding: "8px 14px",
+              borderRadius: 10,
+              boxShadow: "0 8px 24px rgba(0, 84, 255, 0.35)",
+              fontSize: 14,
+              fontWeight: 600,
+              zIndex: 7,
+              pointerEvents: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              border: "1px solid rgba(255,255,255,0.2)",
+            }}
+          >
+            <Sparkles size={16} />
+            <span>{hint.text}</span>
+          </div>
+        ))}
+
+        {/* Lesson content overlay — driven by props */}
         {(lessonTitle || (lessonSteps && lessonSteps.length > 0)) && (
           <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", userSelect: "none" }}>
             {lessonTitle && <h3>{lessonTitle}</h3>}
@@ -2285,8 +2545,33 @@ const InteractiveWhiteboard = ({ activeTool, setActiveTool, activeColor, setActi
           ))}
           <button
             type="button"
+            onClick={() => emitFrame(true)}
+            style={{
+              height: 38,
+              padding: "0 14px",
+              borderRadius: 8,
+              background: "#0054ff",
+              color: "#ffffff",
+              border: 0,
+              fontFamily: "Outfit, sans-serif",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              marginLeft: "auto",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              boxShadow: "0 4px 12px rgba(0, 84, 255, 0.2)",
+            }}
+            title="Ask AI Teacher to inspect whiteboard work"
+          >
+            <Zap size={15} />
+            <span>Check My Board</span>
+          </button>
+          <button
+            type="button"
             className="tool-button"
-            style={{ border: "1px solid #dfe8f7", marginLeft: "auto" }}
+            style={{ border: "1px solid #dfe8f7" }}
             title="Clear Board"
             onClick={handleClear}
           >
@@ -2305,95 +2590,280 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const [clearTrigger, setClearTrigger] = useState(0);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [sessionId, setSessionId] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isMicStreaming, setIsMicStreaming] = useState(false);
+  const [studentVolume, setStudentVolume] = useState(0);
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [aiHighlights, setAiHighlights] = useState([]);
+  const [aiHints, setAiHints] = useState([]);
+  const [liveTranscript, setLiveTranscript] = useState("");
 
+  const wsRef = useRef(null);
+  const playerRef = useRef(null);
+  const recorderRef = useRef(null);
+  const chatScrollRef = useRef(null);
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages, liveTranscript, loadingAI]);
+
+  // Setup Live Audio Player & WebSocket (Single persistent session)
   useEffect(() => {
     let isMounted = true;
 
-    async function startSession() {
+    // 1. Initialize Audio Player
+    const player = new AudioStreamPlayer({
+      onPlayStateChange: (playing) => {
+        if (isMounted) setIsSpeaking(playing);
+      },
+    });
+    playerRef.current = player;
+
+    // 2. Initialize Audio Recorder
+    const recorder = new AudioStreamRecorder({
+      onChunk: (base64Pcm) => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: "audio", data: base64Pcm }));
+        }
+      },
+      onLevel: (vol) => {
+        if (isMounted) setStudentVolume(vol);
+      },
+    });
+    recorderRef.current = recorder;
+
+    // 3. Connect to WebSocket
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//localhost:8080/api/v1/live-tutor`;
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      if (!isMounted) return;
+      setIsLiveConnected(true);
+      setLoadingAI(false);
+      // Send initial opening message to trigger the teacher's greeting
+      const initTopic = lessonTitle || "Algebra";
+      ws.send(
+        JSON.stringify({
+          type: "text",
+          text: `Hello teacher! Please start our 1-on-1 live lesson on ${initTopic}. Greet me warmly and ask an opening question to get us started.`,
+        })
+      );
+    };
+
+    ws.onmessage = (event) => {
       try {
-        setLoadingAI(true);
-        const topicName = lessonTitle || "Algebra";
-        const session = await api("/tutor/sessions", {
-          method: "POST",
-          body: JSON.stringify({ topic: topicName }),
-        });
-        if (!isMounted) return;
-        setSessionId(session.id);
+        const msg = JSON.parse(event.data);
+        if (msg.type === "ready") {
+          setIsLiveConnected(true);
+        } else if (msg.type === "audio" && msg.data) {
+          // Play low-latency 24kHz PCM chunk
+          if (!isMuted && playerRef.current) {
+            playerRef.current.playChunk(msg.data, 24000);
+          }
+        } else if (msg.type === "text_delta" && msg.text) {
+          setLiveTranscript((prev) => prev + msg.text);
+        } else if (msg.type === "turn_complete") {
+          setLiveTranscript((current) => {
+            if (current.trim()) {
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setChatMessages((prev) => [...prev, { sender: "ai", text: current.trim(), time: now }]);
+            }
+            return "";
+          });
+        } else if (msg.type === "interrupted") {
+          // Native Barge-in: student spoke, stop AI playback instantly!
+          if (playerRef.current) {
+            playerRef.current.interrupt();
+          }
+          setIsSpeaking(false);
+        } else if (msg.type === "tool_call") {
+          // AI co-drawing & annotation tool handling
+          const { call_id, name, args } = msg;
+          if (name === "highlight_board") {
+            const newHl = {
+              id: Date.now(),
+              x: args.x || 10,
+              y: args.y || 10,
+              width: args.width || 25,
+              height: args.height || 18,
+              label: args.label || "Check this",
+            };
+            setAiHighlights((prev) => [...prev, newHl]);
+          } else if (name === "write_board_hint") {
+            const newHint = {
+              id: Date.now(),
+              text: args.text,
+              x: args.x || 15,
+              y: args.y || 15,
+            };
+            setAiHints((prev) => [...prev, newHint]);
+          } else if (name === "clear_board_annotations") {
+            setAiHighlights([]);
+            setAiHints([]);
+          }
 
-        const res = await api(`/tutor/sessions/${session.id}/messages`, {
-          method: "POST",
-          body: JSON.stringify({
-            content: `Hello teacher, please start our lesson on ${topicName}. Introduce the concept clearly and ask me an opening question to begin.`,
-          }),
-        });
-
-        if (isMounted && res?.message) {
-          const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          setChatMessages([
-            {
-              sender: "ai",
-              text: res.message.content,
-              time: now,
-            },
-          ]);
+          // Acknowledge tool call back to Gemini
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({
+                type: "tool_response",
+                call_id,
+                name,
+                result: { status: "ok" },
+              })
+            );
+          }
         }
       } catch (err) {
-        console.error("Error starting AI lesson session:", err);
-        if (isMounted) {
-          const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          setChatMessages([
-            {
-              sender: "ai",
-              text: `Welcome to your 1-on-1 AI lesson on ${lessonTitle}! What questions do you have to get started?`,
-              time: now,
-            },
-          ]);
-        }
-      } finally {
-        if (isMounted) setLoadingAI(false);
+        console.warn("Error processing live WebSocket message:", err);
       }
-    }
+    };
 
-    startSession();
+    ws.onclose = () => {
+      if (isMounted) setIsLiveConnected(false);
+    };
+
+    ws.onerror = (err) => {
+      console.error("Live WebSocket error:", err);
+      if (isMounted) setIsLiveConnected(false);
+    };
 
     return () => {
       isMounted = false;
+      if (recorderRef.current) recorderRef.current.stop();
+      if (playerRef.current) playerRef.current.destroy();
+      if (wsRef.current) wsRef.current.close();
     };
   }, [lessonTitle]);
 
-  const handleSendMessage = async (textToSend) => {
+  const speechRecRef = useRef(null);
+  const speechSilenceTimerRef = useRef(null);
+
+  // Toggle Live Microphone Streaming
+  const toggleLiveMic = async () => {
+    unlockAudioContext();
+    if (isMicStreaming) {
+      recorderRef.current?.stop();
+      if (speechSilenceTimerRef.current) clearTimeout(speechSilenceTimerRef.current);
+      if (speechRecRef.current) {
+        try { speechRecRef.current.abort(); } catch(e) {}
+      }
+      setIsMicStreaming(false);
+    } else {
+      try {
+        await recorderRef.current?.start();
+        setIsMicStreaming(true);
+
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRec) {
+          const rec = new SpeechRec();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = "en-US";
+
+          rec.onresult = (evt) => {
+            let interimTranscript = "";
+            let finalTranscript = "";
+
+            for (let i = evt.resultIndex; i < evt.results.length; ++i) {
+              if (evt.results[i].isFinal) {
+                finalTranscript += evt.results[i][0].transcript;
+              } else {
+                interimTranscript += evt.results[i][0].transcript;
+              }
+            }
+
+            const currentSpoken = (finalTranscript || interimTranscript).trim();
+            if (currentSpoken) {
+              setChatInput(currentSpoken);
+              handleInterrupt();
+
+              if (speechSilenceTimerRef.current) clearTimeout(speechSilenceTimerRef.current);
+
+              if (finalTranscript) {
+                handleSendMessage(currentSpoken);
+                setChatInput("");
+              } else {
+                // Short answers (e.g. "4", "x is 5", "subtract 3") trigger auto-send after 900ms pause!
+                speechSilenceTimerRef.current = setTimeout(() => {
+                  if (currentSpoken) {
+                    handleSendMessage(currentSpoken);
+                    setChatInput("");
+                  }
+                }, 900);
+              }
+            }
+          };
+
+          rec.onerror = (e) => {
+            console.warn("Speech recognition warning:", e);
+          };
+
+          rec.onend = () => {
+            if (isMicStreaming && speechRecRef.current) {
+              try { rec.start(); } catch(e) {}
+            }
+          };
+
+          try { rec.start(); speechRecRef.current = rec; } catch(e) {}
+        }
+      } catch (err) {
+        console.error("Could not access microphone:", err);
+        alert("Could not access your microphone. Please allow microphone permissions in your browser.");
+      }
+    }
+  };
+
+  // Instant interruption / barge-in action
+  const handleInterrupt = () => {
+    if (playerRef.current) {
+      playerRef.current.interrupt();
+    }
+    setIsSpeaking(false);
+  };
+
+  // Push Canvas Frame over WebSocket to Gemini
+  const handleCanvasFrame = (dataUrl, triggerTurn = false) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "canvas_frame",
+          data: dataUrl,
+          mime_type: "image/jpeg",
+          trigger_turn: triggerTurn,
+          prompt: triggerTurn ? "Please look at my whiteboard drawing and give me quick, clear feedback on what I just wrote." : undefined,
+        })
+      );
+    }
+  };
+
+  const handleSendMessage = (textToSend = null) => {
     const text = (textToSend || chatInput).trim();
-    if (!text || loadingAI) return;
+    if (!text) return;
 
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const userMsg = { sender: "student", text, time: now };
-
-    setChatMessages((prev) => [...prev, userMsg]);
+    setChatMessages((prev) => [...prev, { sender: "student", text, time: now }]);
     if (!textToSend) setChatInput("");
-    setLoadingAI(true);
 
-    try {
-      if (sessionId) {
-        const res = await api(`/tutor/sessions/${sessionId}/messages`, {
-          method: "POST",
-          body: JSON.stringify({ content: text }),
-        });
-
-        if (res?.message) {
-          const aiNow = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          setChatMessages((prev) => [
-            ...prev,
-            { sender: "ai", text: res.message.content, time: aiNow },
-          ]);
-        }
-      }
-    } catch (err) {
-      console.error("Error sending message to AI:", err);
-    } finally {
-      setLoadingAI(false);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      // If AI is currently talking, interrupt it first
+      handleInterrupt();
+      wsRef.current.send(JSON.stringify({ type: "text", text }));
     }
+  };
+
+  const toggleMute = () => {
+    if (!isMuted && playerRef.current) {
+      playerRef.current.interrupt();
+      setIsSpeaking(false);
+    }
+    setIsMuted((prev) => !prev);
   };
 
   const railItems = [
@@ -2407,7 +2877,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const isWhiteboard = activeRailTab === "Whiteboard";
 
   return (
-    <main 
+    <main
       className="live-lesson"
       style={{
         gridTemplateColumns: isWhiteboard
@@ -2419,29 +2889,73 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
       <header className="live-topbar">
         <div className="live-title">
-          <h1>
-            {lessonTitle} <span className="live-dot">•</span>
-            <span style={{ color: "#0054ff" }}>Live Lesson</span>
-          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h1>
+              {lessonTitle} <span className="live-dot">•</span>
+            </h1>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: isLiveConnected ? "#eff6ff" : "#fef2f2",
+                color: isLiveConnected ? "#0054ff" : "#ef4444",
+                padding: "4px 12px",
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 700,
+                border: `1px solid ${isLiveConnected ? "#bfdbfe" : "#fecaca"}`,
+              }}
+            >
+              <Radio size={14} className={isLiveConnected ? "pulse-icon" : ""} />
+              {isLiveConnected ? "Real-Time AI Teacher Live" : "Connecting..."}
+            </span>
+          </div>
           {lessonSubtitle && <p>{lessonSubtitle}</p>}
         </div>
         <div className="top-actions">
-          <button type="button" className="top-action">
-            <Hand size={19} color="#0054ff" />
-            Raise Hand
+          <button
+            type="button"
+            className="top-action"
+            onClick={toggleLiveMic}
+            style={{
+              background: isMicStreaming ? "#fee2e2" : "#f0fdf4",
+              color: isMicStreaming ? "#ef4444" : "#16a34a",
+              borderColor: isMicStreaming ? "#fca5a5" : "#bbf7d0",
+              fontWeight: 600,
+            }}
+          >
+            {isMicStreaming ? <Mic size={18} /> : <MicOff size={18} />}
+            {isMicStreaming ? "Live Mic ON" : "Turn Mic ON"}
           </button>
-          <button type="button" className="top-action icon-action">
-            <Volume2 size={19} />
+          <button
+            type="button"
+            className="top-action icon-action"
+            onClick={toggleMute}
+            title={isMuted ? "Unmute AI Voice" : "Mute AI Voice"}
+          >
+            {isMuted ? <VolumeX size={19} color="#ef4444" /> : <Volume2 size={19} color="#0054ff" />}
           </button>
-          <button type="button" className="top-action icon-action">
-            <Settings size={19} />
+          <button
+            type="button"
+            className="top-action"
+            onClick={handleInterrupt}
+            style={{ color: "#ef4444", display: isSpeaking ? "inline-flex" : "none" }}
+            title="Interrupt AI Teacher"
+          >
+            <Square size={16} fill="currentColor" />
+            Interrupt
           </button>
-          <button type="button" className="end-lesson" onClick={async () => {
-          if (sessionId) {
-            try { await api(`/tutor/sessions/${sessionId}/complete`, { method: "PATCH" }); } catch (e) {}
-          }
-          onEnd();
-        }}>
+          <button
+            type="button"
+            className="end-lesson"
+            onClick={() => {
+              recorderRef.current?.stop();
+              playerRef.current?.destroy();
+              wsRef.current?.close();
+              onEnd();
+            }}
+          >
             <Phone size={18} />
             End Lesson
           </button>
@@ -2474,7 +2988,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <div className="live-progress-track">
             <div className="live-progress-fill" style={{ width: `${lessonProgress}%` }} />
           </div>
-          {lessonProgress >= 50 && <p style={{ margin: 0, color: "#334f87", fontSize: 12 }}>You're doing great! 🎉</p>}
+          {lessonProgress >= 50 && <p style={{ margin: 0, color: "#334f87", fontSize: 12 }}>You're doing great!</p>}
         </div>
       </aside>
 
@@ -2484,85 +2998,119 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <article className="live-teacher-card">
             <div className="teacher-photo" />
             <h2>TutorFlow AI</h2>
-            <VoiceBars />
+            <VoiceBars active={isSpeaking} muted={isMuted} />
             <br />
-            <span className="speaking-badge">• Speaking</span>
+            <span className="speaking-badge">
+              {isSpeaking ? "• Speaking Live" : isMuted ? "• Muted" : "• Listening Live"}
+            </span>
           </article>
           <article className="teacher-message">
-            {loadingAI && chatMessages.length === 0 ? (
-              "TutorFlow AI is preparing your personalized lesson..."
-            ) : chatMessages.filter(m => m.sender === "ai").length > 0 ? (
-              chatMessages.filter(m => m.sender === "ai").slice(-1)[0].text
+            {liveTranscript ? (
+              formatAIText(liveTranscript)
+            ) : chatMessages.filter((m) => m.sender === "ai").length > 0 ? (
+              formatAIText(chatMessages.filter((m) => m.sender === "ai").slice(-1)[0].text)
             ) : (
-              lessonTitle ? `Today we are learning: ${lessonTitle}.` : "Welcome to your AI lesson!"
+              lessonTitle ? `Today we are exploring: ${lessonTitle}. I'm watching the whiteboard in real time!` : "Welcome to your real-time AI lesson!"
             )}
           </article>
           <div className="teacher-controls">
-            {[
-              { label: "Mute", icon: Mic },
-              { label: "Camera", icon: Video },
-              { label: "Settings", icon: Settings },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <button type="button" className="control-button" key={item.label}>
-                  <Icon size={22} />
-                  {item.label}
-                </button>
-              );
-            })}
+            <button
+              type="button"
+              className={`control-button${isMicStreaming ? " active" : ""}`}
+              onClick={toggleLiveMic}
+              title={isMicStreaming ? "Mute Microphone" : "Unmute Microphone"}
+            >
+              {isMicStreaming ? <Mic size={22} color="#0054ff" /> : <MicOff size={22} color="#ef4444" />}
+              <span>{isMicStreaming ? "Mic On" : "Mic Off"}</span>
+            </button>
+            <button
+              type="button"
+              className={`control-button${isMuted ? " muted" : ""}`}
+              onClick={toggleMute}
+              title={isMuted ? "Unmute AI" : "Mute AI"}
+            >
+              {isMuted ? <VolumeX size={22} color="#ef4444" /> : <Volume2 size={22} color="#0054ff" />}
+              <span>{isMuted ? "Unmute" : "Mute"}</span>
+            </button>
+            <button type="button" className="control-button" onClick={handleInterrupt} title="Interrupt AI">
+              <Square size={20} color="#ef4444" fill={isSpeaking ? "#ef4444" : "none"} />
+              <span>Stop AI</span>
+            </button>
           </div>
           <article className="voice-panel">
-            <h3>Voice & Audio</h3>
-            <span className="wave-label">AI Teacher</span>
+            <h3>Voice & Audio Stream</h3>
+            <span className="wave-label">AI Teacher (24kHz Live Audio)</span>
             <div className="wave-row">
-              <VoiceBars />
-              <Volume2 size={18} />
+              <VoiceBars active={isSpeaking} muted={isMuted} />
+              <Volume2 size={18} color={isSpeaking ? "#0054ff" : "#94a3b8"} />
             </div>
-            <span className="wave-label" style={{ display: "block", marginTop: 16 }}>You</span>
-            <div className="wave-row muted">
-              <VoiceBars muted />
-              <Mic size={18} />
+            <span className="wave-label" style={{ display: "block", marginTop: 16 }}>
+              Student Mic {isMicStreaming ? "(Streaming 16kHz PCM)" : "(Muted)"}
+            </span>
+            <div className="wave-row">
+              <VoiceBars active={isMicStreaming && studentVolume > 0.05} />
+              <button
+                type="button"
+                onClick={toggleLiveMic}
+                style={{
+                  border: 0,
+                  background: isMicStreaming ? "#fee2e2" : "#f1f5f9",
+                  color: isMicStreaming ? "#ef4444" : "#64748b",
+                  padding: 6,
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                title={isMicStreaming ? "Click to pause mic" : "Click to stream mic"}
+              >
+                {isMicStreaming ? <Mic size={18} /> : <MicOff size={18} />}
+              </button>
             </div>
           </article>
         </section>
       )}
 
       <section className="whiteboard-zone">
-        {(activeRailTab === "Resources" || activeRailTab === "Lesson Notes" || activeRailTab === "Homework") ? (
+        {activeRailTab === "Resources" || activeRailTab === "Lesson Notes" || activeRailTab === "Homework" ? (
           <ContentListView type={activeRailTab} topic={lessonTitle} />
         ) : (
-          <InteractiveWhiteboard 
-            activeTool={activeTool} 
-            setActiveTool={setActiveTool} 
+          <InteractiveWhiteboard
+            activeTool={activeTool}
+            setActiveTool={setActiveTool}
             activeColor={activeColor}
             setActiveColor={setActiveColor}
             clearTrigger={clearTrigger}
             lessonTitle={lessonTitle}
             lessonSteps={[]}
+            onCanvasFrame={handleCanvasFrame}
+            aiHighlights={aiHighlights}
+            aiHints={aiHints}
+            isLiveConnected={isLiveConnected}
           />
         )}
       </section>
 
       {isWhiteboard ? (
-        <WhiteboardSidebar 
-          activeTool={activeTool} 
-          setActiveTool={setActiveTool} 
-          onClear={() => setClearTrigger(t => t + 1)} 
+        <WhiteboardSidebar
+          activeTool={activeTool}
+          setActiveTool={setActiveTool}
+          onClear={() => setClearTrigger((t) => t + 1)}
         />
       ) : (
         <aside className="chat-panel">
           <div className="chat-tabs">
             <button type="button" className="chat-tab active">Class Chat</button>
-            <button type="button" className="chat-tab">Transcript</button>
+            <button type="button" className="chat-tab">Live Feed</button>
           </div>
-          <div className="chat-scroll">
-            {chatMessages.length === 0 && (
+          <div className="chat-scroll" ref={chatScrollRef}>
+            {chatMessages.length === 0 && !liveTranscript && (
               <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
-                No messages yet. Ask a question below!
+                AI Teacher is listening & watching the whiteboard. Speak or write anytime!
               </p>
             )}
-            {chatMessages.map((msg, idx) => (
+            {chatMessages.map((msg, idx) =>
               msg.sender === "ai" ? (
                 <div className="chat-message" key={idx}>
                   <div className="chat-avatar" />
@@ -2571,7 +3119,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                       <span>TutorFlow AI</span>
                       <span className="message-time">{msg.time}</span>
                     </div>
-                    <p style={{ margin: 0 }}>{msg.text}</p>
+                    <div>{formatAIText(msg.text)}</div>
                   </div>
                 </div>
               ) : (
@@ -2580,40 +3128,68 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                     <span>You</span>
                     <span className="message-time">{msg.time}</span>
                   </div>
-                  {msg.text}
+                  <p style={{ margin: 0 }}>{msg.text}</p>
                 </div>
               )
-            ))}
+            )}
+            {liveTranscript && (
+              <div className="chat-message" style={{ borderLeft: "3px solid #0054ff", paddingLeft: 8 }}>
+                <div className="chat-avatar" />
+                <div>
+                  <div className="message-head">
+                    <span style={{ color: "#0054ff", fontWeight: 700 }}>TutorFlow AI (Live)</span>
+                    <span className="message-time">Now</span>
+                  </div>
+                  <div>{formatAIText(liveTranscript)}</div>
+                </div>
+              </div>
+            )}
+
             <div className="quick-replies">
-              <button type="button" onClick={() => handleSendMessage("Explain again")}>Explain again</button>
-              <button type="button" onClick={() => handleSendMessage("More examples")}>More examples</button>
-              <button type="button" onClick={() => handleSendMessage("I don't understand")}>I don't understand</button>
+              <button type="button" onClick={() => handleSendMessage("Explain this step by step")}>Explain step by step</button>
+              <button type="button" onClick={() => handleSendMessage("Can you give me a hint for this problem?")}>Give me a hint</button>
+              <button type="button" onClick={() => handleSendMessage("Is my calculation on the board correct?")}>Check my board</button>
+              <button type="button" onClick={() => handleSendMessage("I solved it! What is next?")}>I solved it!</button>
             </div>
           </div>
           <div className="chat-input-wrap">
             <input
               className="chat-input"
-              placeholder="Type a message..."
+              placeholder={isMicStreaming ? "Speaking live or type a message..." : "Type or turn on Live Mic..."}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && chatInput.trim()) {
-                  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                  setChatMessages(prev => [...prev, { sender: "student", text: chatInput.trim(), time: now }]);
-                  setChatInput("");
+                  handleSendMessage();
                 }
               }}
             />
             <div className="chat-input-actions">
-              <Mic size={18} />
+              <button
+                type="button"
+                onClick={toggleLiveMic}
+                style={{
+                  border: 0,
+                  background: isMicStreaming ? "#fee2e2" : "transparent",
+                  color: isMicStreaming ? "#ef4444" : "#64748b",
+                  padding: 6,
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                title={isMicStreaming ? "Live microphone is streaming. Click to mute." : "Click to stream voice"}
+              >
+                <Mic size={18} className={isMicStreaming ? "pulse-icon" : ""} />
+              </button>
               <Send
                 size={18}
-                style={{ cursor: chatInput.trim() ? "pointer" : "default" }}
+                style={{ cursor: chatInput.trim() ? "pointer" : "default", color: chatInput.trim() ? "#0054ff" : "#94a3b8" }}
                 onClick={() => {
-                  if (!chatInput.trim()) return;
-                  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                  setChatMessages(prev => [...prev, { sender: "student", text: chatInput.trim(), time: now }]);
-                  setChatInput("");
+                  if (chatInput.trim()) {
+                    handleSendMessage();
+                  }
                 }}
               />
             </div>
@@ -2625,9 +3201,89 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 };
 
 const AIClassroom = () => {
+  const [subjectsList, setSubjectsList] = useState([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState(null);
+  const [nextLessonData, setNextLessonData] = useState(null);
   const [liveLesson, setLiveLesson] = useState(false);
   const [sortBy, setSortBy] = useState("recent");
+
+  useEffect(() => {
+    setLoadingSubjects(true);
+    Promise.all([
+      api("/curriculum").catch(() => null),
+      api("/analytics/dashboard").catch(() => null),
+    ]).then(([currData, analyticsData]) => {
+      if (currData?.courses) {
+        const masteryMap = {};
+        if (analyticsData?.skill_mastery) {
+          analyticsData.skill_mastery.forEach(sm => {
+            masteryMap[sm.skill] = sm.mastery;
+          });
+        }
+
+        const dynamicSubjects = Object.keys(currData.courses).map(courseName => {
+          const lessonsList = currData.courses[courseName] || [];
+          let totalMastery = 0;
+          let countedSkills = 0;
+
+          lessonsList.forEach(les => {
+            (les.skills || []).forEach(sk => {
+              if (sk in masteryMap) {
+                totalMastery += masteryMap[sk];
+                countedSkills++;
+              }
+            });
+          });
+
+          const realProgress = countedSkills > 0 ? Math.round((totalMastery / countedSkills) * 100) : 0;
+          const matchingIcon = (courseName.includes("Algebra") && !courseName.includes("Pre"))
+            ? Calculator
+            : courseName.includes("Functions")
+            ? FunctionSquare
+            : courseName.includes("Geometry")
+            ? Shapes
+            : courseName.includes("Statistics")
+            ? BarChart3
+            : Divide;
+
+          const details = getSubjectDetails(courseName);
+
+          return {
+            name: courseName,
+            description: details.cardDescription,
+            detailDescription: details.detailDescription,
+            progress: realProgress,
+            lessons: lessonsList.length * 3,
+            level: "Intermediate",
+            icon: matchingIcon,
+            lessonsList,
+          };
+        });
+
+        dynamicSubjects.push({
+          name: "More Subjects",
+          description: "Coming soon.",
+          progress: null,
+          lessons: null,
+          level: null,
+          icon: MoreHorizontal,
+          comingSoon: true,
+        });
+
+        setSubjectsList(dynamicSubjects);
+      }
+      setLoadingSubjects(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (selectedSubject && !selectedSubject.comingSoon) {
+      api(`/curriculum/next-lesson?topic=${encodeURIComponent(selectedSubject.name)}`)
+        .then(data => setNextLessonData(data))
+        .catch(() => setNextLessonData(null));
+    }
+  }, [selectedSubject]);
 
   if (liveLesson) {
     const title = selectedSubject ? selectedSubject.name : "Live Lesson";
@@ -2661,12 +3317,15 @@ const AIClassroom = () => {
           </button>
 
           <div className="lesson-hero">
-            <div className="lesson-icon-large">ax+by=c</div>
+            {(() => {
+              const details = getSubjectDetails(selectedSubject.name);
+              return <div className="lesson-icon-large">{details.badge}</div>;
+            })()}
             <div>
               <p className="lesson-kicker">{selectedSubject.name} • {selectedSubject.level || "Beginner"}</p>
               <h1 className="lesson-title-large">{selectedSubject.name}</h1>
               <p className="lesson-description-large">
-                {selectedSubject.description}
+                {selectedSubject.detailDescription || selectedSubject.description || getSubjectDetails(selectedSubject.name).detailDescription}
               </p>
               <div className="lesson-meta">
                 <span className="lesson-meta-item">
@@ -2702,18 +3361,33 @@ const AIClassroom = () => {
             <article className="detail-card overview-card">
               <div>
                 <h2>Overview</h2>
-                <p>
-                  In this lesson, you’ll learn what linear equations are, how to solve
-                  them step by step, and how to check your solutions. You’ll also solve
-                  real-world examples to strengthen your understanding.
+                <p style={{ margin: "0 0 12px 0", color: "#263d73", fontSize: "15.5px", lineHeight: "26px" }}>
+                  {selectedSubject.detailDescription || getSubjectDetails(selectedSubject.name).detailDescription}
                 </p>
+                {nextLessonData?.outcomes && (
+                  <div>
+                    <p style={{ fontWeight: 600, marginBottom: 6, color: "#0054ff", fontSize: "14.5px" }}>
+                      Target Lesson: {nextLessonData.lesson}
+                    </p>
+                    <ul style={{ margin: 0, paddingLeft: 18, color: "#263d73", fontSize: "14px", lineHeight: "22px" }}>
+                      {nextLessonData.outcomes.map((out, idx) => (
+                        <li key={idx} style={{ marginBottom: 3 }}>{out}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               <div className="board-illustration" aria-hidden="true">
-                <div className="mini-board">
-                  <span>2x + 3 = 11</span>
-                  <span>2x = 8</span>
-                  <span className="mini-board-box">x = 4</span>
-                </div>
+                {(() => {
+                  const details = getSubjectDetails(selectedSubject.name);
+                  return (
+                    <div className="mini-board">
+                      <span>{details.board[0]}</span>
+                      <span>{details.board[1]}</span>
+                      <span className="mini-board-box">{details.board[2]}</span>
+                    </div>
+                  );
+                })()}
                 <div className="mini-pen" />
               </div>
             </article>
@@ -2840,9 +3514,25 @@ const AIClassroom = () => {
         </div>
 
         <div className="subject-grid">
-          {sortSubjects(sortBy).map((subject) => (
-            <SubjectCard subject={subject} key={subject.name} onOpen={setSelectedSubject} />
-          ))}
+          {loadingSubjects ? (
+            [1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="subject-card" style={{ opacity: 0.6 }}>
+                <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+                  <div className="tf-skeleton" style={{ width: 44, height: 44, borderRadius: 12 }} />
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div className="tf-skeleton" style={{ height: 18, width: "60%" }} />
+                    <div className="tf-skeleton" style={{ height: 14, width: "90%" }} />
+                  </div>
+                </div>
+                <div className="tf-skeleton" style={{ height: 6, borderRadius: 99, marginBottom: 12 }} />
+                <div className="tf-skeleton" style={{ height: 14, width: "40%" }} />
+              </div>
+            ))
+          ) : (
+            subjectsList.map((subject) => (
+              <SubjectCard subject={subject} key={subject.name} onOpen={setSelectedSubject} />
+            ))
+          )}
         </div>
 
       </section>

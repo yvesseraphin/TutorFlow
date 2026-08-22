@@ -8,10 +8,13 @@ frontend/dist/
 backend/__pycache__/
 *.pyc
 
-# Environment
+# Environment & Virtualenvs
 .env
 .env.local
 .env.*.local
+.venv/
+venv/
+ENV/
 
 # IDE
 .vscode/

@@ -531,13 +531,6 @@ const Profile = () => {
         <p className="pf-subtitle">Manage your account details and learning preferences.</p>
       </header>
 
-      {toast && (
-        <div className={`pf-toast ${toast.type}`}>
-          {toast.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-          {toast.message}
-        </div>
-      )}
-
       {/* Avatar + name row */}
       <div className="pf-avatar-row">
         {loading ? (

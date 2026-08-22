@@ -18,6 +18,7 @@ class SessionCreate(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=8000)
+    image_data: str | None = None
 
 
 class AttemptCreate(BaseModel):
@@ -172,7 +173,7 @@ def message(
         .select("role,content")
         .eq("session_id", str(session_id))
         .order("created_at", desc=True)
-        .limit(16)
+        .limit(6)
         .execute()
         .data
         or []
@@ -221,6 +222,7 @@ def message(
             history,
             payload.content,
             lesson_for_learner(session["topic"], context["mastery"]),
+            image_data=payload.image_data,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
