@@ -1,13 +1,3 @@
-/**
- * AuthCallback.jsx
- *
- * Supabase redirects here after a successful Google OAuth sign-in.
- * The URL will contain either:
- *   - A fragment (#access_token=...&refresh_token=...) for implicit flow, OR
- *   - A ?code= query param for PKCE flow (default in supabase-js v2).
- *
- * supabase.auth.exchangeCodeForSession() handles both cases automatically.
- */
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -19,46 +9,85 @@ const AuthCallback = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const handle = async () => {
-      try {
-        // Exchange the one-time code in the URL for a real session
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(
-          window.location.href
-        );
+    let isMounted = true;
 
-        if (exchangeError) throw exchangeError;
-
-        const session = data?.session;
-        const user = data?.user;
-
-        if (!session?.access_token) throw new Error("No session returned.");
-
-        // Store token the same way email/password login does
-        localStorage.setItem("token", session.access_token);
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            id: user.id,
-            email: user.email,
-            full_name:
-              user.user_metadata?.full_name ||
-              user.user_metadata?.name ||
-              user.email?.split("@")[0] ||
-              "",
-          })
-        );
-
+    const saveUserAndRedirect = (session) => {
+      if (!session || !session.access_token) return false;
+      const user = session.user;
+      localStorage.setItem("token", session.access_token);
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          id: user.id,
+          email: user.email,
+          full_name:
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split("@")[0] ||
+            "",
+        })
+      );
+      if (isMounted) {
         notif.success("Signed in successfully!");
         navigate("/dashboard", { replace: true });
+      }
+      return true;
+    };
+
+    const handleAuth = async () => {
+      try {
+        // 1. Check if session was already created by Supabase's automatic listener
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        if (existingSession && saveUserAndRedirect(existingSession)) {
+          return;
+        }
+
+        // 2. If URL contains a PKCE ?code= parameter, exchange it manually
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code");
+
+        if (code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            // Check if the code exchange succeeded in background despite error
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            if (retrySession && saveUserAndRedirect(retrySession)) {
+              return;
+            }
+            throw exchangeError;
+          }
+          if (data?.session && saveUserAndRedirect(data.session)) {
+            return;
+          }
+        }
+
+        // 3. Subscribe to auth state changes to catch async OAuth sign-in completion
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (session && saveUserAndRedirect(session)) {
+            subscription.unsubscribe();
+          }
+        });
+
       } catch (err) {
         console.error("OAuth callback error:", err);
-        const msg = err.message || "Sign-in failed. Please try again.";
-        notif.error(msg);
-        setError(msg);
+        // Check session one last time before displaying error
+        const { data: { session: fallbackSession } } = await supabase.auth.getSession();
+        if (fallbackSession && saveUserAndRedirect(fallbackSession)) {
+          return;
+        }
+        if (isMounted) {
+          const msg = err.message || "Sign-in failed. Please try again.";
+          setError(msg);
+          notif.error(msg);
+        }
       }
     };
 
-    handle();
+    handleAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, [navigate, notif]);
 
   if (error) {
@@ -113,7 +142,6 @@ const AuthCallback = () => {
         gap: 16,
       }}
     >
-      {/* Simple spinner */}
       <div
         style={{
           width: 40,
@@ -131,3 +159,4 @@ const AuthCallback = () => {
 };
 
 export default AuthCallback;
+
