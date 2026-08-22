@@ -1,22 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
-import { X, AlertCircle, CheckCircle, AlertTriangle, Info } from "lucide-react";
 
 /* ─── Context ─── */
 const NotifContext = createContext(null);
 
-const ICONS = {
-  error:   AlertCircle,
-  success: CheckCircle,
-  warning: AlertTriangle,
-  info:    Info,
-};
-
 /* Auto-dismiss durations (ms). 0 = sticky until closed. */
 const DURATION = {
-  error:   8000,    // error messages stay 8s or until dismissed
-  success: 5000,
-  warning: 6000,
-  info:    6000,
+  error:   7000,
+  success: 4500,
+  warning: 5500,
+  info:    5500,
 };
 
 /* ─── Provider ─── */
@@ -27,24 +19,21 @@ export const NotificationProvider = ({ children }) => {
 
   const dismiss = useCallback(() => {
     setVisible(false);
-    // Remove from DOM after slide-out animation (~280ms)
-    setTimeout(() => setNotif(null), 300);
+    setTimeout(() => setNotif(null), 260);
   }, []);
 
   const notify = useCallback((type, message) => {
-    // Clear any running auto-dismiss timer
     if (timerRef.current) clearTimeout(timerRef.current);
 
     setNotif({ type, message, id: Date.now() });
     setVisible(true);
 
-    const duration = DURATION[type] ?? 6000;
+    const duration = DURATION[type] ?? 5500;
     if (duration > 0) {
       timerRef.current = setTimeout(dismiss, duration);
     }
   }, [dismiss]);
 
-  // Convenience shortcuts
   const error   = useCallback((msg) => notify("error",   msg), [notify]);
   const success = useCallback((msg) => notify("success", msg), [notify]);
   const warning = useCallback((msg) => notify("warning", msg), [notify]);
@@ -67,95 +56,88 @@ export const useNotification = () => {
   return ctx;
 };
 
-/* ─── Banner UI (Top full-width banner with black background and white text) ─── */
+/* ─── Banner UI (Compact, iconless, centered, attached border, top-to-bottom slide) ─── */
 const Banner = ({ notif, visible, onDismiss }) => {
   if (!notif) return null;
 
-  const Icon = ICONS[notif.type] || Info;
+  const bgColors = {
+    error:   "#0f172a",
+    success: "#0f172a",
+    warning: "#0f172a",
+    info:    "#0f172a",
+  };
 
-  const accent = {
-    error:   "#f87171",   // subtle red accent for error icon
-    success: "#4ade80",   // subtle green accent for success icon
-    warning: "#fbbf24",   // subtle amber accent for warning icon
-    info:    "#60a5fa",   // subtle blue accent for info icon
-  }[notif.type] || "#ffffff";
+  const borders = {
+    error:   "1px solid #ef4444",
+    success: "1px solid #22c55e",
+    warning: "1px solid #f59e0b",
+    info:    "1px solid #3b82f6",
+  };
+
+  const textColors = {
+    error:   "#fca5a5",
+    success: "#86efac",
+    warning: "#fde047",
+    info:    "#93c5fd",
+  };
 
   return (
     <>
       <style>{`
-        @keyframes tf-banner-in  { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes tf-banner-out { from { transform: translateY(0);    opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+        @keyframes tf-banner-slide-in  { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        @keyframes tf-banner-slide-out { from { transform: translateY(0); } to { transform: translateY(-100%); } }
         .tf-banner-wrap {
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
-          width: 100vw;
+          width: 100%;
           z-index: 999999;
-          animation: tf-banner-in 0.28s cubic-bezier(0.4,0,0.2,1) forwards;
+          animation: tf-banner-slide-in 0.25s ease-out forwards;
         }
         .tf-banner-wrap.leaving {
-          animation: tf-banner-out 0.28s cubic-bezier(0.4,0,0.2,1) forwards;
+          animation: tf-banner-slide-out 0.22s ease-in forwards;
         }
       `}</style>
 
-      <div className={`tf-banner-wrap${visible ? "" : " leaving"}`} role="alert" aria-live="assertive">
+      <div
+        className={`tf-banner-wrap${visible ? "" : " leaving"}`}
+        role="alert"
+        aria-live="assertive"
+        onClick={onDismiss}
+        title="Click to dismiss"
+        style={{ cursor: "pointer" }}
+      >
         <div
           style={{
             width: "100%",
-            background: "#000000",
-            color: "#ffffff",
+            background: bgColors[notif.type] || "#0f172a",
+            color: textColors[notif.type] || "#ffffff",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
-            padding: "14px 28px",
-            minHeight: "54px",
+            justifyContent: "center",
+            padding: "8px 16px",
+            minHeight: "36px",
             fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif",
-            fontSize: "15px",
-            fontWeight: 500,
+            fontSize: "13.5px",
+            fontWeight: 600,
             letterSpacing: "-0.01em",
-            boxShadow: "0 6px 28px rgba(0, 0, 0, 0.45)",
+            textAlign: "center",
+            boxShadow: "none",
+            borderRadius: 0,
+            borderTop: "none",
+            borderLeft: "none",
+            borderRight: "none",
+            borderBottom: borders[notif.type] || "1px solid rgba(255, 255, 255, 0.15)",
             boxSizing: "border-box",
           }}
         >
-          {/* Left: icon + message */}
-          <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: 0 }}>
-            <Icon size={20} color={accent} style={{ flexShrink: 0 }} />
-            <span style={{ color: "#ffffff", lineHeight: "22px", fontWeight: 500, wordBreak: "break-word" }}>
-              {notif.message}
-            </span>
-          </div>
-
-          {/* Right: dismiss button */}
-          <button
-            onClick={onDismiss}
-            aria-label="Dismiss notification"
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#94a3b8",
-              cursor: "pointer",
-              padding: "6px",
-              display: "flex",
-              alignItems: "center",
-              marginLeft: "16px",
-              flexShrink: 0,
-              borderRadius: "6px",
-              transition: "all 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#ffffff";
-              e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#94a3b8";
-              e.currentTarget.style.background = "transparent";
-            }}
-          >
-            <X size={18} />
-          </button>
+          <span style={{ lineHeight: "1.3", wordBreak: "break-word" }}>
+            {notif.message}
+          </span>
         </div>
       </div>
     </>
   );
 };
+
