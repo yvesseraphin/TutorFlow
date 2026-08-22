@@ -119,18 +119,18 @@ const styles = `
     padding: 0 25px;
     border: 0;
     border-radius: 10px;
-    background: #000000;
+    background: #0054ff;
     color: #ffffff;
     font-family: "Outfit", sans-serif;
     font-size: 18px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 10px 24px rgba(0, 84, 255, 0.22);
     transition: background 0.18s ease, transform 0.18s ease;
   }
 
   .tf-primary-btn:hover {
-    background: #18181b;
+    background: #1d4ed8;
     transform: translateY(-1px);
   }
 
@@ -139,7 +139,7 @@ const styles = `
     height: 25px;
     border-radius: 50%;
     background: #ffffff;
-    color: #000000;
+    color: #2563eb;
     display: inline-flex;
     align-items: center;
     justify-content: center;
