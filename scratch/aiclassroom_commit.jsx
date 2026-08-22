@@ -1865,33 +1865,8 @@ const VoiceBars = ({ muted = false }) => (
   </div>
 );
 
-const ContentListView = ({ type, topic = "Algebra" }) => {
+const ContentListView = ({ type }) => {
   const [activeTab, setActiveTab] = useState("All");
-  const [materials, setMaterials] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-
-    api(`/tutor/materials?category=${encodeURIComponent(type)}&topic=${encodeURIComponent(topic)}`)
-      .then((data) => {
-        if (isMounted) {
-          setMaterials(Array.isArray(data) ? data : []);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setMaterials([]);
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [type, topic]);
 
   const mockData = {
     Resources: [
@@ -2305,96 +2280,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const [clearTrigger, setClearTrigger] = useState(0);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [sessionId, setSessionId] = useState(null);
-  const [loadingAI, setLoadingAI] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function startSession() {
-      try {
-        setLoadingAI(true);
-        const topicName = lessonTitle || "Algebra";
-        const session = await api("/tutor/sessions", {
-          method: "POST",
-          body: JSON.stringify({ topic: topicName }),
-        });
-        if (!isMounted) return;
-        setSessionId(session.id);
-
-        const res = await api(`/tutor/sessions/${session.id}/messages`, {
-          method: "POST",
-          body: JSON.stringify({
-            content: `Hello teacher, please start our lesson on ${topicName}. Introduce the concept clearly and ask me an opening question to begin.`,
-          }),
-        });
-
-        if (isMounted && res?.message) {
-          const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          setChatMessages([
-            {
-              sender: "ai",
-              text: res.message.content,
-              time: now,
-            },
-          ]);
-        }
-      } catch (err) {
-        console.error("Error starting AI lesson session:", err);
-        if (isMounted) {
-          const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          setChatMessages([
-            {
-              sender: "ai",
-              text: `Welcome to your 1-on-1 AI lesson on ${lessonTitle}! What questions do you have to get started?`,
-              time: now,
-            },
-          ]);
-        }
-      } finally {
-        if (isMounted) setLoadingAI(false);
-      }
-    }
-
-    startSession();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [lessonTitle]);
-
-  const handleSendMessage = async (textToSend) => {
-    const text = (textToSend || chatInput).trim();
-    if (!text || loadingAI) return;
-
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const userMsg = { sender: "student", text, time: now };
-
-    setChatMessages((prev) => [...prev, userMsg]);
-    if (!textToSend) setChatInput("");
-    setLoadingAI(true);
-
-    try {
-      if (sessionId) {
-        const res = await api(`/tutor/sessions/${sessionId}/messages`, {
-          method: "POST",
-          body: JSON.stringify({ content: text }),
-        });
-
-        if (res?.message) {
-          const aiNow = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          setChatMessages((prev) => [
-            ...prev,
-            { sender: "ai", text: res.message.content, time: aiNow },
-          ]);
-        }
-      }
-    } catch (err) {
-      console.error("Error sending message to AI:", err);
-    } finally {
-      setLoadingAI(false);
-    }
-  };
 
   const railItems = [
     { label: "Overview", icon: Home },
@@ -2436,12 +2321,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <button type="button" className="top-action icon-action">
             <Settings size={19} />
           </button>
-          <button type="button" className="end-lesson" onClick={async () => {
-          if (sessionId) {
-            try { await api(`/tutor/sessions/${sessionId}/complete`, { method: "PATCH" }); } catch (e) {}
-          }
-          onEnd();
-        }}>
+          <button type="button" className="end-lesson" onClick={onEnd}>
             <Phone size={18} />
             End Lesson
           </button>
@@ -2489,13 +2369,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             <span className="speaking-badge">• Speaking</span>
           </article>
           <article className="teacher-message">
-            {loadingAI && chatMessages.length === 0 ? (
-              "TutorFlow AI is preparing your personalized lesson..."
-            ) : chatMessages.filter(m => m.sender === "ai").length > 0 ? (
-              chatMessages.filter(m => m.sender === "ai").slice(-1)[0].text
-            ) : (
-              lessonTitle ? `Today we are learning: ${lessonTitle}.` : "Welcome to your AI lesson!"
-            )}
+            {lessonTitle ? `Today we are learning: ${lessonTitle}.` : "Welcome to your AI lesson!"}
           </article>
           <div className="teacher-controls">
             {[
@@ -2530,7 +2404,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
       <section className="whiteboard-zone">
         {(activeRailTab === "Resources" || activeRailTab === "Lesson Notes" || activeRailTab === "Homework") ? (
-          <ContentListView type={activeRailTab} topic={lessonTitle} />
+          <ContentListView type={activeRailTab} />
         ) : (
           <InteractiveWhiteboard 
             activeTool={activeTool} 
@@ -2585,9 +2459,9 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               )
             ))}
             <div className="quick-replies">
-              <button type="button" onClick={() => handleSendMessage("Explain again")}>Explain again</button>
-              <button type="button" onClick={() => handleSendMessage("More examples")}>More examples</button>
-              <button type="button" onClick={() => handleSendMessage("I don't understand")}>I don't understand</button>
+              <button type="button" onClick={() => setChatInput("Explain again")}>Explain again</button>
+              <button type="button" onClick={() => setChatInput("More examples")}>More examples</button>
+              <button type="button" onClick={() => setChatInput("I don't understand")}>I don't understand</button>
             </div>
           </div>
           <div className="chat-input-wrap">
