@@ -1,11 +1,11 @@
-# 🎓 TutorFlow — AI-Powered Personal Socratic Tutor & Cognitive Classroom
+# TutorFlow — AI-Powered Personal Socratic Tutor & Cognitive Classroom
 
 > **Hackathon Submission & Solution Architecture Overview**  
 > *Empowering every student with an adaptive, 1-on-1 AI cognitive tutor that diagnoses misconceptions in real-time, visualizes AI reasoning, generates personalized study materials, and tracks individual learning velocity.*
 
 ---
 
-## 📌 Problem Statement
+## Problem Statement
 
 Traditional educational platforms follow a **static, one-size-fits-all approach**. Students face critical learning bottlenecks:
 1. **Lack of Real-Time 1-on-1 Socratic Guidance**: Standard LMS tools give static answer keys without step-by-step reasoning or adaptive probing.
@@ -15,20 +15,20 @@ Traditional educational platforms follow a **static, one-size-fits-all approach*
 
 ---
 
-## 🚀 The TutorFlow Solution
+## The TutorFlow Solution
 
 **TutorFlow** is a next-generation AI educational ecosystem combining **Socratic Tutoring Methodology**, **Google Gemini 2.5/3.0 Multi-modal Intelligence**, and **Cognitive Twin Analytics**.
 
 ### Key Innovations:
-- 🧠 **Socratic AI Tutor**: Uses step-by-step questioning to guide students to answers instead of giving away solutions, building deep retention and problem-solving confidence.
-- 🎯 **Real-Time Misconception Diagnosis**: Automatically parses student responses to detect pattern errors (e.g., sign errors, misapplied order of operations), updating their cognitive profile instantly.
-- ⚡ **Dynamic Study Material Generator**: Instantly generates customized lesson notes, practice worksheets, interactive flashcards, and conceptual mindmaps tailored to the student's current mastery level.
-- 📊 **Cognitive Twin Analytics**: Tracks student confidence over time, models forgetting curves, determines individual learning style blend, and identifies skill gaps.
-- 🔍 **Transparent AI Reasoning Center**: Renders multi-step agentic reasoning trees so students and teachers can follow the AI tutor's logical thought process.
+- **Socratic AI Tutor**: Uses step-by-step questioning to guide students to answers instead of giving away solutions, building deep retention and problem-solving confidence.
+- **Real-Time Misconception Diagnosis**: Automatically parses student responses to detect pattern errors (e.g., sign errors, misapplied order of operations), updating their cognitive profile instantly.
+- **Dynamic Study Material Generator**: Instantly generates customized lesson notes, practice worksheets, interactive flashcards, and conceptual mindmaps tailored to the student's current mastery level.
+- **Cognitive Twin Analytics**: Tracks student confidence over time, models forgetting curves, determines individual learning style blend, and identifies skill gaps.
+- **Transparent AI Reasoning Center**: Renders multi-step agentic reasoning trees so students and teachers can follow the AI tutor's logical thought process.
 
 ---
 
-## 🛠️ Complete Tech Stack
+## Complete Tech Stack
 
 | Layer | Technologies & Tools | Purpose |
 | :--- | :--- | :--- |
@@ -42,7 +42,7 @@ Traditional educational platforms follow a **static, one-size-fits-all approach*
 
 ---
 
-## 🏗️ System Architecture & Workflow
+## System Architecture & Workflow
 
 ```
  ┌─────────────────────────────────────────────────────────────────────────┐
@@ -69,30 +69,30 @@ Traditional educational platforms follow a **static, one-size-fits-all approach*
 
 ---
 
-## ✨ Key Features Breakdown
+## Key Features Breakdown
 
-### 1. 🎓 Socratic AI Classroom & Interactive Whiteboard
+### 1. Socratic AI Classroom & Interactive Whiteboard
 - Live conversation turn-taking powered by Google Gemini.
 - Diagnostic response analysis that catches misconceptions during conversation.
 - Konva interactive canvas for drawing, solving equations, and visualizing concepts.
 
-### 2. ⚡ Dynamic AI Study Asset Generator
+### 2. Dynamic AI Study Asset Generator
 - **Lesson Summaries**: Key takeaways tailored to student reading level.
 - **Practice Worksheets**: Step-by-step problem sets with adaptive difficulty.
 - **Flashcards & Mindmaps**: High-retention study cards and structured conceptual trees.
 
-### 3. 📊 Cognitive Twin Dashboard
+### 3. Cognitive Twin Dashboard
 - **Learning Style Blend**: Quantifies visual, analytical, and example-driven traits.
 - **Forgetting Curve Retention**: Predicts retention rates based on spaced repetition data.
 - **Active Misconception Radar**: Highlights specific areas needing targeted practice.
 
-### 4. 🧠 Agentic AI Reasoning Center
+### 4. Agentic AI Reasoning Center
 - Displays step-by-step prompt decomposition, hypothesis generation, and verification turns.
 - Gives full transparency into how the AI tutor crafts its hints and diagnostic assessments.
 
 ---
 
-## 🚀 How to Run the Project Locally
+## How to Run the Project Locally
 
 Follow this complete step-by-step guide to get TutorFlow running on your local machine.
 
@@ -196,7 +196,7 @@ cd TutorFlow
 
 ---
 
-## 📡 API Reference Overview
+## API Reference Overview
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
@@ -213,7 +213,7 @@ cd TutorFlow
 
 ---
 
-## 🧪 Verification & Build Commands
+## Verification & Build Commands
 
 ```bash
 # Backend Syntax & Compile Check
@@ -227,7 +227,7 @@ npm run build
 
 ---
 
-## 🤝 Project Structure
+## Project Structure
 
 ```
 TutorFlow/
@@ -266,7 +266,7 @@ TutorFlow/
 
 ---
 
-## 📄 License & Hackathon Submission
+## License & Hackathon Submission
 
-Built with ❤️ for AI Hackathons 2026.  
+Built for AI Hackathons 2026.  
 © 2026 TutorFlow Team. All rights reserved.

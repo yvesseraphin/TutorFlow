@@ -4,7 +4,7 @@ High-performance FastAPI asynchronous backend powered by Google Gemini AI SDK an
 
 ---
 
-## 🛠️ Requirements & Prerequisites
+## Requirements & Prerequisites
 
 - Python 3.10+
 - Supabase account with PostgreSQL database
@@ -12,7 +12,7 @@ High-performance FastAPI asynchronous backend powered by Google Gemini AI SDK an
 
 ---
 
-## 🚀 Setup & Execution Guide
+## Setup & Execution Guide
 
 ### 1. Database Initialization
 Run `supabase/schema.sql` in your Supabase project's **SQL Editor**.
@@ -42,7 +42,7 @@ uvicorn main:app --reload --port 8000
 
 ---
 
-## 📡 Router & Endpoint Summary
+## Router & Endpoint Summary
 
 - **Health Check**: `GET /health` - Returns service and API configuration status.
 - **Authentication**: `POST /api/v1/auth/signup`, `POST /api/v1/auth/login`
