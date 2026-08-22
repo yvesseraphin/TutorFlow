@@ -11,32 +11,64 @@ class Credentials(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     full_name: str | None = Field(default=None, max_length=120)
+    grade: str | None = None
+    school: str | None = None
+    learning_goals: list[str] | None = None
 
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
+class ProfileUpdate(BaseModel):
+    full_name: str | None = Field(default=None, max_length=120)
+    grade: str | None = None
+    school: str | None = None
+    learning_goals: list[str] | None = None
+    bio: str | None = Field(default=None, max_length=500)
+    avatar_url: str | None = None
+
+
 def session_payload(session, user) -> dict:
+    meta = user.user_metadata or {}
     return {
         "access_token": session.access_token if session else None,
         "refresh_token": session.refresh_token if session else None,
         "token_type": "bearer",
-        "user": {"id": user.id, "email": user.email, "full_name": (user.user_metadata or {}).get("full_name", "")},
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": meta.get("full_name", ""),
+        },
     }
 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(credentials: Credentials):
     try:
-        result = public_client().auth.sign_up({
-            "email": str(credentials.email),
-            "password": credentials.password,
-            "options": {"data": {"full_name": credentials.full_name or ""}},
-        })
+        result = public_client().auth.sign_up(
+            {
+                "email": str(credentials.email),
+                "password": credentials.password,
+                "options": {"data": {"full_name": credentials.full_name or ""}},
+            }
+        )
         if result.user:
-            admin_client().table("profiles").upsert({"id": result.user.id, "full_name": credentials.full_name or ""}).execute()
-        return {**session_payload(result.session, result.user), "requires_email_confirmation": result.session is None}
+            profile_data: dict = {
+                "id": result.user.id,
+                "full_name": credentials.full_name or "",
+            }
+            if credentials.grade:
+                profile_data["grade"] = credentials.grade
+            if credentials.school:
+                profile_data["school"] = credentials.school
+            if credentials.learning_goals:
+                profile_data["learning_goals"] = credentials.learning_goals
+            admin_client().table("profiles").upsert(profile_data).execute()
+        return {
+            **session_payload(result.session, result.user),
+            "requires_email_confirmation": result.session is None,
+        }
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Unable to create account") from exc
 
@@ -44,30 +76,53 @@ def signup(credentials: Credentials):
 @router.post("/login")
 def login(credentials: Credentials):
     try:
-        result = public_client().auth.sign_in_with_password({"email": str(credentials.email), "password": credentials.password})
+        result = public_client().auth.sign_in_with_password(
+            {"email": str(credentials.email), "password": credentials.password}
+        )
         return session_payload(result.session, result.user)
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password") from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        ) from exc
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(_: dict = Depends(current_user)):
-    # Supabase access tokens are JWTs; the frontend removes local session tokens on logout.
     return None
 
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
 def forgot_password(credentials: PasswordResetRequest):
-    # Kept deliberately non-enumerating: Supabase returns success whether or not
-    # the address belongs to an account.
     try:
-        public_client().auth.reset_password_for_email(str(credentials.email), {"redirect_to": settings.password_reset_redirect_url})
+        public_client().auth.reset_password_for_email(
+            str(credentials.email),
+            {"redirect_to": settings.password_reset_redirect_url},
+        )
     except Exception:
         pass
     return None
 
 
 @router.get("/me")
-def me(user: dict = Depends(current_user)):
-    profile = admin_client().table("profiles").select("*").eq("id", user["id"]).maybe_single().execute().data or {}
+def me(user: dict = Depends(current_user)) -> dict:
+    profile = (
+        admin_client()
+        .table("profiles")
+        .select("*")
+        .eq("id", user["id"])
+        .maybe_single()
+        .execute()
+        .data
+        or {}
+    )
     return {**user, "profile": profile}
+
+
+@router.patch("/me")
+def update_me(payload: ProfileUpdate, user: dict = Depends(current_user)) -> dict:
+    update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    admin_client().table("profiles").update(update_data).eq("id", user["id"]).execute()
+    return me(user)

@@ -1,5 +1,3 @@
-"""Demo mathematics curriculum and mastery-based lesson selection."""
-
 from collections.abc import Sequence
 
 MASTERY_TARGET = 0.8

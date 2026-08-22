@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { User, Mail, Lock, Eye, EyeOff, BookOpen, ChevronDown } from "lucide-react";
+import { signInWithGoogle } from "../lib/supabase";
+import { useNotification } from "../components/NotificationBanner";
 
 /* ─── Inline styles object (matching Login.jsx light design) ─── */
 
@@ -257,19 +259,22 @@ const SignUp = () => {
     { value: "11th Grade", label: "11th Grade" },
     { value: "College", label: "College" },
   ];
+  const notif = useNotification();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [grade, setGrade] = useState("9th Grade");
   const [isGradeOpen, setIsGradeOpen] = useState(false);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const selectedGrade = gradeOptions.find((option) => option.value === grade) || gradeOptions[1];
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    setError("");
+    if (!fullName || !email || !password) {
+      notif.error("Please fill in all required fields.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -288,24 +293,36 @@ const SignUp = () => {
 
       if (response.ok) {
         const data = await response.json();
+        if (data.requires_email_confirmation || !data.access_token) {
+          setLoading(false);
+          notif.info("Account created! Please check your email to confirm your account, then log in.");
+          navigate("/login", {
+            state: { notice: "Account created! Please check your email to confirm your account, then log in." },
+          });
+          return;
+        }
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        notif.success("Account created successfully!");
         navigate("/dashboard");
       } else {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Sign up failed");
+        const errData = await response.json().catch(() => ({}));
+        const msg = errData.detail || "Sign up failed. Please check your information.";
+        notif.error(msg);
       }
     } catch (err) {
-      setError(err.message || "Unable to create your account. Please try again.");
-      return;
+      notif.error(err.message || "Unable to create your account. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignUp = () => {
-    setError("Google sign-in is not configured yet.");
-    return;
+  const handleGoogleSignUp = async () => {
+    try {
+      await signInWithGoogle(); // redirects away — no further code runs
+    } catch (err) {
+      notif.error(err.message || "Google sign-in failed. Please try again.");
+    }
   };
 
   return (
@@ -448,7 +465,7 @@ const SignUp = () => {
           <h1 style={S.h1}>Create Account</h1>
           <p style={S.subtitle}>Start your personalized AI learning journey.</p>
 
-          {error && <div style={S.errorBox}>{error}</div>}
+
 
           <form onSubmit={handleSignUp} style={S.form}>
             {/* Full Name */}

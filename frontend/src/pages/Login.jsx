@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ChevronRight, Book } from "lucide-react";
+import { signInWithGoogle } from "../lib/supabase";
+import { useNotification } from "../components/NotificationBanner";
 
 /* ─── Inline styles object (light / white theme matching design) ─── */
 
@@ -295,15 +297,27 @@ const S = {
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const notice = location.state?.notice || "";
+  const notif = useNotification();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (notice) {
+      notif.info(notice);
+    }
+  }, [notice, notif]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
+    if (!email || !password) {
+      notif.error("Please enter both email and password.");
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1"}/auth/login`, {
@@ -315,22 +329,26 @@ const Login = () => {
         const data = await response.json();
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        notif.success("Login successful! Welcome back.");
         navigate("/dashboard");
       } else {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Invalid credentials");
+        const errData = await response.json().catch(() => ({}));
+        const message = errData.detail || "Invalid email or password. Please try again.";
+        notif.error(message);
       }
     } catch (err) {
-      setError(err.message || "Unable to sign in. Please try again.");
-      return;
+      notif.error(err.message || "Unable to sign in. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    setError("Google sign-in is not configured yet.");
-    return;
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithGoogle(); // redirects away — no further code runs
+    } catch (err) {
+      notif.error(err.message || "Google sign-in failed. Please try again.");
+    }
   };
 
   return (
@@ -375,7 +393,7 @@ const Login = () => {
           <h1 style={S.h1}>Welcome back!</h1>
           <p style={S.subtitle}>Log in to continue your learning journey.</p>
 
-          {error && <div style={S.errorBox}>{error}</div>}
+
 
           <form onSubmit={handleLogin} style={S.form}>
             {/* Email */}

@@ -1866,47 +1866,98 @@ const VoiceBars = ({ muted = false }) => (
   </div>
 );
 
-const ContentListView = ({ type }) => {
+const ContentListView = ({ type, topic = "Algebra" }) => {
   const [activeTab, setActiveTab] = useState("All");
+  const [materials, setMaterials] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
 
-  const mockData = {
-    Resources: [
-      { id: 1, title: "Linear Equations - Study Guide", desc: "A comprehensive guide covering key concepts, formulas, and step-by-step methods.", type: "pdf", size: "2.4 MB" },
-      { id: 2, title: "Introduction to Linear Equations", desc: "Watch this short video to understand what linear equations are and how they work.", type: "video", size: "8:12" },
-      { id: 3, title: "Practice Worksheet 1", desc: "Solve basic linear equations with one variable. Includes solutions.", type: "pdf", size: "1.1 MB" },
-      { id: 4, title: "Real-World Examples", desc: "See how linear equations are used in everyday life with real-world problems.", type: "pdf", size: "1.6 MB" },
-      { id: 5, title: "Solving Linear Equations - Full Lesson", desc: "Complete lesson walkthrough with examples and explanations.", type: "video", size: "24:18" },
-      { id: 6, title: "Quick Reference Sheet", desc: "Formulas and steps summary for quick revision.", type: "pdf", size: "0.6 MB" },
-    ],
-    "Lesson Notes": [
-      { id: 1, title: "Class Notes - Module 3 Lesson 1", desc: "Introduction to algebra and variables.", type: "pdf", size: "1.2 MB" },
-      { id: 2, title: "Class Notes - Module 3 Lesson 2", desc: "Balancing equations and simple operations.", type: "pdf", size: "1.5 MB" },
-      { id: 3, title: "Teacher's Highlights", desc: "Important things to remember for the upcoming quiz.", type: "pdf", size: "0.8 MB" },
-    ],
-    Homework: [
-      { id: 1, title: "Homework Assignment 3", desc: "Complete problems 1-15 in the workbook.", type: "pdf", size: "1.0 MB" },
-      { id: 2, title: "Extra Credit - Word Problems", desc: "Optional word problems for extra credit points.", type: "pdf", size: "0.5 MB" },
-      { id: 3, title: "Video Solution Guide", desc: "Step by step video solving the homework problems.", type: "video", size: "12:05" },
-    ]
+  useEffect(() => {
+    let isCurrent = true;
+    setLoading(true);
+    api(`/tutor/materials?category=${encodeURIComponent(type)}&topic=${encodeURIComponent(topic)}`)
+      .then((data) => {
+        if (isCurrent) {
+          setMaterials(Array.isArray(data) ? data : []);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isCurrent) setLoading(false);
+      });
+    return () => { isCurrent = false; };
+  }, [type, topic]);
+
+  const handleGenerateAI = async () => {
+    setGenerating(true);
+    try {
+      const created = await api("/tutor/materials/generate", {
+        method: "POST",
+        body: JSON.stringify({ topic, category: type }),
+      });
+      setMaterials((prev) => [created, ...prev]);
+      setSelectedMaterial(created);
+    } catch {
+      /* non-fatal */
+    } finally {
+      setGenerating(false);
+    }
   };
 
-  const tabs = ["All " + type, "Guides", "Worksheets", "Videos", "Examples", "Practice"];
-  const items = mockData[type] || mockData.Resources;
+  const filteredMaterials = materials.filter((item) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (item.title || "").toLowerCase().includes(q) ||
+      (item.description || "").toLowerCase().includes(q)
+    );
+  });
+
+  const tabs = ["All " + type, "Guides", "Worksheets", "Videos", "Practice"];
 
   return (
     <div className="content-list-view">
       <div className="content-header">
-        <h2>{type}</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <h2>{type}</h2>
+          <button
+            type="button"
+            onClick={handleGenerateAI}
+            disabled={generating}
+            style={{
+              background: "#0054ff",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "8px",
+              padding: "8px 16px",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              fontFamily: "'Outfit', sans-serif",
+            }}
+          >
+            {generating ? "Generating AI Material…" : "✨ Generate AI Pack"}
+          </button>
+        </div>
         <div className="content-search">
           <Search size={18} />
-          <input placeholder={`Search ${type.toLowerCase()}...`} />
+          <input
+            placeholder={`Search ${type.toLowerCase()}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </div>
-      
+
       <div className="content-tabs">
         {tabs.map((tab, i) => (
-          <button 
-            key={i} 
+          <button
+            key={i}
             className={`content-tab${activeTab === tab ? " active" : ""}`}
             onClick={() => setActiveTab(tab)}
           >
@@ -1915,24 +1966,73 @@ const ContentListView = ({ type }) => {
         ))}
       </div>
 
-      <div className="content-cards-container">
-        {items.map(item => (
-          <div className="content-card" key={item.id}>
-            <div className="content-card-icon">
-              {item.type === "video" ? <PlaySquare size={28} strokeWidth={1.5} /> : <File size={28} strokeWidth={1.5} />}
-            </div>
-            <div className="content-card-info">
-              <h3 className="content-card-title">{item.title}</h3>
-              <p className="content-card-desc">{item.desc}</p>
-              <p className="content-card-meta">
-                <span>{item.type === "video" ? "Video" : "PDF"}</span>
-                <span>•</span>
-                <span>{item.size}</span>
-              </p>
-            </div>
-            <button className="content-card-btn">View</button>
+      {selectedMaterial && (
+        <div
+          style={{
+            background: "#f8faff",
+            border: "1px solid #cfe0ff",
+            borderRadius: "12px",
+            padding: "20px",
+            marginBottom: "20px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
+            <h3 style={{ margin: 0, color: "#020b3d", fontSize: "18px" }}>{selectedMaterial.title}</h3>
+            <button
+              type="button"
+              onClick={() => setSelectedMaterial(null)}
+              style={{ background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+            >
+              Close
+            </button>
           </div>
-        ))}
+          <pre
+            style={{
+              whiteSpace: "pre-wrap",
+              fontFamily: "inherit",
+              fontSize: "14px",
+              lineHeight: "1.6",
+              color: "#334155",
+              margin: 0,
+            }}
+          >
+            {selectedMaterial.content_body || selectedMaterial.description}
+          </pre>
+        </div>
+      )}
+
+      <div className="content-cards-container">
+        {loading ? (
+          <p style={{ color: "#64748b", padding: "20px" }}>Loading learning materials…</p>
+        ) : filteredMaterials.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+            <p>No materials found for {type}. Click <strong>✨ Generate AI Pack</strong> above to create tailored study notes!</p>
+          </div>
+        ) : (
+          filteredMaterials.map((item, idx) => (
+            <div className="content-card" key={item.id || idx}>
+              <div className="content-card-icon">
+                {item.content_type === "video" ? <PlaySquare size={28} strokeWidth={1.5} /> : <File size={28} strokeWidth={1.5} />}
+              </div>
+              <div className="content-card-info">
+                <h3 className="content-card-title">{item.title}</h3>
+                <p className="content-card-desc">{item.description}</p>
+                <p className="content-card-meta">
+                  <span>{item.content_type?.toUpperCase() || "PDF"}</span>
+                  <span>•</span>
+                  <span>{topic}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="content-card-btn"
+                onClick={() => setSelectedMaterial(item)}
+              >
+                View Content
+              </button>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -2360,6 +2460,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           </button>
           <button type="button" className="end-lesson" onClick={handleEnd}>
             <Phone size={18} />
+            <Phone size={18} />
             End Lesson
           </button>
         </div>
@@ -2393,9 +2494,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           </div>
           {lessonProgress >= 50 && <p style={{ margin: 0, color: "#334f87", fontSize: 12 }}>You're doing great! 🎉</p>}
         </div>
-      </aside>
-
-      {!isWhiteboard && (
+        {!isWhiteboard && (
         <section className="teacher-panel">
           <h2 className="live-section-title">Teacher</h2>
           <article className="live-teacher-card">
@@ -2438,10 +2537,11 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           </article>
         </section>
       )}
+      </aside>
 
       <section className="whiteboard-zone">
         {(activeRailTab === "Resources" || activeRailTab === "Lesson Notes" || activeRailTab === "Homework") ? (
-          <ContentListView type={activeRailTab} />
+          <ContentListView type={activeRailTab} topic={lessonTitle} />
         ) : (
           <InteractiveWhiteboard 
             activeTool={activeTool} 

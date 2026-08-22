@@ -3,79 +3,15 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
-  Bell,
   BookOpen,
-  ClipboardList,
   Clock3,
   Play,
   RotateCcw,
   Target,
+  TrendingUp,
+  Zap,
 } from "lucide-react";
-
-const quickCards = [
-  {
-    icon: BookOpen,
-    title: "Today's Lesson",
-    subtitle: "Linear Equations",
-    status: "In progress",
-  },
-  {
-    icon: RotateCcw,
-    title: "Continue Last Lesson",
-    subtitle: "Solving Equations",
-    status: "68% complete",
-  },
-  {
-    icon: ClipboardList,
-    title: "Homework",
-    subtitle: "2 assignments",
-    status: "1 pending",
-  },
-  {
-    icon: BarChart3,
-    title: "Progress",
-    subtitle: "Overall progress",
-    status: "72%",
-  },
-  {
-    icon: Target,
-    title: "Weekly Goal",
-    subtitle: "4 / 6 lessons",
-    status: "goal",
-  },
-];
-
-const lessons = [
-  {
-    number: "1",
-    title: "Understanding Variables",
-    module: "Module 1 • Algebra",
-    duration: "25 min",
-    progress: 100,
-  },
-  {
-    number: "2",
-    title: "Simplifying Expressions",
-    module: "Module 2 • Algebra",
-    duration: "30 min",
-    progress: 85,
-  },
-  {
-    number: "3",
-    title: "Linear Equations",
-    module: "Module 3 • Algebra",
-    duration: "",
-    progress: 68,
-    active: true,
-  },
-  {
-    number: "4",
-    title: "Word Problems",
-    module: "Module 4 • Algebra",
-    duration: "35 min",
-    progress: 0,
-  },
-];
+import { api } from "../lib/api";
 
 const styles = `
   .tf-dashboard {
@@ -122,40 +58,6 @@ const styles = `
     line-height: 24px;
   }
 
-  .tf-top-actions {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    padding-top: 2px;
-  }
-
-  .tf-bell {
-    position: relative;
-    width: 48px;
-    height: 48px;
-    border: 0;
-    border-radius: 50%;
-    background: #ffffff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #43547d;
-    cursor: pointer;
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
-  }
-
-  .tf-bell::after {
-    content: "";
-    position: absolute;
-    right: 10px;
-    top: 9px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #2563eb;
-    box-shadow: 0 0 0 3px #ffffff;
-  }
-
   .tf-hero {
     position: relative;
     min-height: 226px;
@@ -170,9 +72,7 @@ const styles = `
     padding: 22px 44px 22px 30px;
   }
 
-  .tf-hero-spacer {
-    min-height: 170px;
-  }
+  .tf-hero-spacer { min-height: 170px; }
 
   .tf-hero-copy {
     padding-left: 24px;
@@ -265,17 +165,8 @@ const styles = `
     letter-spacing: 0.08em;
   }
 
-  .tf-board-line.first {
-    left: 20px;
-    top: 0;
-    transform: rotate(-1deg);
-  }
-
-  .tf-board-line.second {
-    left: 70px;
-    top: 42px;
-    transform: rotate(1deg);
-  }
+  .tf-board-line.first { left: 20px; top: 0; transform: rotate(-1deg); }
+  .tf-board-line.second { left: 70px; top: 42px; transform: rotate(1deg); }
 
   .tf-board-box {
     position: absolute;
@@ -299,14 +190,10 @@ const styles = `
     margin-top: 26px;
   }
 
-  .tf-quick-card,
-  .tf-lesson-card {
+  .tf-quick-card {
     background: #ffffff;
     border: 1px solid #e3eaf8;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
-  }
-
-  .tf-quick-card {
     min-height: 158px;
     border-radius: 13px;
     padding: 20px 22px;
@@ -354,13 +241,6 @@ const styles = `
     background: #eef2fb;
   }
 
-  .tf-goal-fill {
-    width: 67%;
-    height: 100%;
-    border-radius: inherit;
-    background: #0054ff;
-  }
-
   .tf-section-row {
     display: flex;
     align-items: center;
@@ -396,6 +276,9 @@ const styles = `
   }
 
   .tf-lesson-card {
+    background: #ffffff;
+    border: 1px solid #e3eaf8;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
     min-height: 136px;
     border-radius: 11px;
     padding: 19px 18px 17px;
@@ -451,10 +334,7 @@ const styles = `
     font-weight: 400;
   }
 
-  .tf-continue-mini {
-    color: #0054ff;
-    font-weight: 500;
-  }
+  .tf-continue-mini { color: #0054ff; font-weight: 500; }
 
   .tf-progress-ring {
     width: 58px;
@@ -469,63 +349,42 @@ const styles = `
     justify-content: center;
   }
 
-  .tf-progress-ring svg {
-    position: absolute;
-    inset: 0;
+  .tf-progress-ring svg { position: absolute; inset: 0; }
+
+  .tf-progress-ring span { color: #0054ff; font-size: 12px; font-weight: 500; }
+  .tf-progress-ring.muted span { color: #6b7a9b; }
+
+  .tf-empty-state {
+    padding: 40px 0;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 15px;
   }
 
-  .tf-progress-ring span {
-    color: #0054ff;
-    font-size: 12px;
-    font-weight: 500;
+  .tf-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 8px;
   }
 
-  .tf-progress-ring.muted span {
-    color: #6b7a9b;
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
 
   @media (max-width: 1280px) {
-    .tf-dashboard {
-      padding: 24px;
-    }
-
-    .tf-hero {
-      grid-template-columns: 160px 1fr 120px;
-      padding-right: 32px;
-    }
-
-    .tf-quick-grid,
-    .tf-lesson-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    .tf-dashboard { padding: 24px; }
+    .tf-hero { grid-template-columns: 160px 1fr 120px; padding-right: 32px; }
+    .tf-quick-grid, .tf-lesson-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   @media (max-width: 900px) {
-    .tf-dashboard-top,
-    .tf-hero {
-      padding-left: 0;
-    }
-
-    .tf-dashboard-top {
-      height: auto;
-      gap: 20px;
-    }
-
-    .tf-hero {
-      grid-template-columns: 1fr;
-      padding: 28px;
-      background-position: right center;
-    }
-
-    .tf-hero-spacer,
-    .tf-board-math {
-      display: none;
-    }
-
-    .tf-quick-grid,
-    .tf-lesson-grid {
-      grid-template-columns: 1fr;
-    }
+    .tf-dashboard-top, .tf-hero { padding-left: 0; }
+    .tf-dashboard-top { height: auto; gap: 20px; }
+    .tf-hero { grid-template-columns: 1fr; padding: 28px; background-position: right center; }
+    .tf-hero-spacer, .tf-board-math { display: none; }
+    .tf-quick-grid, .tf-lesson-grid { grid-template-columns: 1fr; }
   }
 `;
 
@@ -533,28 +392,15 @@ const ProgressRing = ({ value }) => {
   const radius = 25;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
-
   return (
     <div className={`tf-progress-ring${value === 0 ? " muted" : ""}`}>
       <svg width="58" height="58" viewBox="0 0 58 58">
+        <circle cx="29" cy="29" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="4" />
         <circle
-          cx="29"
-          cy="29"
-          r={radius}
-          fill="none"
-          stroke="#e2e8f0"
-          strokeWidth="4"
-        />
-        <circle
-          cx="29"
-          cy="29"
-          r={radius}
-          fill="none"
+          cx="29" cy="29" r={radius} fill="none"
           stroke={value === 0 ? "#e2e8f0" : "#0054ff"}
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
+          strokeWidth="4" strokeLinecap="round"
+          strokeDasharray={circumference} strokeDashoffset={offset}
           transform="rotate(-90 29 29)"
         />
       </svg>
@@ -565,23 +411,79 @@ const ProgressRing = ({ value }) => {
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState({
-    full_name: "Yvan Seraphin",
-  });
+  const [user, setUser] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [nextLesson, setNextLesson] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        if (parsed.full_name && parsed.full_name.trim().split(/\s+/).length > 1) {
-          setUser((current) => ({ ...current, full_name: parsed.full_name }));
-        }
-      } catch {
-        setUser((current) => current);
-      }
-    }
+    // Load cached user immediately for fast greeting
+    try {
+      const stored = localStorage.getItem("user");
+      if (stored) setUser(JSON.parse(stored));
+    } catch { /* ignore */ }
+
+    Promise.all([
+      api("/analytics/dashboard"),
+      api("/curriculum/next-lesson?topic=Algebra"),
+      api("/auth/me"),
+    ])
+      .then(([analyticsData, lessonData, meData]) => {
+        setAnalytics(analyticsData);
+        setNextLesson(lessonData);
+        setUser(meData);
+        // Keep localStorage fresh
+        localStorage.setItem("user", JSON.stringify(meData));
+      })
+      .catch(() => { /* non-fatal — UI shows whatever loaded */ })
+      .finally(() => setLoading(false));
   }, []);
+
+  const fullName = user?.full_name || user?.profile?.full_name || user?.email?.split("@")[0] || "Student";
+  const firstName = fullName.split(" ")[0];
+
+  // Build quick-card data from real analytics
+  const overallMastery = analytics ? Math.round((analytics.overall_mastery || 0) * 100) : null;
+  const accuracy = analytics ? Math.round((analytics.accuracy || 0) * 100) : null;
+  const streak = analytics?.current_streak ?? null;
+  const sessionsCompleted = analytics?.sessions_completed ?? null;
+
+  const quickCards = [
+    {
+      icon: BookOpen,
+      title: "Today's Focus",
+      subtitle: nextLesson ? nextLesson.lesson : "Start a lesson",
+      status: nextLesson ? nextLesson.course : "—",
+    },
+    {
+      icon: TrendingUp,
+      title: "Overall Mastery",
+      subtitle: "Across all skills",
+      status: loading ? "—" : overallMastery !== null ? `${overallMastery}%` : "—",
+    },
+    {
+      icon: BarChart3,
+      title: "Accuracy",
+      subtitle: "Correct answers",
+      status: loading ? "—" : accuracy !== null ? `${accuracy}%` : "—",
+    },
+    {
+      icon: Zap,
+      title: "Daily Streak",
+      subtitle: "Consecutive days",
+      status: loading ? "—" : streak !== null ? `${streak} day${streak === 1 ? "" : "s"}` : "—",
+    },
+    {
+      icon: Target,
+      title: "Sessions Done",
+      subtitle: "Total completed",
+      status: "goal",
+      value: sessionsCompleted,
+    },
+  ];
+
+  // Recent sessions as lesson cards
+  const recentSessions = analytics?.recent_sessions || [];
 
   return (
     <main className="tf-dashboard">
@@ -590,31 +492,20 @@ const StudentDashboard = () => {
       <header className="tf-dashboard-top">
         <div>
           <p className="tf-welcome-small">Welcome back,</p>
-          <h1 className="tf-welcome-name">{user.full_name}!</h1>
-          <p className="tf-welcome-subtitle">
-            Your AI Teacher is here to help you learn and grow.
-          </p>
-        </div>
-
-        <div className="tf-top-actions">
-          <button className="tf-bell" type="button" aria-label="Notifications">
-            <Bell size={30} strokeWidth={1.75} />
-          </button>
+          <h1 className="tf-welcome-name">{firstName}!</h1>
+          <p className="tf-welcome-subtitle">Your AI Teacher is here to help you learn and grow.</p>
         </div>
       </header>
 
+      {/* Hero */}
       <section className="tf-hero" aria-label="Current lesson">
         <div className="tf-hero-spacer" />
         <div className="tf-hero-copy">
           <p className="tf-hero-label">Your AI Teacher</p>
           <h2 className="tf-hero-heading">I prepared a lesson for you today.</h2>
           <p className="tf-focus-label">Today's focus</p>
-          <p className="tf-focus-title">Linear Equations</p>
-          <button
-            className="tf-primary-btn"
-            type="button"
-            onClick={() => navigate("/classroom")}
-          >
+          <p className="tf-focus-title">{nextLesson ? nextLesson.lesson : "Start Learning"}</p>
+          <button className="tf-primary-btn" type="button" onClick={() => navigate("/classroom")}>
             <span className="tf-play-icon">
               <Play size={13} fill="currentColor" strokeWidth={0} />
             </span>
@@ -628,6 +519,7 @@ const StudentDashboard = () => {
         </div>
       </section>
 
+      {/* Quick cards */}
       <section className="tf-quick-grid" aria-label="Learning summary">
         {quickCards.map((card) => {
           const Icon = card.icon;
@@ -639,62 +531,147 @@ const StudentDashboard = () => {
               <h3 className="tf-card-title">{card.title}</h3>
               <p className="tf-card-subtitle">{card.subtitle}</p>
               {card.status === "goal" ? (
-                <div className="tf-goal-track" aria-label="Weekly goal progress">
-                  <div className="tf-goal-fill" />
+                <div>
+                  <p className="tf-card-status" style={{ marginBottom: 8 }}>
+                    {loading ? "—" : card.value ?? 0} sessions
+                  </p>
+                  <div className="tf-goal-track" aria-label="Sessions progress">
+                    <div
+                      className="tf-goal-fill"
+                      style={{
+                        width: `${Math.min(100, ((card.value ?? 0) / 10) * 100)}%`,
+                        height: "100%",
+                        borderRadius: "inherit",
+                        background: "#0054ff",
+                      }}
+                    />
+                  </div>
                 </div>
               ) : (
-                <p className="tf-card-status">{card.status}</p>
+                <p className="tf-card-status">
+                  {loading ? (
+                    <span className="tf-skeleton" style={{ display: "inline-block", width: 60, height: 16 }} />
+                  ) : (
+                    card.status
+                  )}
+                </p>
               )}
             </article>
           );
         })}
       </section>
 
+      {/* Recent sessions */}
       <section>
         <div className="tf-section-row">
-          <h2 className="tf-section-title">Recent Lessons</h2>
-          <button
-            type="button"
-            className="tf-link-btn"
-            onClick={() => navigate("/classroom")}
-          >
-            View all lessons
-            <ArrowRight size={19} />
+          <h2 className="tf-section-title">Recent Sessions</h2>
+          <button type="button" className="tf-link-btn" onClick={() => navigate("/classroom")}>
+            View all lessons <ArrowRight size={19} />
           </button>
         </div>
 
-        <div className="tf-lesson-grid">
-          {lessons.map((lesson) => (
-            <article
-              className={`tf-lesson-card${lesson.active ? " active" : ""}`}
-              key={lesson.number}
+        {loading ? (
+          <div className="tf-lesson-grid">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="tf-lesson-card">
+                <div className="tf-skeleton" style={{ width: 48, height: 52, gridRow: "1 / span 2" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div className="tf-skeleton" style={{ height: 16, width: "80%" }} />
+                  <div className="tf-skeleton" style={{ height: 12, width: "60%" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : recentSessions.length === 0 ? (
+          <div className="tf-empty-state">
+            <p>No sessions yet. Start your first lesson to see it here!</p>
+            <button
+              type="button"
+              className="tf-primary-btn"
+              style={{ marginTop: 16 }}
+              onClick={() => navigate("/classroom")}
             >
-              <div className="tf-module-number">{lesson.number}</div>
-              <div>
-                <h3 className="tf-lesson-title">{lesson.title}</h3>
-                <p className="tf-module-label">{lesson.module}</p>
-              </div>
+              Start Learning
+            </button>
+          </div>
+        ) : (
+          <div className="tf-lesson-grid">
+            {recentSessions.map((session, idx) => {
+              const isActive = session.status === "active";
+              const skill = analytics?.skill_mastery?.find((s) =>
+                s.skill.toLowerCase().includes(session.topic.toLowerCase())
+              );
+              const progress = skill ? Math.round(skill.mastery * 100) : 0;
 
-              <div className="tf-lesson-meta">
-                {lesson.active ? (
-                  <>
-                    <Play size={16} fill="#0054ff" strokeWidth={0} />
-                    <span className="tf-continue-mini">Continue</span>
-                  </>
-                ) : (
-                  <>
-                    <Clock3 size={16} />
-                    <span>{lesson.duration}</span>
-                  </>
-                )}
-              </div>
-
-              <ProgressRing value={lesson.progress} />
-            </article>
-          ))}
-        </div>
+              return (
+                <article
+                  className={`tf-lesson-card${isActive ? " active" : ""}`}
+                  key={session.id}
+                >
+                  <div className="tf-module-number">{idx + 1}</div>
+                  <div>
+                    <h3 className="tf-lesson-title">{session.topic}</h3>
+                    <p className="tf-module-label">
+                      {isActive ? "In progress" : "Completed"}
+                    </p>
+                  </div>
+                  <div className="tf-lesson-meta">
+                    {isActive ? (
+                      <>
+                        <Play size={16} fill="#0054ff" strokeWidth={0} />
+                        <span className="tf-continue-mini">Continue</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock3 size={16} />
+                        <span>{new Date(session.created_at).toLocaleDateString()}</span>
+                      </>
+                    )}
+                  </div>
+                  <ProgressRing value={progress} />
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
 
+      {/* Skill mastery overview */}
+      {!loading && analytics?.skill_mastery && analytics.skill_mastery.length > 0 && (
+        <section style={{ marginTop: 32 }}>
+          <div className="tf-section-row">
+            <h2 className="tf-section-title">Skill Mastery</h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+            {analytics.skill_mastery.map((skill) => {
+              const pct = Math.round(skill.mastery * 100);
+              return (
+                <div
+                  key={skill.skill}
+                  style={{
+                    background: "#fff",
+                    border: "1px solid #e3eaf8",
+                    borderRadius: 11,
+                    padding: "16px 18px",
+                    boxShadow: "0 4px 12px rgba(15,23,42,0.04)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#020b3d" }}>{skill.skill}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#0054ff" }}>{pct}%</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 99, background: "#eef2fb", overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", borderRadius: "inherit", background: "#0054ff" }} />
+                  </div>
+                  <p style={{ margin: "8px 0 0", fontSize: 12, color: "#4d6091" }}>
+                    {skill.correct_attempts}/{skill.attempts} correct
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </main>
   );
 };

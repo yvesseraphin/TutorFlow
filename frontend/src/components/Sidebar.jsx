@@ -1,7 +1,6 @@
 import React from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
-  Bell,
   BookOpen,
   Home,
   LogOut,

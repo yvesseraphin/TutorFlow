@@ -2,17 +2,14 @@ import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 
-// Pages
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
+import AuthCallback from './pages/AuthCallback';
 import StudentDashboard from './pages/StudentDashboard';
 import AIClassroom from './pages/AIClassroom';
-import CognitiveTwinDashboard from './pages/CognitiveTwinDashboard';
-import AIReasoningCenter from './pages/AIReasoningCenter';
 import Profile from './pages/Profile';
 
-// Dashboard layout wrapping authenticated pages with Sidebar
 const DashboardLayout = () => {
   const token = localStorage.getItem('token');
   
@@ -40,24 +37,21 @@ const DashboardLayout = () => {
 function App() {
   return (
     <Routes>
-      {/* Authentication Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
-      {/* Main Cockpit Hub Layout */}
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<StudentDashboard />} />
         <Route path="/classroom" element={<AIClassroom />} />
-        <Route path="/twin" element={<CognitiveTwinDashboard />} />
-        <Route path="/reasoning" element={<AIReasoningCenter />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
 
-      {/* Wildcard Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
 
 export default App;
+
