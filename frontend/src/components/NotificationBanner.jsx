@@ -1,15 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
+import { X } from "lucide-react";
 
 /* ─── Context ─── */
 const NotifContext = createContext(null);
 
-/* Auto-dismiss durations (ms). 0 = sticky until closed. */
-const DURATION = {
-  error:   7000,
-  success: 4500,
-  warning: 5500,
-  info:    5500,
-};
+/* Auto-dismiss duration: 3.5 seconds for a clean, non-intrusive display */
+const DURATION = 3500;
 
 /* ─── Provider ─── */
 export const NotificationProvider = ({ children }) => {
@@ -19,7 +15,7 @@ export const NotificationProvider = ({ children }) => {
 
   const dismiss = useCallback(() => {
     setVisible(false);
-    setTimeout(() => setNotif(null), 260);
+    setTimeout(() => setNotif(null), 250);
   }, []);
 
   const notify = useCallback((type, message) => {
@@ -28,10 +24,7 @@ export const NotificationProvider = ({ children }) => {
     setNotif({ type, message, id: Date.now() });
     setVisible(true);
 
-    const duration = DURATION[type] ?? 5500;
-    if (duration > 0) {
-      timerRef.current = setTimeout(dismiss, duration);
-    }
+    timerRef.current = setTimeout(dismiss, DURATION);
   }, [dismiss]);
 
   const error   = useCallback((msg) => notify("error",   msg), [notify]);
@@ -56,30 +49,9 @@ export const useNotification = () => {
   return ctx;
 };
 
-/* ─── Banner UI (Compact, iconless, centered, attached border, top-to-bottom slide) ─── */
+/* ─── Banner UI (Fully black background & border, white text, X icon, top-to-bottom slide) ─── */
 const Banner = ({ notif, visible, onDismiss }) => {
   if (!notif) return null;
-
-  const bgColors = {
-    error:   "#0f172a",
-    success: "#0f172a",
-    warning: "#0f172a",
-    info:    "#0f172a",
-  };
-
-  const borders = {
-    error:   "1px solid #ef4444",
-    success: "1px solid #22c55e",
-    warning: "1px solid #f59e0b",
-    info:    "1px solid #3b82f6",
-  };
-
-  const textColors = {
-    error:   "#fca5a5",
-    success: "#86efac",
-    warning: "#fde047",
-    info:    "#93c5fd",
-  };
 
   return (
     <>
@@ -104,19 +76,17 @@ const Banner = ({ notif, visible, onDismiss }) => {
         className={`tf-banner-wrap${visible ? "" : " leaving"}`}
         role="alert"
         aria-live="assertive"
-        onClick={onDismiss}
-        title="Click to dismiss"
-        style={{ cursor: "pointer" }}
       >
         <div
           style={{
+            position: "relative",
             width: "100%",
-            background: bgColors[notif.type] || "#0f172a",
-            color: textColors[notif.type] || "#ffffff",
+            background: "#000000",
+            color: "#ffffff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "8px 16px",
+            padding: "8px 44px 8px 16px",
             minHeight: "36px",
             fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif",
             fontSize: "13.5px",
@@ -128,16 +98,50 @@ const Banner = ({ notif, visible, onDismiss }) => {
             borderTop: "none",
             borderLeft: "none",
             borderRight: "none",
-            borderBottom: borders[notif.type] || "1px solid rgba(255, 255, 255, 0.15)",
+            borderBottom: "1px solid #000000",
             boxSizing: "border-box",
           }}
         >
-          <span style={{ lineHeight: "1.3", wordBreak: "break-word" }}>
+          <span style={{ color: "#ffffff", lineHeight: "1.3", wordBreak: "break-word" }}>
             {notif.message}
           </span>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismiss();
+            }}
+            aria-label="Close notification"
+            style={{
+              position: "absolute",
+              right: "14px",
+              background: "transparent",
+              border: "none",
+              color: "#ffffff",
+              opacity: 0.85,
+              cursor: "pointer",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "4px",
+              transition: "opacity 0.15s, background 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "1";
+              e.currentTarget.style.background = "rgba(255, 255, 255, 0.18)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "0.85";
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <X size={16} />
+          </button>
         </div>
       </div>
     </>
   );
 };
+
 
