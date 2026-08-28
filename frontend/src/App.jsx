@@ -74,16 +74,8 @@ const DashboardLayout = () => {
     };
   }, []);
 
-  if (checking) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#ffffff', fontFamily: "'Outfit', sans-serif" }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 36, height: 36, border: '3px solid #e2e8f0', borderTopColor: '#0054ff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 12px' }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <p style={{ color: '#64748b', fontSize: 15, margin: 0 }}>Opening your dashboard…</p>
-        </div>
-      </div>
-    );
+  if (checking && !token) {
+    return null;
   }
 
   if (!token) {
@@ -95,10 +87,10 @@ const DashboardLayout = () => {
       <Sidebar />
       <div style={{ 
         flex: 1, 
-        marginLeft: '272px',
+        marginLeft: '260px',
         minHeight: '100vh',
         background: '#ffffff',
-        color: '#0f172a',
+        color: '#111111',
         overflowY: 'auto'
       }}>
         <Outlet />

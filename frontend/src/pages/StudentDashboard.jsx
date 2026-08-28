@@ -2,413 +2,428 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  BarChart3,
-  BookOpen,
-  Clock3,
+  Bell,
+  CheckCircle2,
+  Calendar,
+  Flame,
   Play,
-  RotateCcw,
   Target,
   TrendingUp,
-  Zap,
 } from "lucide-react";
 import { api } from "../lib/api";
+import NotificationDropdown from "../components/NotificationDropdown";
 
 const styles = `
-  .tf-dashboard {
+  .tf-dashboard-wrapper {
     min-height: 100vh;
-    padding: 30px 38px 36px;
     background: #ffffff;
-    color: #0f172a;
+    padding: 32px 40px 48px;
     font-family: "Outfit", sans-serif;
-    max-width: 1400px;
+    color: #111111;
+  }
+
+  .tf-dashboard-container {
+    max-width: 1260px;
     margin: 0 auto;
   }
 
-  .tf-dashboard-top {
-    height: 138px;
+  /* ── Header ── */
+  .tf-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    padding: 18px 0 18px 26px;
+    margin-bottom: 32px;
   }
 
-  .tf-welcome-small {
-    margin: 0 0 5px;
-    color: #0f172a;
-    font-size: 24px;
-    font-weight: 500;
-    line-height: 30px;
-    letter-spacing: 0;
-  }
-
-  .tf-welcome-name {
+  .tf-welcome-title {
     margin: 0;
-    color: #020b3d;
-    font-size: 29px;
+    font-size: 34px;
     font-weight: 700;
-    line-height: 34px;
+    line-height: 1.2;
+    color: #111111;
     letter-spacing: -0.02em;
   }
 
   .tf-welcome-subtitle {
-    margin: 12px 0 0;
-    color: #475b8f;
-    font-size: 17px;
+    margin: 6px 0 0;
+    font-size: 18px;
     font-weight: 400;
-    line-height: 24px;
+    color: #666666;
+    line-height: 26px;
   }
 
-  .tf-hero {
-    position: relative;
-    min-height: 226px;
-    border: 1px solid #cfe0ff;
-    border-radius: 17px;
-    overflow: hidden;
-    background: url("/background_hero.png") center 38% / cover no-repeat;
-    box-shadow: 0 20px 50px rgba(37, 99, 235, 0.08);
-    display: grid;
-    grid-template-columns: 240px 1fr 320px;
+  .tf-header-actions {
+    display: flex;
     align-items: center;
-    padding: 22px 44px 22px 30px;
+    gap: 16px;
   }
 
-  .tf-hero-spacer { min-height: 170px; }
+  .tf-bell-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #111111;
+    transition: background 0.2s ease;
+  }
+
+  .tf-bell-btn:hover {
+    background: #f5f5f5;
+  }
+
+  .tf-user-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #111111;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* ── AI Teacher Hero Card ── */
+  .tf-hero-card {
+    background: #ffffff;
+    border: 1px solid #f0f0f0;
+    border-radius: 20px;
+    padding: 36px 48px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 36px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
 
   .tf-hero-copy {
-    padding-left: 24px;
-    transform: translateY(-3px);
+    flex: 1;
+    max-width: 540px;
   }
 
-  .tf-hero-label {
-    margin: 0 0 13px;
-    color: #0054ff;
+  .tf-hero-kicker {
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
+    color: #666666;
+    margin: 0 0 8px;
+    letter-spacing: 0.02em;
   }
 
   .tf-hero-heading {
-    margin: 0 0 22px;
-    color: #020b3d;
-    font-size: 29px;
+    font-size: 34px;
     font-weight: 700;
-    line-height: 38px;
-    letter-spacing: -0.03em;
+    color: #111111;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    margin: 0 0 10px;
   }
 
-  .tf-focus-label {
-    margin: 0 0 3px;
-    color: #4d6091;
-    font-size: 17px;
+  .tf-hero-desc {
+    font-size: 18px;
     font-weight: 400;
-  }
-
-  .tf-focus-title {
-    margin: 0 0 18px;
-    color: #0054ff;
-    font-size: 31px;
-    font-weight: 700;
-    line-height: 38px;
-    letter-spacing: -0.03em;
+    color: #666666;
+    margin: 0 0 24px;
+    line-height: 1.5;
   }
 
   .tf-primary-btn {
     height: 52px;
-    display: inline-flex;
-    align-items: center;
-    gap: 14px;
-    padding: 0 25px;
-    border: 0;
-    border-radius: 10px;
-    background: #0054ff;
+    padding: 0 28px;
+    border-radius: 12px;
+    background: #0a0a0a;
     color: #ffffff;
     font-family: "Outfit", sans-serif;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    border: none;
     cursor: pointer;
-    box-shadow: 0 10px 24px rgba(0, 84, 255, 0.22);
-    transition: background 0.18s ease, transform 0.18s ease;
+    transition: background 0.2s ease, transform 0.2s ease;
   }
 
   .tf-primary-btn:hover {
-    background: #1d4ed8;
+    background: #222222;
     transform: translateY(-1px);
   }
 
-  .tf-play-icon {
-    width: 25px;
-    height: 25px;
+  .tf-play-pill-icon {
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     background: #ffffff;
-    color: #2563eb;
+    color: #0a0a0a;
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
 
-  .tf-board-math {
-    position: absolute;
-    right: 116px;
-    top: 57px;
-    z-index: 1;
-    width: 236px;
-    height: 124px;
-    color: #0054ff;
-    font-family: "Comic Sans MS", "Bradley Hand ITC", cursive;
-    font-weight: 500;
-    pointer-events: none;
-  }
-
-  .tf-board-line {
-    position: absolute;
-    font-size: 20px;
-    line-height: 1;
-    letter-spacing: 0.08em;
-  }
-
-  .tf-board-line.first { left: 20px; top: 0; transform: rotate(-1deg); }
-  .tf-board-line.second { left: 70px; top: 42px; transform: rotate(1deg); }
-
-  .tf-board-box {
-    position: absolute;
-    left: 76px;
-    top: 73px;
-    width: 84px;
-    height: 40px;
-    border: 2px solid #0054ff;
+  /* ── Whiteboard Illustration ── */
+  .tf-whiteboard-card {
+    width: 440px;
+    height: 260px;
+    max-width: 48%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 19px;
-    letter-spacing: 0.08em;
-    transform: rotate(-1.5deg);
+    flex-shrink: 0;
   }
 
-  .tf-quick-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 18px;
-    margin-top: 26px;
-  }
-
-  .tf-quick-card {
-    background: #ffffff;
-    border: 1px solid #e3eaf8;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
-    min-height: 158px;
-    border-radius: 13px;
-    padding: 20px 22px;
-  }
-
-  .tf-icon-box {
-    width: 56px;
-    height: 56px;
-    border-radius: 9px;
-    margin-bottom: 18px;
-    background: #eef4ff;
-    color: #0054ff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .tf-card-title {
-    margin: 0 0 7px;
-    color: #020b3d;
-    font-size: 18px;
-    font-weight: 700;
-    line-height: 24px;
-  }
-
-  .tf-card-subtitle {
-    margin: 0 0 13px;
-    color: #4d6091;
-    font-size: 16px;
-    font-weight: 400;
-    line-height: 20px;
-  }
-
-  .tf-card-status {
-    color: #0054ff;
-    font-size: 16px;
-    font-weight: 500;
-  }
-
-  .tf-goal-track {
+  .tf-whiteboard-img {
     width: 100%;
-    height: 8px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: #eef2fb;
+    height: 100%;
+    object-fit: contain;
+    transform: scale(1.15);
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.09));
   }
 
-  .tf-section-row {
+  /* ── Statistics Grid (5 Columns) ── */
+  .tf-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .tf-stat-card {
+    background: #ffffff;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
+    padding: 24px 22px;
+    min-height: 230px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  .tf-stat-card:hover {
+    border-color: #e5e5e5;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.06);
+  }
+
+  .tf-stat-icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #f5f5f5;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin: 27px 0 15px;
+    justify-content: center;
+    color: #111111;
   }
 
-  .tf-section-title {
-    margin: 0;
-    color: #020b3d;
-    font-size: 22px;
+  .tf-stat-value {
+    font-size: 34px;
     font-weight: 700;
+    color: #111111;
+    margin: 20px 0 0;
+    line-height: 1;
     letter-spacing: -0.02em;
   }
 
-  .tf-link-btn {
-    border: 0;
-    background: transparent;
-    color: #0054ff;
-    display: inline-flex;
-    align-items: center;
-    gap: 9px;
-    font-family: "Outfit", sans-serif;
-    font-size: 17px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .tf-lesson-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .tf-lesson-card {
-    background: #ffffff;
-    border: 1px solid #e3eaf8;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
-    min-height: 136px;
-    border-radius: 11px;
-    padding: 19px 18px 17px;
-    display: grid;
-    grid-template-columns: 48px 1fr 58px;
-    grid-template-rows: auto 1fr auto;
-    column-gap: 18px;
-    align-items: start;
-  }
-
-  .tf-lesson-card.active {
-    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.06);
-  }
-
-  .tf-module-number {
-    width: 48px;
-    height: 52px;
-    border-radius: 8px;
-    background: #eef4ff;
-    color: #0054ff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    font-weight: 500;
-    grid-row: 1 / span 2;
-  }
-
-  .tf-lesson-title {
-    margin: 5px 0 8px;
-    color: #020b3d;
-    font-size: 16px;
+  .tf-stat-title {
+    font-size: 18px;
     font-weight: 600;
-    line-height: 20px;
+    color: #222222;
+    margin: 6px 0 0;
+    line-height: 24px;
   }
 
-  .tf-module-label {
-    margin: 0;
-    color: #4d6091;
+  .tf-stat-desc {
     font-size: 15px;
     font-weight: 400;
+    color: #777777;
+    margin: 4px 0 0;
     line-height: 20px;
   }
 
-  .tf-lesson-meta {
-    grid-column: 1 / 3;
-    align-self: end;
-    color: #4d6091;
+  .tf-stat-arrow {
+    display: inline-flex;
+    align-items: center;
+    color: #111111;
+    margin-top: 18px;
+  }
+
+  /* ── Recent Sessions Section ── */
+  .tf-recent-section {
+    background: #ffffff;
+    border: 1px solid #f0f0f0;
+    border-radius: 18px;
+    padding: 28px 32px;
+    min-height: 320px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  }
+
+  .tf-recent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .tf-recent-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #111111;
+    letter-spacing: -0.02em;
+  }
+
+  .tf-view-all-btn {
+    font-family: "Outfit", sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #222222;
+    background: transparent;
+    border: none;
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 14px;
-    font-weight: 400;
+    transition: opacity 0.18s ease;
   }
 
-  .tf-continue-mini { color: #0054ff; font-weight: 500; }
+  .tf-view-all-btn:hover {
+    opacity: 0.75;
+    text-decoration: underline;
+  }
 
-  .tf-progress-ring {
-    width: 58px;
-    height: 58px;
-    grid-column: 3;
-    grid-row: 2 / 4;
-    align-self: end;
-    justify-self: end;
-    position: relative;
+  /* ── Empty State ── */
+  .tf-empty-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 0 20px;
+    text-align: center;
+  }
+
+  .tf-empty-icon-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: #f7f7f8;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-bottom: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
   }
 
-  .tf-progress-ring svg { position: absolute; inset: 0; }
-
-  .tf-progress-ring span { color: #0054ff; font-size: 12px; font-weight: 500; }
-  .tf-progress-ring.muted span { color: #6b7a9b; }
-
-  .tf-empty-state {
-    padding: 44px 0;
-    text-align: center;
-    color: #1e293b;
-    font-size: 19px;
-    font-weight: 500;
+  .tf-empty-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #222222;
+    margin: 0 0 6px;
   }
 
-  .tf-skeleton {
-    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-    border-radius: 8px;
+  .tf-empty-desc {
+    font-size: 17px;
+    font-weight: 400;
+    color: #777777;
+    margin: 0 0 20px;
   }
 
-  @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+  .tf-empty-btn {
+    height: 50px;
+    padding: 0 26px;
+    border-radius: 10px;
+    background: #0a0a0a;
+    color: #ffffff;
+    font-family: "Outfit", sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
   }
 
-  @media (max-width: 1280px) {
-    .tf-dashboard { padding: 24px; }
-    .tf-hero { grid-template-columns: 160px 1fr 120px; padding-right: 32px; }
-    .tf-quick-grid, .tf-lesson-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tf-empty-btn:hover {
+    background: #222222;
+  }
+
+  /* ── Session Cards (When populated) ── */
+  .tf-sessions-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .tf-session-card {
+    background: #ffffff;
+    border: 1px solid #e8e8e8;
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: border-color 0.2s ease;
+  }
+
+  .tf-session-card:hover {
+    border-color: #dadada;
+  }
+
+  .tf-session-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111111;
+    margin: 0 0 4px;
+  }
+
+  .tf-session-date {
+    font-size: 15px;
+    color: #777777;
+    margin: 0;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 1200px) {
+    .tf-stats-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
   }
 
   @media (max-width: 900px) {
-    .tf-dashboard-top, .tf-hero { padding-left: 0; }
-    .tf-dashboard-top { height: auto; gap: 20px; }
-    .tf-hero { grid-template-columns: 1fr; padding: 28px; background-position: right center; }
-    .tf-hero-spacer, .tf-board-math { display: none; }
-    .tf-quick-grid, .tf-lesson-grid { grid-template-columns: 1fr; }
+    .tf-dashboard-wrapper {
+      padding: 24px 20px;
+    }
+    .tf-hero-card {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 24px;
+    }
+    .tf-whiteboard-card {
+      width: 100%;
+    }
+    .tf-stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 600px) {
+    .tf-stats-grid {
+      grid-template-columns: 1fr;
+    }
   }
 `;
-
-const ProgressRing = ({ value }) => {
-  const radius = 25;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (value / 100) * circumference;
-  return (
-    <div className={`tf-progress-ring${value === 0 ? " muted" : ""}`}>
-      <svg width="58" height="58" viewBox="0 0 58 58">
-        <circle cx="29" cy="29" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="4" />
-        <circle
-          cx="29" cy="29" r={radius} fill="none"
-          stroke={value === 0 ? "#e2e8f0" : "#0054ff"}
-          strokeWidth="4" strokeLinecap="round"
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          transform="rotate(-90 29 29)"
-        />
-      </svg>
-      <span>{value}%</span>
-    </div>
-  );
-};
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -418,7 +433,7 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load cached user immediately for fast greeting
+    // Load cached user immediately
     try {
       const stored = localStorage.getItem("user");
       if (stored) setUser(JSON.parse(stored));
@@ -432,247 +447,190 @@ const StudentDashboard = () => {
       .then(([analyticsData, lessonData, meData]) => {
         setAnalytics(analyticsData);
         setNextLesson(lessonData);
-        setUser(meData);
-        // Keep localStorage fresh
-        localStorage.setItem("user", JSON.stringify(meData));
+        if (meData) {
+          setUser(meData);
+          localStorage.setItem("user", JSON.stringify(meData));
+        }
       })
-      .catch(() => { /* non-fatal — UI shows whatever loaded */ })
+      .catch(() => { /* non-fatal */ })
       .finally(() => setLoading(false));
   }, []);
 
-  const fullName = user?.full_name || user?.profile?.full_name || user?.email?.split("@")[0] || "Student";
-  const firstName = fullName.split(" ")[0];
+  const fullName = user?.full_name || user?.profile?.full_name || user?.email?.split("@")[0] || "";
+  const firstName = fullName ? fullName.split(" ")[0] : "";
+  const userInitial = firstName ? firstName[0].toUpperCase() : (user?.email ? user.email[0].toUpperCase() : "S");
 
-  // Build quick-card data from real analytics
-  const overallMastery = analytics ? Math.round((analytics.overall_mastery || 0) * 100) : null;
-  const accuracy = analytics ? Math.round((analytics.accuracy || 0) * 100) : null;
-  const streak = analytics?.current_streak ?? null;
-  const sessionsCompleted = analytics?.sessions_completed ?? null;
+  const overallMastery = analytics ? Math.round((analytics.overall_mastery || 0) * 100) : 0;
+  const accuracy = analytics ? Math.round((analytics.accuracy || 0) * 100) : 0;
+  const streak = analytics?.current_streak ?? 0;
+  const sessionsCompleted = analytics?.sessions_completed ?? 0;
 
   const quickCards = [
     {
-      icon: BookOpen,
+      icon: Target,
+      value: nextLesson ? "1" : "0",
       title: "Today's Focus",
-      subtitle: nextLesson ? nextLesson.lesson : "Start a lesson",
-      status: nextLesson ? nextLesson.course : "—",
+      desc: "Start a lesson",
     },
     {
       icon: TrendingUp,
+      value: `${overallMastery}%`,
       title: "Overall Mastery",
-      subtitle: "Across all skills",
-      status: loading ? "—" : overallMastery !== null ? `${overallMastery}%` : "—",
+      desc: "Across all skills",
     },
     {
-      icon: BarChart3,
+      icon: CheckCircle2,
+      value: `${accuracy}%`,
       title: "Accuracy",
-      subtitle: "Correct answers",
-      status: loading ? "—" : accuracy !== null ? `${accuracy}%` : "—",
+      desc: "Correct answers",
     },
     {
-      icon: Zap,
+      icon: Flame,
+      value: `${streak}`,
       title: "Daily Streak",
-      subtitle: "Consecutive days",
-      status: loading ? "—" : streak !== null ? `${streak} day${streak === 1 ? "" : "s"}` : "—",
+      desc: "Consecutive days",
     },
     {
-      icon: Target,
+      icon: Calendar,
+      value: `${sessionsCompleted}`,
       title: "Sessions Done",
-      subtitle: "Total completed",
-      status: "goal",
-      value: sessionsCompleted,
+      desc: "Lessons completed",
     },
   ];
 
-  // Recent sessions as lesson cards
   const recentSessions = analytics?.recent_sessions || [];
 
   return (
-    <main className="tf-dashboard">
+    <main className="tf-dashboard-wrapper">
       <style>{styles}</style>
 
-      <header className="tf-dashboard-top">
-        <div>
-          <p className="tf-welcome-small">Welcome back,</p>
-          <h1 className="tf-welcome-name">{firstName}!</h1>
-          <p className="tf-welcome-subtitle">Your AI Teacher is here to help you learn and grow.</p>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="tf-hero" aria-label="Current lesson">
-        <div className="tf-hero-spacer" />
-        <div className="tf-hero-copy">
-          <p className="tf-hero-label">Your AI Teacher</p>
-          <h2 className="tf-hero-heading">I prepared a lesson for you today.</h2>
-          <p className="tf-focus-label">Today's focus</p>
-          <p className="tf-focus-title">{nextLesson ? nextLesson.lesson : "Start Learning"}</p>
-          <button className="tf-primary-btn" type="button" onClick={() => navigate("/classroom")}>
-            <span className="tf-play-icon">
-              <Play size={13} fill="currentColor" strokeWidth={0} />
-            </span>
-            Continue Learning
-          </button>
-        </div>
-        <div className="tf-board-math" aria-hidden="true">
-          <span className="tf-board-line first">2x + 3 = 11</span>
-          <span className="tf-board-line second">2x = 8</span>
-          <span className="tf-board-box">x = 4</span>
-        </div>
-      </section>
-
-      {/* Quick cards */}
-      <section className="tf-quick-grid" aria-label="Learning summary">
-        {quickCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <article className="tf-quick-card" key={card.title}>
-              <div className="tf-icon-box">
-                <Icon size={28} strokeWidth={2.3} />
-              </div>
-              <h3 className="tf-card-title">{card.title}</h3>
-              <p className="tf-card-subtitle">{card.subtitle}</p>
-              {card.status === "goal" ? (
-                <div>
-                  <p className="tf-card-status" style={{ marginBottom: 8 }}>
-                    {loading ? "—" : card.value ?? 0} sessions
-                  </p>
-                  <div className="tf-goal-track" aria-label="Sessions progress">
-                    <div
-                      className="tf-goal-fill"
-                      style={{
-                        width: `${Math.min(100, ((card.value ?? 0) / 10) * 100)}%`,
-                        height: "100%",
-                        borderRadius: "inherit",
-                        background: "#0054ff",
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <p className="tf-card-status">
-                  {loading ? (
-                    <span className="tf-skeleton" style={{ display: "inline-block", width: 60, height: 16 }} />
-                  ) : (
-                    card.status
-                  )}
-                </p>
-              )}
-            </article>
-          );
-        })}
-      </section>
-
-      {/* Recent sessions */}
-      <section>
-        <div className="tf-section-row">
-          <h2 className="tf-section-title">Recent Sessions</h2>
-          <button type="button" className="tf-link-btn" onClick={() => navigate("/classroom")}>
-            View all lessons <ArrowRight size={19} />
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="tf-lesson-grid">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="tf-lesson-card">
-                <div className="tf-skeleton" style={{ width: 48, height: 52, gridRow: "1 / span 2" }} />
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div className="tf-skeleton" style={{ height: 16, width: "80%" }} />
-                  <div className="tf-skeleton" style={{ height: 12, width: "60%" }} />
-                </div>
-              </div>
-            ))}
+      <div className="tf-dashboard-container">
+        {/* ── Top Header ── */}
+        <header className="tf-header">
+          <div>
+            <h1 className="tf-welcome-title">Hello{firstName ? `, ${firstName}` : ""}!</h1>
+            <p className="tf-welcome-subtitle">Tutor AI is here to help you learn and grow.</p>
           </div>
-        ) : recentSessions.length === 0 ? (
-          <div className="tf-empty-state">
-            <p>No sessions yet. Start your first lesson to see it here!</p>
+
+          <div className="tf-header-actions">
+            <NotificationDropdown>
+              <button type="button" className="tf-bell-btn" aria-label="Notifications">
+                <Bell size={22} strokeWidth={2} />
+              </button>
+            </NotificationDropdown>
+            <div
+              className="tf-user-avatar"
+              onClick={() => navigate("/profile")}
+              title="View Profile"
+            >
+              {userInitial}
+            </div>
+          </div>
+        </header>
+
+        {/* ── Tutor AI Hero Card ── */}
+        <section className="tf-hero-card" aria-label="Tutor AI">
+          <div className="tf-hero-copy">
+            <p className="tf-hero-kicker">Tutor AI</p>
+            <h2 className="tf-hero-heading">Ready to learn something new?</h2>
+            <p className="tf-hero-desc">Let's continue your learning journey.</p>
             <button
-              type="button"
               className="tf-primary-btn"
-              style={{ marginTop: 16 }}
+              type="button"
               onClick={() => navigate("/classroom")}
             >
+              <span className="tf-play-pill-icon">
+                <Play size={10} fill="currentColor" strokeWidth={0} />
+              </span>
               Start Learning
             </button>
           </div>
-        ) : (
-          <div className="tf-lesson-grid">
-            {recentSessions.map((session, idx) => {
-              const isActive = session.status === "active";
-              const skill = analytics?.skill_mastery?.find((s) =>
-                s.skill.toLowerCase().includes(session.topic.toLowerCase())
-              );
-              const progress = skill ? Math.round(skill.mastery * 100) : 0;
 
-              return (
-                <article
-                  className={`tf-lesson-card${isActive ? " active" : ""}`}
-                  key={session.id}
-                >
-                  <div className="tf-module-number">{idx + 1}</div>
-                  <div>
-                    <h3 className="tf-lesson-title">{session.topic}</h3>
-                    <p className="tf-module-label">
-                      {isActive ? "In progress" : "Completed"}
-                    </p>
-                  </div>
-                  <div className="tf-lesson-meta">
-                    {isActive ? (
-                      <>
-                        <Play size={16} fill="#0054ff" strokeWidth={0} />
-                        <span className="tf-continue-mini">Continue</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clock3 size={16} />
-                        <span>{new Date(session.created_at).toLocaleDateString()}</span>
-                      </>
-                    )}
-                  </div>
-                  <ProgressRing value={progress} />
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Skill mastery overview */}
-      {!loading && analytics?.skill_mastery && analytics.skill_mastery.length > 0 && (
-        <section style={{ marginTop: 32 }}>
-          <div className="tf-section-row">
-            <h2 className="tf-section-title">Skill Mastery</h2>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
-            {analytics.skill_mastery.map((skill) => {
-              const pct = Math.round(skill.mastery * 100);
-              return (
-                <div
-                  key={skill.skill}
-                  style={{
-                    background: "#fff",
-                    border: "1px solid #e3eaf8",
-                    borderRadius: 11,
-                    padding: "16px 18px",
-                    boxShadow: "0 4px 12px rgba(15,23,42,0.04)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#020b3d" }}>{skill.skill}</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#0054ff" }}>{pct}%</span>
-                  </div>
-                  <div style={{ height: 6, borderRadius: 99, background: "#eef2fb", overflow: "hidden" }}>
-                    <div style={{ width: `${pct}%`, height: "100%", borderRadius: "inherit", background: "#0054ff" }} />
-                  </div>
-                  <p style={{ margin: "8px 0 0", fontSize: 12, color: "#4d6091" }}>
-                    {skill.correct_attempts}/{skill.attempts} correct
-                  </p>
-                </div>
-              );
-            })}
+          <div className="tf-whiteboard-card" aria-hidden="true">
+            <img src="/whiteboard.webp" alt="Whiteboard preview" className="tf-whiteboard-img" />
           </div>
         </section>
-      )}
+
+        {/* ── Statistics Cards (5 Columns) ── */}
+        <section className="tf-stats-grid" aria-label="Learning Statistics">
+          {quickCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <article
+                className="tf-stat-card"
+                key={card.title}
+                onClick={() => navigate("/classroom")}
+              >
+                <div>
+                  <div className="tf-stat-icon-wrap">
+                    <Icon size={22} strokeWidth={2} />
+                  </div>
+                  <div className="tf-stat-value">{card.value}</div>
+                  <h3 className="tf-stat-title">{card.title}</h3>
+                  <p className="tf-stat-desc">{card.desc}</p>
+                </div>
+                <div className="tf-stat-arrow">
+                  <ArrowRight size={18} strokeWidth={2} />
+                </div>
+              </article>
+            );
+          })}
+        </section>
+
+        {/* ── Recent Sessions Section ── */}
+        <section className="tf-recent-section" aria-label="Recent Sessions">
+          <div className="tf-recent-header">
+            <h2 className="tf-recent-title">Recent Sessions</h2>
+            <button
+              type="button"
+              className="tf-view-all-btn"
+              onClick={() => navigate("/classroom")}
+            >
+              View all lessons <ArrowRight size={16} strokeWidth={2} />
+            </button>
+          </div>
+
+          {recentSessions.length === 0 ? (
+            <div className="tf-empty-wrap">
+              <div className="tf-empty-icon-circle">
+                <img
+                  src="/book.webp"
+                  alt="Book illustration"
+                  style={{ width: "96px", height: "96px", objectFit: "contain", transform: "scale(1.1)" }}
+                />
+              </div>
+              <h3 className="tf-empty-title">No sessions yet</h3>
+              <p className="tf-empty-desc">Start your first lesson to see it here!</p>
+              <button
+                type="button"
+                className="tf-empty-btn"
+                onClick={() => navigate("/classroom")}
+              >
+                Start Learning
+              </button>
+            </div>
+          ) : (
+            <div className="tf-sessions-list">
+              {recentSessions.map((session) => (
+                <div
+                  className="tf-session-card"
+                  key={session.id}
+                  onClick={() => navigate("/classroom")}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div>
+                    <h3 className="tf-session-name">{session.topic}</h3>
+                    <p className="tf-session-date">
+                      {new Date(session.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <ArrowRight size={18} color="#111111" />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 };

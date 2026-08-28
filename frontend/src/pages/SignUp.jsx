@@ -92,7 +92,7 @@ const S = {
     borderRadius: "14px",
     fontSize: "16px",
     background: "#ffffff",
-    color: "#64748B",
+    color: "#0f172a",
     outline: "none",
     transition: "border-color 0.2s",
     boxSizing: "border-box",
@@ -110,7 +110,7 @@ const S = {
     borderRadius: "14px",
     fontSize: "16px",
     background: "#ffffff",
-    color: "#64748B",
+    color: "#0f172a",
     outline: "none",
     transition: "border-color 0.2s",
     boxSizing: "border-box",
@@ -134,13 +134,13 @@ const S = {
     alignItems: "center",
   },
   submitBtn: {
-    background: "#2563EB",
+    background: "#0a0a0a",
     color: "#ffffff",
     border: "none",
     borderRadius: "14px",
     height: "56px",
     fontSize: "17px",
-    fontWeight: "500",
+    fontWeight: "600",
     cursor: "pointer",
     marginTop: "4px",
     transition: "background 0.2s",
@@ -188,7 +188,7 @@ const S = {
     marginTop: "40px",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
   },
-  footerLink: { color: "#2563eb", fontWeight: "600", textDecoration: "none" },
+  footerLink: { color: "#111111", fontWeight: "600", textDecoration: "none" },
 
   /* ── RIGHT PANEL ── */
   right: {
@@ -428,8 +428,8 @@ const SignUp = () => {
 
         .grade-option:hover,
         .grade-option.active {
-          background: #eef4ff;
-          color: #2563EB;
+          background: #f5f5f5;
+          color: #111111;
         }
 
         .grade-option-main {
@@ -445,7 +445,7 @@ const SignUp = () => {
 
         .grade-option.active .grade-option-sub,
         .grade-option:hover .grade-option-sub {
-          color: #1d4ed8;
+          color: #111111;
         }
       `,
         }}
@@ -483,7 +483,7 @@ const SignUp = () => {
                   onChange={(e) => setFullName(e.target.value)}
                   style={S.input}
                   className="custom-input"
-                  onFocus={(e) => (e.target.style.borderColor = "#1a56db")}
+                  onFocus={(e) => (e.target.style.borderColor = "#111111")}
                   onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
               </div>
@@ -504,7 +504,7 @@ const SignUp = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   style={S.input}
                   className="custom-input"
-                  onFocus={(e) => (e.target.style.borderColor = "#1a56db")}
+                  onFocus={(e) => (e.target.style.borderColor = "#111111")}
                   onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
               </div>
@@ -525,7 +525,7 @@ const SignUp = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   style={S.input}
                   className="custom-input"
-                  onFocus={(e) => (e.target.style.borderColor = "#1a56db")}
+                  onFocus={(e) => (e.target.style.borderColor = "#111111")}
                   onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
                 <button
@@ -592,10 +592,10 @@ const SignUp = () => {
               disabled={loading}
               style={S.submitBtn}
               onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "#1e40af")
+                (e.currentTarget.style.background = "#222222")
               }
               onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "#1a56db")
+                (e.currentTarget.style.background = "#0a0a0a")
               }
             >
               {loading ? "Creating Account…" : "Create Account"}
@@ -656,9 +656,9 @@ const RightPanel = () => {
     <div style={S.right} className="right-panel-wrapper">
       <div style={S.tagline}>
         <h2 style={S.taglineH2}>
-          <span style={{ color: "#1a56db" }}>Your AI Tutor.</span>
+          <span style={{ color: "#111111" }}>Your AI Tutor.</span>
           <br />
-          <span style={{ color: "#1a56db" }}>Your Learning Flow.</span>
+          <span style={{ color: "#111111" }}>Your Learning Flow.</span>
         </h2>
         <p style={S.taglineSub}>Teach. Understand. Improve.</p>
       </div>

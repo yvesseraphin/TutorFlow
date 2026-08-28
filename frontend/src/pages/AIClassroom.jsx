@@ -1,21 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Stage, Layer, Line } from "react-konva";
 import { api } from "../lib/api";
 import { AudioStreamPlayer, AudioStreamRecorder, unlockAudioContext } from "../lib/liveAudio";
+import NotificationDropdown from "../components/NotificationDropdown";
 import {
   Activity,
   ArrowRight,
+  ArrowUp,
   BarChart3,
   Bell,
   BookOpen,
   Bookmark,
   Calculator,
+  CheckCircle2,
   ChevronDown,
   ClipboardList,
   Clock3,
   Divide,
+  Download,
   Eraser,
   File,
+  FileDown,
   FileText,
   Flame,
   GraduationCap,
@@ -24,11 +30,14 @@ import {
   Highlighter,
   Home,
   Expand,
+  Minimize2,
+  Image as ImageIcon,
   LogOut,
   Mic,
   MicOff,
   MoreHorizontal,
   MousePointer2,
+  Paperclip,
   PenLine,
   Phone,
   Play,
@@ -49,6 +58,7 @@ import {
   Video,
   Volume2,
   VolumeX,
+  X,
   Zap,
 } from "lucide-react";
 
@@ -133,69 +143,80 @@ const sortSubjects = (sortBy) => {
 const styles = `
   .lessons-page {
     min-height: 100vh;
-    padding: 30px 38px 36px;
+    padding: 32px 40px 48px;
     background: #ffffff;
-    color: #0f172a;
+    color: #111111;
     font-family: "Outfit", sans-serif;
-    max-width: 1400px;
+    max-width: 1260px;
     margin: 0 auto;
   }
 
   .lessons-header {
-    min-height: 138px;
-    padding: 18px 0;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
+    margin-bottom: 32px;
   }
 
   .lessons-title {
     margin: 0;
-    color: #020b3d;
-    font-size: 39px;
+    color: #111111;
+    font-size: 34px;
     font-weight: 700;
-    line-height: 48px;
-    letter-spacing: -0.035em;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
   .lessons-subtitle {
-    margin: 9px 0 0;
-    color: #263d73;
+    margin: 6px 0 0;
+    color: #666666;
     font-size: 18px;
     font-weight: 400;
-    line-height: 28px;
+    line-height: 26px;
   }
 
-  .lessons-actions {
+  .tf-header-actions {
     display: flex;
     align-items: center;
-    gap: 24px;
+    gap: 16px;
   }
 
-  .lessons-bell {
-    position: relative;
-    width: 48px;
-    height: 48px;
-    border: 0;
+  .tf-bell-btn {
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    background: #ffffff;
-    color: #1d356c;
-    display: inline-flex;
+    border: none;
+    background: transparent;
+    display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    color: #111111;
+    transition: background 0.2s ease;
   }
 
-  .lessons-bell::after {
-    content: "";
-    position: absolute;
-    right: 9px;
-    top: 8px;
-    width: 8px;
-    height: 8px;
+  .tf-bell-btn:hover {
+    background: #f5f5f5;
+  }
+
+  .tf-user-avatar {
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
-    background: #0054ff;
-    box-shadow: 0 0 0 3px #ffffff;
+    background: #111111;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.2s ease;
+  }
+
+  .tf-user-avatar:hover {
+    transform: scale(1.05);
   }
 
   .lessons-content {
@@ -232,7 +253,7 @@ const styles = `
   }
 
   .back-button:hover {
-    color: #2563eb;
+    color: #111111;
   }
 
   .detail-top-actions {
@@ -254,8 +275,8 @@ const styles = `
     width: 126px;
     height: 126px;
     border-radius: 28px;
-    background: #eef4ff;
-    color: #0054ff;
+    background: #f5f5f5;
+    color: #111111;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -266,8 +287,8 @@ const styles = `
   }
 
   .lesson-kicker {
-    margin: 8px 0 20px;
-    color: #0054ff;
+    margin: 8px 0 14px;
+    color: #111111;
     font-size: 15px;
     font-weight: 700;
     line-height: 20px;
@@ -275,20 +296,20 @@ const styles = `
 
   .lesson-title-large {
     margin: 0;
-    color: #020b3d;
-    font-size: 42px;
+    color: #111111;
+    font-size: 34px;
     font-weight: 700;
-    line-height: 50px;
-    letter-spacing: -0.035em;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
   .lesson-description-large {
     max-width: 620px;
-    margin: 16px 0 0;
-    color: #263d73;
+    margin: 14px 0 0;
+    color: #666666;
     font-size: 17px;
     font-weight: 400;
-    line-height: 29px;
+    line-height: 28px;
   }
 
   .lesson-meta {
@@ -296,7 +317,7 @@ const styles = `
     align-items: center;
     gap: 18px;
     margin-top: 22px;
-    color: #334f87;
+    color: #666666;
     font-size: 15px;
     font-weight: 500;
   }
@@ -316,119 +337,151 @@ const styles = `
   .status-badge {
     padding: 8px 16px;
     border-radius: 999px;
-    background: #eef4ff;
-    color: #0054ff;
+    background: #f5f5f5;
+    color: #111111;
     font-size: 14px;
     font-weight: 600;
-  }
-
-  .detail-tabs {
-    display: flex;
-    gap: 46px;
-    margin-top: 36px;
-    border-top: 1px solid #e2e8f0;
-    border-bottom: 1px solid #eef2f7;
-  }
-
-  .detail-tab {
-    padding: 22px 0 16px;
-    border: 0;
-    border-bottom: 3px solid transparent;
-    background: transparent;
-    color: #334f87;
-    font-family: "Outfit", sans-serif;
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .detail-tab.active {
-    color: #0054ff;
-    font-weight: 600;
-    border-bottom-color: #0054ff;
   }
 
   .detail-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 20px;
+    gap: 18px;
+    margin-top: 28px;
   }
 
   .detail-card {
-    border: 1px solid #dfe8f7;
-    border-radius: 14px;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
     background: #ffffff;
-    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
   }
 
   .overview-card {
-    min-height: 210px;
-    padding: 28px 24px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .overview-hero-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 330px;
+    grid-template-columns: minmax(0, 1fr) 260px;
     align-items: center;
     gap: 24px;
-    overflow: hidden;
   }
 
   .detail-card h2 {
     margin: 0 0 14px;
-    color: #020b3d;
+    color: #111111;
     font-size: 21px;
     font-weight: 700;
     line-height: 30px;
   }
 
   .overview-card p {
-    max-width: 560px;
     margin: 0;
-    color: #263d73;
+    color: #666666;
     font-size: 15.5px;
     line-height: 26px;
   }
 
-  .board-illustration {
-    height: 162px;
-    position: relative;
-    background: radial-gradient(circle at 82% 80%, #dbeafe 0 30%, transparent 31%);
-  }
-
-  .mini-board {
-    position: absolute;
-    right: 42px;
-    top: 26px;
-    width: 220px;
-    height: 144px;
-    border-radius: 12px;
-    border: 7px solid #9bbcff;
-    background: #ffffff;
-    box-shadow: 0 16px 30px rgba(37, 99, 235, 0.18);
-    color: #0054ff;
-    font-family: "Comic Sans MS", cursive;
+  .detail-board-wrap {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+  }
+
+  .detail-whiteboard-img {
+    width: 100%;
+    max-height: 175px;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.07));
+  }
+
+  .detail-section-block {
+    padding-top: 20px;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .detail-section-title {
+    margin: 0 0 12px;
+    color: #111111;
     font-size: 17px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
-  .mini-board-box {
-    border: 2px solid #0054ff;
-    padding: 4px 14px;
-    transform: rotate(-1deg);
+  .objectives-list {
+    margin: 0;
+    padding-left: 20px;
+    color: #555555;
+    font-size: 15px;
+    line-height: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
-  .mini-pen {
-    position: absolute;
-    right: 55px;
-    bottom: -2px;
-    width: 14px;
-    height: 72px;
-    border-radius: 99px;
-    background: linear-gradient(#0054ff 0 22%, #8cb2ff 22% 76%, #0054ff 76%);
-    transform: rotate(28deg);
+  .skills-tags-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .skill-badge {
+    padding: 7px 14px;
+    background: #f5f5f5;
+    color: #111111;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .resources-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .resource-item {
+    padding: 12px 14px;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #111111;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .resource-item:hover {
+    border-color: #e5e5e5;
+    background: #f5f5f5;
+  }
+
+  .preview-lessons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .preview-lesson-row {
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: #fafafa;
+    border: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14.5px;
+    color: #111111;
   }
 
   .flow-card {
@@ -452,8 +505,8 @@ const styles = `
     height: 82px;
     margin: 0 auto 16px;
     border-radius: 50%;
-    background: #eef4ff;
-    color: #0054ff;
+    background: #f5f5f5;
+    color: #111111;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -467,7 +520,7 @@ const styles = `
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #0054ff;
+    background: #111111;
     color: #ffffff;
     font-size: 12px;
     font-weight: 700;
@@ -478,21 +531,21 @@ const styles = `
 
   .flow-step h3 {
     margin: 0 0 8px;
-    color: #020b3d;
+    color: #111111;
     font-size: 16px;
     font-weight: 700;
   }
 
   .flow-step p {
     margin: 0;
-    color: #263d73;
+    color: #666666;
     font-size: 14px;
     line-height: 22px;
   }
 
   .flow-arrow {
     margin-top: 35px;
-    color: #334f87;
+    color: #888888;
   }
 
   .detail-sidebar {
@@ -508,7 +561,7 @@ const styles = `
 
   .side-card h2 {
     margin: 0 0 18px;
-    color: #020b3d;
+    color: #111111;
     font-size: 21px;
     font-weight: 700;
   }
@@ -526,27 +579,28 @@ const styles = `
     height: 116px;
     margin: 4px auto 12px;
     border-radius: 50%;
-    background: url("/background_hero.png") 0% 48% / 420px 116px no-repeat;
+    background: url("/bot.webp") center / cover no-repeat;
   }
 
   .teacher-name {
     margin: 0;
-    color: #0054ff;
+    color: #111111;
     font-size: 24px;
     font-weight: 700;
   }
 
   .teacher-sub {
     margin: 5px 0 16px;
-    color: #263d73;
+    color: #666666;
     font-size: 15.5px;
   }
 
   .personality-box {
     padding: 14px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #f7faff, #eef4ff);
-    color: #263d73;
+    border-radius: 10px;
+    background: #f9f9f9;
+    border: 1px solid #f0f0f0;
+    color: #555555;
     font-size: 14.5px;
     line-height: 24px;
   }
@@ -557,7 +611,7 @@ const styles = `
     justify-content: space-between;
     gap: 16px;
     padding: 12px 0;
-    color: #263d73;
+    color: #666666;
     font-size: 14.5px;
   }
 
@@ -573,14 +627,14 @@ const styles = `
   }
 
   .detail-value {
-    color: #263d73;
-    font-weight: 500;
+    color: #111111;
+    font-weight: 600;
     text-align: right;
   }
 
   .ready-card p {
     margin: -4px 0 18px;
-    color: #263d73;
+    color: #666666;
     font-size: 15px;
     line-height: 26px;
   }
@@ -589,7 +643,7 @@ const styles = `
   .save-button {
     width: 100%;
     height: 52px;
-    border-radius: 8px;
+    border-radius: 12px;
     font-family: "Outfit", sans-serif;
     font-size: 17px;
     font-weight: 600;
@@ -598,20 +652,29 @@ const styles = `
     justify-content: center;
     gap: 12px;
     cursor: pointer;
+    transition: all 0.2s ease;
   }
 
   .start-button {
     border: 0;
-    background: #0054ff;
+    background: #0a0a0a;
     color: #ffffff;
-    box-shadow: 0 10px 28px rgba(37, 99, 235, 0.24);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  }
+
+  .start-button:hover {
+    background: #222222;
   }
 
   .save-button {
     margin-top: 12px;
-    border: 1px solid #dfe8f7;
+    border: 1px solid #e5e5e5;
     background: #ffffff;
-    color: #0054ff;
+    color: #111111;
+  }
+
+  .save-button:hover {
+    background: #f5f5f5;
   }
 
   .live-lesson {
@@ -665,7 +728,7 @@ const styles = `
     border: 0;
     border-radius: 10px;
     background: transparent;
-    color: #1d356c;
+    color: #444444;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -676,12 +739,12 @@ const styles = `
   }
 
   .live-nav-item.active {
-    background: #0054ff;
+    background: #0a0a0a;
     color: #ffffff;
   }
 
   .classroom-rail {
-    border-right: 1px solid #eef2f7;
+    border-right: 1px solid #f0f0f0;
     padding: 96px 20px 28px;
     display: flex;
     flex-direction: column;
@@ -690,7 +753,7 @@ const styles = `
 
   .rail-heading {
     margin: 0 0 22px;
-    color: #020b3d;
+    color: #111111;
     font-size: 15px;
     font-weight: 700;
   }
@@ -700,7 +763,7 @@ const styles = `
     border: 0;
     border-radius: 8px;
     background: transparent;
-    color: #1d356c;
+    color: #444444;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -709,16 +772,23 @@ const styles = `
     font-size: 14px;
     font-weight: 500;
     margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .rail-item:hover {
+    background: #fafafa;
   }
 
   .rail-item.active {
-    background: #eef4ff;
-    color: #0054ff;
+    background: #f5f5f5;
+    color: #111111;
+    font-weight: 600;
   }
 
   .lesson-progress-card {
     margin-top: auto;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #f0f0f0;
     border-radius: 14px;
     padding: 18px;
   }
@@ -727,13 +797,14 @@ const styles = `
     margin: 0 0 16px;
     font-size: 13px;
     font-weight: 700;
+    color: #111111;
   }
 
   .live-progress-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    color: #0054ff;
+    color: #111111;
     font-size: 16px;
     font-weight: 700;
   }
@@ -742,18 +813,18 @@ const styles = `
     height: 6px;
     margin: 12px 0 18px;
     border-radius: 99px;
-    background: #e8eef8;
+    background: #f0f0f0;
   }
 
   .live-progress-fill {
     width: 68%;
     height: 100%;
     border-radius: inherit;
-    background: #0054ff;
+    background: #0a0a0a;
   }
 
   .teacher-panel {
-    border-right: 1px solid #eef2f7;
+    border-right: 1px solid #f0f0f0;
     padding: 96px 20px 20px;
     display: flex;
     flex-direction: column;
@@ -764,7 +835,7 @@ const styles = `
 
   .live-section-title {
     margin: 0;
-    color: #020b3d;
+    color: #111111;
     font-size: 15px;
     font-weight: 700;
   }
@@ -773,7 +844,7 @@ const styles = `
   .teacher-message,
   .teacher-controls,
   .voice-panel {
-    border: 1px solid #e2e8f0;
+    border: 1px solid #f0f0f0;
     border-radius: 14px;
     background: #ffffff;
   }
@@ -786,12 +857,13 @@ const styles = `
   .teacher-photo {
     height: 172px;
     border-radius: 10px;
-    background: url("/background_hero.png") 0% 50% / 610px 172px no-repeat;
+    background: url("/bot.webp") center / contain no-repeat;
+    background-color: #fafafa;
   }
 
   .live-teacher-card h2 {
     margin: 10px 0 4px;
-    color: #020b3d;
+    color: #111111;
     font-size: 16px;
     font-weight: 700;
   }
@@ -801,7 +873,7 @@ const styles = `
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: #0054ff;
+    color: #111111;
   }
 
   .voice-bars span {
@@ -837,8 +909,8 @@ const styles = `
 
   .teacher-message {
     padding: 16px;
-    background: #f8faff;
-    color: #020b3d;
+    background: #fafafa;
+    color: #111111;
     font-size: 15px;
     line-height: 26px;
   }
@@ -853,13 +925,14 @@ const styles = `
   .control-button {
     border: 0;
     background: transparent;
-    color: #1d356c;
+    color: #444444;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 7px;
     font-family: "Outfit", sans-serif;
     font-size: 11px;
+    cursor: pointer;
   }
 
   .voice-panel {
@@ -869,6 +942,7 @@ const styles = `
   .voice-panel h3 {
     margin: 0 0 18px;
     font-size: 15px;
+    color: #111111;
   }
 
   .wave-row {
@@ -877,15 +951,15 @@ const styles = `
     grid-template-columns: 1fr 28px;
     align-items: center;
     gap: 10px;
-    color: #0054ff;
+    color: #111111;
   }
 
   .wave-row.muted {
-    color: #bfdbfe;
+    color: #cccccc;
   }
 
   .wave-label {
-    color: #334f87;
+    color: #666666;
     font-size: 12px;
   }
 
@@ -904,7 +978,7 @@ const styles = `
     right: 0;
     top: 0;
     height: 88px;
-    border-bottom: 1px solid #eef2f7;
+    border-bottom: 1px solid #f0f0f0;
     background: #ffffff;
     display: flex;
     align-items: center;
@@ -917,16 +991,17 @@ const styles = `
     margin: 0 0 6px;
     font-size: 16px;
     font-weight: 700;
+    color: #111111;
   }
 
   .live-title p {
     margin: 0;
-    color: #334f87;
+    color: #666666;
     font-size: 14px;
   }
 
   .live-dot {
-    color: #0054ff;
+    color: #111111;
     margin: 0 14px;
   }
 
@@ -939,10 +1014,10 @@ const styles = `
   .top-action,
   .end-lesson {
     height: 42px;
-    border-radius: 8px;
-    border: 1px solid #dfe8f7;
+    border-radius: 6px;
+    border: 1px solid #e5e5e5;
     background: #ffffff;
-    color: #1d356c;
+    color: #111111;
     padding: 0 16px;
     display: inline-flex;
     align-items: center;
@@ -950,6 +1025,12 @@ const styles = `
     font-family: "Outfit", sans-serif;
     font-size: 14px;
     font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .top-action:hover {
+    background: #f5f5f5;
   }
 
   .icon-action {
@@ -961,12 +1042,17 @@ const styles = `
   .end-lesson {
     color: #ef4444;
     border-color: #fecaca;
+    background: #fef2f2;
+  }
+
+  .end-lesson:hover {
+    background: #fee2e2;
   }
 
   .whiteboard-card {
     flex: 1;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -977,7 +1063,7 @@ const styles = `
   .whiteboard-header {
     height: 48px;
     min-height: 48px;
-    border-bottom: 1px solid #eef2f7;
+    border-bottom: 1px solid #f0f0f0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -989,31 +1075,37 @@ const styles = `
     margin: 0;
     font-size: 15px;
     font-weight: 700;
+    color: #111111;
   }
 
   .tool-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    color: #334f87;
+    gap: 8px;
+    color: #555555;
   }
 
   .tool-button {
     width: 34px;
     height: 34px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 6px;
     background: transparent;
     color: inherit;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .tool-button:hover {
+    background: #f5f5f5;
   }
 
   .tool-button.active {
-    background: #eef4ff;
-    color: #0054ff;
+    background: #f5f5f5;
+    color: #111111;
   }
 
   .board-canvas {
@@ -1022,42 +1114,43 @@ const styles = `
     min-height: 0;
     overflow: hidden;
     background: #ffffff;
-    font-family: "Comic Sans MS", "Bradley Hand ITC", cursive;
+    font-family: "Outfit", sans-serif;
   }
 
   .board-canvas h3 {
     margin: 0 0 20px;
-    color: #0f172a;
+    color: #111111;
     font-size: 24px;
-    font-weight: 500;
+    font-weight: 600;
     text-decoration: underline;
-    text-decoration-color: #0054ff;
+    text-decoration-color: #111111;
     text-underline-offset: 8px;
   }
 
-  .blue-write { color: #0054ff; }
-  .black-write { color: #0f172a; }
+  .blue-write { color: #111111; }
+  .black-write { color: #111111; }
   .red-write { color: #ef4444; }
   .green-write { color: #16a34a; }
 
   .equation-block {
     width: 520px;
     margin-left: 4px;
-    color: #0f172a;
+    color: #111111;
     font-size: 20px;
     line-height: 1.9;
   }
 
   .boxed-answer {
     display: inline-block;
-    border: 2px solid #0054ff;
+    border: 2px solid #111111;
     padding: 2px 18px;
     margin: 8px 18px 0 86px;
+    border-radius: 4px;
   }
 
   .board-divider {
     height: 1px;
-    background: #475569;
+    background: #e2e8f0;
     margin: 20px 0;
   }
 
@@ -1077,10 +1170,10 @@ const styles = `
     right: 14px;
     bottom: 14px;
     height: 52px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #e5e5e5;
     border-radius: 12px;
     background: #ffffff;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1102,7 +1195,7 @@ const styles = `
   }
 
   .chat-panel {
-    border-left: 1px solid #eef2f7;
+    border-left: 1px solid #f0f0f0;
     padding-top: 96px;
     display: flex;
     flex-direction: column;
@@ -1112,34 +1205,38 @@ const styles = `
     overflow: hidden;
   }
 
-  .chat-tabs {
-    border: 1px solid #e2e8f0;
-    border-bottom: 0;
-    border-radius: 12px 12px 0 0;
-    margin: 0 14px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  .chat-header {
+    height: 48px;
+    min-height: 48px;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
   }
 
-  .chat-tab {
-    border: 0;
-    border-bottom: 3px solid transparent;
-    background: transparent;
-    color: #334f87;
-    font-family: "Outfit", sans-serif;
-    font-size: 14px;
+  .chat-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #111111;
+  }
+
+  .live-chat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
     font-weight: 600;
-  }
-
-  .chat-tab.active {
-    color: #0054ff;
-    border-bottom-color: #0054ff;
+    color: #111111;
+    background: #f5f5f5;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid #e5e5e5;
   }
 
   .chat-scroll {
-    margin: 0 14px;
-    border-left: 1px solid #e2e8f0;
-    border-right: 1px solid #e2e8f0;
     padding: 16px;
     overflow-y: auto;
     flex: 1;
@@ -1149,71 +1246,160 @@ const styles = `
     gap: 16px;
   }
 
+  .chat-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 36px 16px 20px;
+    margin: auto 0;
+  }
+
+  .chat-empty-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: #f5f5f5;
+    border: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+
+  .chat-empty-state h4 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111111;
+  }
+
+  .chat-empty-state p {
+    margin: 0;
+    color: #666666;
+    font-size: 13.5px;
+    line-height: 20px;
+    max-width: 240px;
+  }
+
   .chat-message {
     display: flex;
     gap: 12px;
-    color: #263d73;
-    font-size: 13px;
-    line-height: 23px;
+    color: #444444;
+    font-size: 13.5px;
+    line-height: 22px;
   }
 
   .chat-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: url("/background_hero.png") 0% 49% / 126px 34px no-repeat;
-    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: url("/bot.webp") center / contain no-repeat;
+    background-color: #fafafa;
+    border: 1px solid #e5e5e5;
+    flex-shrink: 0;
   }
 
   .message-head {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    gap: 18px;
-    color: #020b3d;
+    gap: 12px;
+    color: #111111;
     font-weight: 700;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
   }
 
   .message-time {
-    color: #64748b;
+    color: #888888;
     font-weight: 400;
     white-space: nowrap;
+    font-size: 12px;
   }
 
   .student-bubble {
     align-self: flex-end;
-    max-width: 220px;
-    padding: 14px;
-    border-radius: 9px;
-    background: #eef4ff;
-    color: #020b3d;
-    font-size: 13px;
-    line-height: 23px;
+    max-width: 240px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #f5f5f5;
+    border: 1px solid #f0f0f0;
+    color: #111111;
+    font-size: 13.5px;
+    line-height: 22px;
   }
 
   .quick-replies {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     margin-top: auto;
+    padding-top: 8px;
   }
 
   .quick-replies button {
     height: 30px;
-    border: 1px solid #dfe8f7;
-    border-radius: 7px;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
     background: #ffffff;
-    color: #334f87;
+    color: #111111;
     padding: 0 12px;
     font-family: "Outfit", sans-serif;
     font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .quick-replies button:hover {
+    background: #f5f5f5;
+    border-color: #cccccc;
   }
 
   .chat-input-wrap {
-    margin: 0 14px 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px;
+    margin: 10px 14px 14px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .chat-input-wrap:focus-within {
+    border-color: #111111;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .attached-file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f5f5f5;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #111111;
+    font-weight: 500;
+    max-width: max-content;
+  }
+
+  .attached-file-remove {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: #666666;
+  }
+
+  .attached-file-remove:hover {
+    color: #ef4444;
   }
 
   .chat-input {
@@ -1221,70 +1407,810 @@ const styles = `
     border: 0;
     outline: 0;
     font-family: "Outfit", sans-serif;
-    font-size: 13px;
-    color: #020b3d;
+    font-size: 13.5px;
+    color: #111111;
+    background: transparent;
+    padding: 2px 0;
+  }
+
+  .chat-input::placeholder {
+    color: #94a3b8;
   }
 
   .chat-input-actions {
-    margin-top: 18px;
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    color: #0054ff;
+    color: #111111;
+    padding-top: 2px;
+  }
+
+  .chat-action-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chat-icon-btn {
+    border: 0;
+    background: #f5f5f5;
+    color: #555555;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+
+  .chat-icon-btn:hover {
+    background: #ebebeb;
+    color: #111111;
+  }
+
+  .whiteboard-sidebar {
+    border-left: 1px solid #f0f0f0;
+    padding-top: 96px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: #ffffff;
+    overflow: hidden;
+  }
+
+  .wb-section {
+    padding: 16px 18px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .wb-section h3 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111111;
+  }
+
+  .wb-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .wb-tool-btn {
+    height: 42px;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #111111;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    font-family: "Outfit", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .wb-tool-btn:hover {
+    background: #f5f5f5;
+    border-color: #111111;
+    color: #111111;
+  }
+
+  .wb-tool-btn.active {
+    background: #0a0a0a !important;
+    border-color: #0a0a0a !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .wb-pages-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .wb-pages-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111111;
+  }
+
+  .wb-new-page {
+    border: 0;
+    background: #0a0a0a;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: "Outfit", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+  }
+
+  .wb-new-page:hover {
+    background: #222222;
+  }
+
+  .wb-pages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    max-height: 280px;
+  }
+
+  .wb-page-card {
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .wb-page-card:hover {
+    background: #fafafa;
+    border-color: #cccccc;
+  }
+
+  .wb-page-card.active {
+    border: 2px solid #0a0a0a;
+    background: #f9f9f9;
+  }
+
+  .wb-page-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    background: #f0f0f0;
+    color: #111111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .wb-page-card.active .wb-page-num {
+    background: #0a0a0a;
+    color: #ffffff;
+  }
+
+  .fake-preview-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111111;
+  }
+
+  .fake-preview-subtitle {
+    font-size: 11.5px;
+    color: #666666;
+  }
+
+  .wb-sidebar-footer {
+    margin-top: auto;
+    padding: 16px 18px;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .wb-clear-btn {
+    width: 100%;
+    height: 42px;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    background: #0a0a0a;
+    color: #ffffff;
+    font-family: "Outfit", sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .wb-clear-btn:hover {
+    background: #222222;
+  }
+
+  .tf-empty-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0 20px;
+    text-align: center;
+  }
+
+  .tf-empty-icon-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: #f7f7f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  }
+
+  .tf-empty-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #222222;
+    margin: 0 0 6px;
+  }
+
+  .tf-empty-desc {
+    font-size: 16px;
+    font-weight: 400;
+    color: #777777;
+    margin: 0;
+  }
+
+  /* ── Interactive Quiz & Homework ── */
+  .quiz-container {
+    padding: 28px 32px;
+    height: 100%;
+    overflow-y: auto;
+    background: #ffffff;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .quiz-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .quiz-header h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #111111;
+  }
+
+  .quiz-score-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #f5f5f5;
+    border: 1px solid #e5e5e5;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111111;
+  }
+
+  .quiz-card {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    margin-bottom: 20px;
+  }
+
+  .quiz-step-tag {
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888888;
+    margin-bottom: 10px;
+  }
+
+  .quiz-question-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111111;
+    line-height: 26px;
+    margin: 0 0 20px;
+  }
+
+  .quiz-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .quiz-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    background: #ffffff;
+    font-family: "Outfit", sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: #111111;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+  }
+
+  .quiz-option:hover:not(:disabled) {
+    border-color: #111111;
+    background: #fafafa;
+  }
+
+  .quiz-option.selected {
+    border-color: #111111;
+    background: #f5f5f5;
+    font-weight: 600;
+  }
+
+  .quiz-option.correct {
+    border-color: #16a34a !important;
+    background: #f0fdf4 !important;
+    color: #16a34a !important;
+    font-weight: 700;
+  }
+
+  .quiz-option.incorrect {
+    border-color: #ef4444 !important;
+    background: #fef2f2 !important;
+    color: #ef4444 !important;
+  }
+
+  .quiz-feedback {
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  .quiz-feedback.correct {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+  }
+
+  .quiz-feedback.incorrect {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+  }
+
+  .quiz-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .quiz-submit-btn {
+    height: 44px;
+    padding: 0 24px;
+    border-radius: 10px;
+    background: #0a0a0a;
+    color: #ffffff;
+    border: 0;
+    font-family: "Outfit", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .quiz-submit-btn:hover:not(:disabled) {
+    background: #222222;
+  }
+
+  .quiz-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .quiz-hint-btn {
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #111111;
+    border: 1px solid #e5e5e5;
+    font-family: "Outfit", sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+  }
+
+  .quiz-hint-btn:hover {
+    background: #f5f5f5;
+    border-color: #111111;
+  }
+
+  /* ── Session Summary Modal ── */
+  .summary-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .summary-modal {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 580px;
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+  }
+
+  .summary-modal-header {
+    padding: 24px 36px 18px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .summary-modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111111;
+  }
+
+  .summary-modal-body {
+    padding: 32px 42px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .summary-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .summary-stat-box {
+    background: #fafafa;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+
+  .summary-stat-number {
+    font-size: 17px;
+    font-weight: 800;
+    color: #111111;
+    margin-bottom: 2px;
+  }
+
+  .summary-stat-label {
+    font-size: 11.5px;
+    color: #777777;
+    font-weight: 500;
+  }
+
+  .summary-export-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .summary-export-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: 6px;
+    border: 1px solid #e5e5e5;
+    background: #ffffff;
+    color: #111111;
+    font-family: "Outfit", sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .summary-export-btn:hover {
+    background: #f5f5f5;
+    border-color: #111111;
+  }
+
+  .summary-modal-footer {
+    padding: 16px 36px 28px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    gap: 12px;
+  }
+
+  .summary-secondary-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #111111;
+    border: 1px solid #e5e5e5;
+    font-family: "Outfit", sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .summary-secondary-btn:hover {
+    background: #f5f5f5;
+    border-color: #111111;
+  }
+
+  .summary-finish-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 6px;
+    background: #0a0a0a;
+    color: #ffffff;
+    border: 0;
+    font-family: "Outfit", sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .summary-finish-btn:hover {
+    background: #222222;
+  }
+
+  .content-list-view {
+    padding: 24px;
+    background: #ffffff;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .content-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111111;
+  }
+
+  .content-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    background: #fafafa;
+    color: #666666;
+  }
+
+  .content-search input {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-family: "Outfit", sans-serif;
+    font-size: 14px;
+    color: #111111;
+  }
+
+  .content-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .content-tab {
+    padding: 8px 16px;
+    border: 1px solid #e5e5e5;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #555555;
+    font-family: "Outfit", sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+
+  .content-tab:hover {
+    background: #f5f5f5;
+    border-color: #cccccc;
+    color: #111111;
+  }
+
+  .content-tab.active {
+    background: #0a0a0a;
+    border-color: #0a0a0a;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .content-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .content-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border: 1px solid #f0f0f0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
+  }
+
+  .content-card:hover {
+    border-color: #e5e5e5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  }
+
+  .content-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #111111;
+    flex-shrink: 0;
+  }
+
+  .content-card-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .content-card-title {
+    margin: 0 0 4px;
+    font-size: 15.5px;
+    font-weight: 600;
+    color: #111111;
+  }
+
+  .content-card-desc {
+    margin: 0 0 6px;
+    font-size: 13.5px;
+    color: #666666;
+    line-height: 18px;
+  }
+
+  .content-card-meta {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #888888;
+    font-weight: 500;
+  }
+
+  .content-card-btn {
+    padding: 8px 18px;
+    border: 1px solid #111111;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111111;
+    font-family: "Outfit", sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .content-card-btn:hover {
+    background: #0a0a0a;
+    color: #ffffff;
   }
 
   .subjects-toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
 
   .subjects-title {
     margin: 0;
-    color: #020b3d;
-    font-size: 22px;
+    color: #111111;
+    font-size: 24px;
     font-weight: 700;
-    line-height: 32px;
+    letter-spacing: -0.02em;
   }
 
   .sort-wrap {
     display: flex;
     align-items: center;
     gap: 16px;
-    color: #263d73;
+    color: #555555;
     font-size: 16px;
-    font-weight: 400;
+    font-weight: 500;
   }
 
   .sort-select {
-    height: 48px;
-    min-width: 224px;
-    padding: 0 46px 0 17px;
-    border: 1px solid #E2E8F0;
+    height: 46px;
+    min-width: 220px;
+    padding: 0 42px 0 16px;
+    border: 1px solid #e5e5e5;
     border-radius: 10px;
     background: #ffffff;
-    color: #64748B;
+    color: #111111;
     appearance: none;
     cursor: pointer;
     font-family: "Outfit", sans-serif;
-    font-size: 17px;
-    font-weight: 400;
+    font-size: 16px;
+    font-weight: 500;
+    transition: border-color 0.2s ease;
   }
 
   .sort-select:hover {
-    border-color: #cbd5e1;
+    border-color: #cccccc;
   }
 
   .sort-select:focus {
     outline: none;
-    border-color: #1a56db;
+    border-color: #111111;
     box-shadow: none;
   }
 
   .sort-select option {
     font-family: "Outfit", sans-serif;
     font-weight: 400;
-    color: #64748B;
+    color: #111111;
     background: #ffffff;
   }
 
@@ -1295,8 +2221,8 @@ const styles = `
   .sort-chevron {
     position: absolute;
     top: 50%;
-    right: 17px;
-    color: #9aa9c3;
+    right: 16px;
+    color: #888888;
     pointer-events: none;
     transform: translateY(-50%);
   }
@@ -1310,19 +2236,20 @@ const styles = `
   .subject-card {
     min-height: 252px;
     padding: 24px;
-    border: 1px solid #dfe8f7;
-    border-radius: 14px;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
     background: #ffffff;
-    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.035);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
     display: flex;
     flex-direction: column;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
   }
 
   .subject-card:hover {
-    transform: translateY(-3px);
-    border-color: #cfe0ff;
-    box-shadow: 0 20px 50px rgba(37, 99, 235, 0.08);
+    transform: translateY(-2px);
+    border-color: #e5e5e5;
+    box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.06);
   }
 
   .subject-top {
@@ -1334,80 +2261,88 @@ const styles = `
 
   .subject-intro {
     display: grid;
-    grid-template-columns: 72px minmax(0, 1fr);
-    gap: 16px;
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 14px;
     align-items: start;
     min-width: 0;
   }
 
   .subject-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 13px;
-    background: #eef4ff;
-    color: #0054ff;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: #f5f5f5;
+    color: #111111;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
   .subject-name {
-    margin: 5px 0 8px;
-    color: #020b3d;
+    margin: 4px 0 6px;
+    color: #111111;
     font-size: 20px;
     font-weight: 700;
-    line-height: 28px;
+    line-height: 1.3;
     letter-spacing: -0.02em;
   }
 
   .subject-description {
     margin: 0;
-    color: #263d73;
-    font-size: 15.5px;
+    color: #666666;
+    font-size: 15px;
     font-weight: 400;
-    line-height: 24px;
+    line-height: 22px;
   }
 
   .subject-arrow {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    border: 1px solid #dfe8f7;
+    border: 1px solid #f0f0f0;
     background: #ffffff;
-    color: #263d73;
+    color: #111111;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     flex: 0 0 auto;
+    transition: all 0.2s ease;
+  }
+
+  .subject-card:hover .subject-arrow {
+    background: #0a0a0a;
+    color: #ffffff;
+    border-color: #0a0a0a;
   }
 
   .progress-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 32px;
-    color: #263d73;
-    font-size: 15.5px;
-    font-weight: 400;
-  }
-
-  .progress-value {
+    margin-top: 28px;
+    color: #666666;
+    font-size: 15px;
     font-weight: 500;
   }
 
+  .progress-value {
+    color: #111111;
+    font-weight: 600;
+  }
+
   .progress-track {
-    height: 7px;
-    margin-top: 13px;
-    border-radius: 20px;
+    height: 6px;
+    margin-top: 10px;
+    border-radius: 99px;
     overflow: hidden;
-    background: #e8eef8;
+    background: #f0f0f0;
   }
 
   .progress-fill {
     height: 100%;
     border-radius: inherit;
-    background: #0054ff;
+    background: #0a0a0a;
   }
 
   .subject-bottom {
@@ -1415,373 +2350,29 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    color: #263d73;
-    font-size: 15px;
+    color: #777777;
+    font-size: 14px;
     font-weight: 400;
+    padding-top: 14px;
   }
 
   .lesson-count {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    color: #666666;
   }
 
   .subject-level {
-    color: #0054ff;
-    font-weight: 500;
+    color: #111111;
+    font-weight: 600;
   }
 
   .coming-copy {
     margin-top: auto;
-    color: #263d73;
-    font-size: 16px;
-    line-height: 25px;
-  }
-
-  .content-list-view {
-    padding: 32px 40px;
-    height: 100%;
-    overflow-y: auto;
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .content-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    margin-top: 64px;
-  }
-
-  .content-header h2 {
-    margin: 0;
-    color: #020b3d;
-    font-size: 20px;
-    font-weight: 700;
-  }
-
-  .content-search {
-    position: relative;
-    width: 280px;
-  }
-
-  .content-search input {
-    width: 100%;
-    height: 40px;
-    padding: 0 16px 0 40px;
-    border: 1px solid #eef2f7;
-    border-radius: 8px;
-    background: #f8faff;
-    color: #020b3d;
-    font-family: "Outfit", sans-serif;
-    font-size: 14px;
-    transition: all 0.2s ease;
-  }
-
-  .content-search input:focus {
-    outline: none;
-    border-color: #0054ff;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(0, 84, 255, 0.1);
-  }
-
-  .content-search svg {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #94a3b8;
-  }
-
-  .content-tabs {
-    display: flex;
-    align-items: center;
-    gap: 32px;
-    border-bottom: 1px solid #eef2f7;
-    margin-bottom: 32px;
-  }
-
-  .content-tab {
-    padding: 0 0 16px;
-    border: 0;
-    background: transparent;
-    color: #64748b;
+    color: #777777;
     font-size: 15px;
-    font-weight: 500;
-    position: relative;
-    cursor: pointer;
-    font-family: "Outfit", sans-serif;
-    transition: color 0.2s ease;
-  }
-
-  .content-tab:hover {
-    color: #020b3d;
-  }
-
-  .content-tab.active {
-    color: #0054ff;
-    font-weight: 600;
-  }
-
-  .content-tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: #0054ff;
-    border-radius: 2px 2px 0 0;
-  }
-
-  .content-cards-container {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .content-card {
-    display: flex;
-    align-items: center;
-    padding: 24px;
-    border: 1px solid #eef2f7;
-    border-radius: 12px;
-    background: #ffffff;
-    transition: all 0.2s ease;
-  }
-
-  .content-card:hover {
-    border-color: #cfe0ff;
-    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.04);
-    transform: translateY(-2px);
-  }
-
-  .content-card-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
-    background: #f8faff;
-    border: 1px solid #eef2f7;
-    color: #0054ff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 24px;
-    flex-shrink: 0;
-  }
-
-  .content-card-info {
-    flex: 1;
-    min-width: 0;
-    margin-right: 24px;
-  }
-
-  .content-card-title {
-    margin: 0 0 6px;
-    color: #020b3d;
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .content-card-desc {
-    margin: 0 0 8px;
-    color: #475569;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .content-card-meta {
-    margin: 0;
-    color: #64748b;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .content-card-meta span:first-child {
-    color: #0054ff;
-    font-weight: 500;
-  }
-
-  .content-card-btn {
-    padding: 8px 24px;
-    border: 1px solid #eef2f7;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #0054ff;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: "Outfit", sans-serif;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-  }
-
-  .content-card-btn:hover {
-    background: #f8faff;
-    border-color: #cfe0ff;
-  }
-
-  .whiteboard-sidebar {
-    border-left: 1px solid #eef2f7;
-    padding: 96px 20px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-    overflow: auto;
-    background: #ffffff;
-  }
-
-  .wb-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .wb-section h3 {
-    margin: 0;
-    color: #020b3d;
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  .wb-tools-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-  }
-
-  .wb-tool-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 78px;
-    border: 1px solid #eef2f7;
-    border-radius: 12px;
-    background: #ffffff;
-    color: #334f87;
-    font-family: "Outfit", sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-  }
-
-  .wb-tool-btn:hover {
-    border-color: #cfe0ff;
-    background: #f8faff;
-  }
-
-  .wb-tool-btn.active {
-    border-color: #0054ff;
-    background: #eef4ff;
-    color: #0054ff;
-  }
-
-  .wb-pages-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .wb-new-page {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    border: 0;
-    background: transparent;
-    color: #0054ff;
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .wb-pages-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .wb-page-card {
-    display: flex;
-    align-items: stretch;
-    border: 1px solid #eef2f7;
-    border-radius: 10px;
-    padding: 14px;
-    gap: 14px;
-    background: #ffffff;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .wb-page-card.active {
-    border-color: #0054ff;
-    background: #f8faff;
-  }
-
-  .wb-page-num {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: #eef2f7;
-    color: #334f87;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    flex: 0 0 auto;
-  }
-
-  .wb-page-card.active .wb-page-num {
-    background: #0054ff;
-    color: #ffffff;
-  }
-
-  .wb-page-preview {
-    flex: 1;
-    min-width: 0;
-  }
-  
-  .fake-preview-title {
-    color: #020b3d;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .fake-preview-subtitle {
-    color: #64748b;
-    font-size: 11px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .wb-sidebar-footer {
-    margin-top: auto;
-    padding-top: 16px;
-  }
-
-  .wb-clear-btn {
-    width: 100%;
-    height: 44px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #0054ff;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: "Outfit", sans-serif;
-  }
-  .wb-clear-btn:hover {
-    background: #f8faff;
+    line-height: 22px;
   }
 
   @media (max-width: 1180px) {
@@ -1876,7 +2467,7 @@ const SubjectCard = ({ subject, onOpen }) => {
 // Convert raw math expressions & LaTeX symbols into concise, natural spoken dialogue for real-time voice
 const cleanTextForSpeech = (text) => {
   if (!text) return "";
-  
+
   let cleaned = text
     .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 over $2")
     .replace(/\\sqrt\{([^}]+)\}/g, "square root of $1")
@@ -1942,7 +2533,7 @@ const parseMathSymbols = (str) => {
 const formatAIText = (text) => {
   if (!text) return null;
   const lines = text.split("\n");
-  
+
   return lines.map((line, lIdx) => {
     const trimmed = line.trim();
     if (!trimmed) return <div key={lIdx} style={{ height: 4 }} />;
@@ -1954,7 +2545,7 @@ const formatAIText = (text) => {
     const parts = lineContent.split(/(\$\$.*?\$\$|\$.*?\$|\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
     const renderedParts = parts.map((part, pIdx) => {
       if ((part.startsWith("$$") && part.endsWith("$$") && part.length > 4) ||
-          (part.startsWith("$") && part.endsWith("$") && part.length > 2)) {
+        (part.startsWith("$") && part.endsWith("$") && part.length > 2)) {
         const rawMath = part.replace(/^\$+|\$+$/g, "");
         const cleanMath = parseMathSymbols(rawMath);
         return (
@@ -2059,11 +2650,11 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
           <input placeholder={`Search ${type.toLowerCase()}...`} />
         </div>
       </div>
-      
+
       <div className="content-tabs">
         {tabs.map((tab, i) => (
-          <button 
-            key={i} 
+          <button
+            key={i}
             className={`content-tab${activeTab === tab ? " active" : ""}`}
             onClick={() => setActiveTab(tab)}
           >
@@ -2074,14 +2665,20 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
 
       <div className="content-cards-container">
         {loading ? (
-          <div style={{ padding: "32px 0", textAlign: "center" }}>
-            <p style={{ color: "#64748b", fontSize: 14 }}>Loading {type.toLowerCase()} from database...</p>
+          <div style={{ padding: "64px 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <div className="tf-spinner" />
           </div>
         ) : materials.length === 0 ? (
-          <div style={{ padding: "40px 24px", textAlign: "center", border: "1px dashed #cbd5e1", borderRadius: 12, background: "#f8fafc", margin: "16px 0", width: "100%" }}>
-            <FileText size={36} color="#94a3b8" style={{ marginBottom: 12 }} />
-            <h3 style={{ margin: "0 0 6px 0", color: "#0f172a", fontSize: 16, fontWeight: 600 }}>No {type} yet for {topic}</h3>
-            <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>Study guides and materials will appear here when created in your database.</p>
+          <div className="tf-empty-wrap" style={{ padding: "48px 0" }}>
+            <div className="tf-empty-icon-circle">
+              <img
+                src="/book.webp"
+                alt="Empty state illustration"
+                style={{ width: "96px", height: "96px", objectFit: "contain", transform: "scale(1.1)" }}
+              />
+            </div>
+            <h3 className="tf-empty-title">No {type.toLowerCase()} yet</h3>
+            <p className="tf-empty-desc">Materials for {topic} will appear here soon.</p>
           </div>
         ) : (
           materials.map(item => (
@@ -2107,7 +2704,119 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
   );
 };
 
-const WhiteboardSidebar = ({ activeTool, setActiveTool, onClear }) => {
+const SessionSummaryModal = ({
+  isOpen,
+  onClose,
+  onFinish,
+  lessonTitle = "Lesson",
+  pagesCount = 1,
+  chatMessages = [],
+  stageRef = null,
+}) => {
+  if (!isOpen) return null;
+
+  const handleExportPNG = () => {
+    try {
+      if (stageRef?.current) {
+        const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
+        const link = document.createElement("a");
+        link.download = `${lessonTitle.replace(/\s+/g, "_")}_Whiteboard.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (e) {
+      console.warn("Error exporting PNG:", e);
+    }
+  };
+
+  const handleExportNotes = () => {
+    try {
+      const header = `# Lesson Summary: ${lessonTitle}\nDate: ${new Date().toLocaleDateString()}\n\n`;
+      const messagesText = chatMessages
+        .map((m) => `[${m.time || "Time"}] ${m.sender === "ai" ? "Tutor AI" : "You"}: ${m.text}`)
+        .join("\n\n");
+      const fullText = header + "## Class Notes & Transcript:\n\n" + (messagesText || "No chat transcript recorded.");
+
+      const blob = new Blob([fullText], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `${lessonTitle.replace(/\s+/g, "_")}_Notes.txt`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn("Error exporting notes:", e);
+    }
+  };
+
+  return (
+    <div className="summary-overlay" onClick={onClose}>
+      <div className="summary-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="summary-modal-header">
+          <h2>Lesson Summary & Export</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ border: 0, background: "transparent", cursor: "pointer", padding: 4, display: "flex", color: "#666666" }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="summary-modal-body">
+          <div className="summary-stats-grid">
+            <div className="summary-stat-box">
+              <div className="summary-stat-number" style={{ fontSize: 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lessonTitle}</div>
+              <div className="summary-stat-label">Topic</div>
+            </div>
+            <div className="summary-stat-box">
+              <div className="summary-stat-number">{pagesCount}</div>
+              <div className="summary-stat-label">Board Pages</div>
+            </div>
+            <div className="summary-stat-box">
+              <div className="summary-stat-number">{chatMessages.length}</div>
+              <div className="summary-stat-label">Exchanges</div>
+            </div>
+          </div>
+
+          <div className="summary-export-options">
+            <button type="button" className="summary-export-btn" onClick={handleExportPNG}>
+              <Download size={18} />
+              <span>Download Whiteboard Snapshot (.PNG)</span>
+            </button>
+            <button type="button" className="summary-export-btn" onClick={handleExportNotes}>
+              <FileDown size={18} />
+              <span>Download Study Notes & Transcript (.TXT)</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="summary-modal-footer">
+          <button type="button" className="summary-secondary-btn" onClick={onClose}>
+            Resume Lesson
+          </button>
+          <button type="button" className="summary-finish-btn" onClick={onFinish}>
+            End
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const WhiteboardSidebar = ({
+  activeTool,
+  setActiveTool,
+  onClear,
+  pages = [],
+  activePageId = 1,
+  onSelectPage,
+  onCreatePage,
+}) => {
   const tools = [
     { id: "pointer", icon: MousePointer2, label: "Select" },
     { id: "pen", icon: PenLine, label: "Pen" },
@@ -2134,55 +2843,47 @@ const WhiteboardSidebar = ({ activeTool, setActiveTool, onClear }) => {
           ))}
         </div>
       </div>
-      
+
       <div className="wb-section">
         <div className="wb-pages-header">
           <h3>Whiteboard Pages</h3>
-          <button className="wb-new-page"><Plus size={14} /> New Page</button>
+          <button type="button" className="wb-new-page" onClick={onCreatePage}>
+            <Plus size={14} /> New Page
+          </button>
         </div>
         <div className="wb-pages-list">
-          <div className="wb-page-card active">
-            <div className="wb-page-num">1</div>
-            <div className="wb-page-preview">
-               <div className="fake-preview-title">Solving Linear Equations</div>
-               <div className="fake-preview-subtitle">Example 1:</div>
+          {pages.map((p, idx) => (
+            <div
+              key={p.id}
+              className={`wb-page-card${activePageId === p.id ? " active" : ""}`}
+              onClick={() => onSelectPage && onSelectPage(p.id)}
+            >
+              <div className="wb-page-num">{idx + 1}</div>
+              <div className="wb-page-preview">
+                <div className="fake-preview-title">{p.title || `Page ${idx + 1}`}</div>
+                <div className="fake-preview-subtitle">
+                  {p.subtitle || (p.lines?.length > 0 ? `${p.lines.length} strokes drawn` : "Empty canvas")}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="wb-page-card">
-            <div className="wb-page-num">2</div>
-            <div className="wb-page-preview">
-               <div className="fake-preview-title">More Examples</div>
-               <div className="fake-preview-subtitle">4x + 2 = 18</div>
-            </div>
-          </div>
-          <div className="wb-page-card">
-            <div className="wb-page-num">3</div>
-            <div className="wb-page-preview">
-               <div className="fake-preview-title">Word Problem</div>
-               <div className="fake-preview-subtitle">John has x apples...</div>
-            </div>
-          </div>
-          <div className="wb-page-card">
-            <div className="wb-page-num">4</div>
-            <div className="wb-page-preview">
-               <div className="fake-preview-title">Practice Time</div>
-               <div className="fake-preview-subtitle">Solve for x:</div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
       <div className="wb-sidebar-footer">
-        <button className="wb-clear-btn" onClick={onClear}>Clear Whiteboard</button>
+        <button type="button" className="wb-clear-btn" onClick={onClear}>Clear Page</button>
       </div>
     </aside>
   );
 };
 
 const InteractiveWhiteboard = ({
-  activeTool,
+  stageRef,
+  lines = [],
+  setLines,
+  activeTool = "pen",
   setActiveTool,
-  activeColor,
+  activeColor = "#111111",
   setActiveColor,
   clearTrigger,
   lessonTitle,
@@ -2193,14 +2894,24 @@ const InteractiveWhiteboard = ({
   isLiveConnected = false,
 }) => {
   const containerRef = React.useRef(null);
-  const stageRef = React.useRef(null);
+  const localStageRef = React.useRef(null);
+  const effectiveStageRef = stageRef || localStageRef;
 
-  const [lines, setLines] = useState([]);
-  const [history, setHistory] = useState([[]]);
+  const [localLines, setLocalLines] = useState(lines || []);
+  const linesRef = React.useRef(localLines);
+  linesRef.current = localLines;
+
+  const [history, setHistory] = useState([lines || []]);
   const [historyStep, setHistoryStep] = useState(0);
   const isDrawing = React.useRef(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const debounceTimerRef = React.useRef(null);
+
+  // Sync with parent page lines
+  React.useEffect(() => {
+    setLocalLines(lines || []);
+    linesRef.current = lines || [];
+  }, [lines]);
 
   React.useEffect(() => {
     const container = containerRef.current;
@@ -2218,14 +2929,14 @@ const InteractiveWhiteboard = ({
   }, []);
 
   const emitFrame = React.useCallback((triggerTurn = false) => {
-    if (!stageRef.current || !onCanvasFrame) return;
+    if (!effectiveStageRef.current || !onCanvasFrame) return;
     try {
-      const dataUrl = stageRef.current.toDataURL({ mimeType: "image/jpeg", quality: 0.6, pixelRatio: 1 });
+      const dataUrl = effectiveStageRef.current.toDataURL({ mimeType: "image/jpeg", quality: 0.6, pixelRatio: 1 });
       onCanvasFrame(dataUrl, triggerTurn);
     } catch (e) {
       console.warn("Canvas frame capture error:", e);
     }
-  }, [onCanvasFrame]);
+  }, [effectiveStageRef, onCanvasFrame]);
 
   const scheduleEmitFrame = React.useCallback(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -2234,14 +2945,6 @@ const InteractiveWhiteboard = ({
     }, 800);
   }, [emitFrame]);
 
-  React.useEffect(() => {
-    if (clearTrigger > 0) {
-      saveHistory([]);
-      setLines([]);
-      scheduleEmitFrame();
-    }
-  }, [clearTrigger, scheduleEmitFrame]);
-
   const saveHistory = (newLines) => {
     const nextHistory = history.slice(0, historyStep + 1);
     nextHistory.push(newLines);
@@ -2249,81 +2952,172 @@ const InteractiveWhiteboard = ({
     setHistoryStep(nextHistory.length - 1);
   };
 
+  React.useEffect(() => {
+    if (clearTrigger > 0) {
+      saveHistory([]);
+      linesRef.current = [];
+      setLocalLines([]);
+      if (setLines) setLines([]);
+      scheduleEmitFrame();
+    }
+  }, [clearTrigger]);
+
   const handlePointerDown = (e) => {
     if (activeTool === "pointer") return;
     isDrawing.current = true;
-    const pos = e.target.getStage().getPointerPosition();
-    setLines([...lines, {
-      tool: activeTool,
-      color: activeColor,
-      points: [pos.x, pos.y]
-    }]);
+    const stage = effectiveStageRef.current || e.target.getStage();
+    if (!stage) return;
+    const pos = stage.getPointerPosition();
+    if (!pos) return;
+
+    let strokeColor = activeColor || "#111111";
+    let strokeWidth = 3.5;
+    let toolType = activeTool;
+
+    if (activeTool === "highlighter") {
+      strokeWidth = 26;
+    } else if (activeTool === "eraser") {
+      strokeWidth = 36;
+    } else if (activeTool === "shapes") {
+      toolType = "shape-rect";
+    }
+
+    const newLine = {
+      tool: toolType,
+      color: strokeColor,
+      strokeWidth,
+      points: [pos.x, pos.y],
+      startPos: pos,
+    };
+
+    const next = [...linesRef.current, newLine];
+    linesRef.current = next;
+    setLocalLines(next);
   };
 
   const handlePointerMove = (e) => {
     if (!isDrawing.current || activeTool === "pointer") return;
-    const stage = e.target.getStage();
-    const point = stage.getPointerPosition();
-    let lastLine = lines[lines.length - 1];
+    const stage = effectiveStageRef.current || e.target.getStage();
+    if (!stage) return;
+    const pos = stage.getPointerPosition();
+    if (!pos) return;
 
-    lastLine.points = lastLine.points.concat([point.x, point.y]);
-    lines.splice(lines.length - 1, 1, lastLine);
-    setLines(lines.concat());
+    const current = linesRef.current;
+    if (current.length === 0) return;
+
+    const last = current[current.length - 1];
+
+    if (last.tool === "shape-rect") {
+      const { x: x1, y: y1 } = last.startPos || { x: pos.x, y: pos.y };
+      const x2 = pos.x;
+      const y2 = pos.y;
+      const updated = {
+        ...last,
+        points: [x1, y1, x2, y1, x2, y2, x1, y2, x1, y1],
+      };
+      const next = [...current.slice(0, -1), updated];
+      linesRef.current = next;
+      setLocalLines(next);
+    } else {
+      const updated = {
+        ...last,
+        points: [...last.points, pos.x, pos.y],
+      };
+      const next = [...current.slice(0, -1), updated];
+      linesRef.current = next;
+      setLocalLines(next);
+    }
   };
 
   const handlePointerUp = () => {
     if (!isDrawing.current) return;
     isDrawing.current = false;
-    saveHistory(lines);
+    saveHistory(linesRef.current);
+    if (setLines) {
+      setLines(linesRef.current);
+    }
     scheduleEmitFrame();
   };
 
   const handleUndo = () => {
     if (historyStep > 0) {
-      setHistoryStep(historyStep - 1);
-      setLines(history[historyStep - 1]);
+      const nextStep = historyStep - 1;
+      setHistoryStep(nextStep);
+      const prevLines = history[nextStep] || [];
+      linesRef.current = prevLines;
+      setLocalLines(prevLines);
+      if (setLines) setLines(prevLines);
       scheduleEmitFrame();
     }
   };
 
   const handleRedo = () => {
     if (historyStep < history.length - 1) {
-      setHistoryStep(historyStep + 1);
-      setLines(history[historyStep + 1]);
+      const nextStep = historyStep + 1;
+      setHistoryStep(nextStep);
+      const nextLines = history[nextStep] || [];
+      linesRef.current = nextLines;
+      setLocalLines(nextLines);
+      if (setLines) setLines(nextLines);
       scheduleEmitFrame();
     }
   };
 
   const handleClear = () => {
     saveHistory([]);
-    setLines([]);
+    linesRef.current = [];
+    setLocalLines([]);
+    if (setLines) setLines([]);
     scheduleEmitFrame();
   };
+
+  const cardRef = React.useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      if (cardRef.current?.requestFullscreen) {
+        cardRef.current.requestFullscreen().catch(() => {});
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, []);
 
   const headerTools = [
     { id: "undo", icon: Undo2, label: "Undo", action: handleUndo },
     { id: "redo", icon: Redo2, label: "Redo", action: handleRedo },
     { id: "clear", icon: Trash2, label: "Clear Board", action: handleClear },
-    { id: "maximize", icon: Expand, label: "Maximize", action: () => {} },
+    { id: "maximize", icon: isFullscreen ? Minimize2 : Expand, label: isFullscreen ? "Exit Fullscreen" : "Fullscreen", action: toggleFullscreen },
   ];
 
   const markers = [
-    { color: "#0f172a", gradient: "linear-gradient(#111827 0 28%, #d1d5db 28%)", label: "Black Marker" },
-    { color: "#0054ff", gradient: "linear-gradient(#0054ff 0 28%, #bfdbfe 28%)", label: "Blue Marker" },
+    { color: "#111111", gradient: "linear-gradient(#111111 0 28%, #d1d5db 28%)", label: "Black Marker" },
     { color: "#16a34a", gradient: "linear-gradient(#16a34a 0 28%, #bbf7d0 28%)", label: "Green Marker" },
     { color: "#ef4444", gradient: "linear-gradient(#ef4444 0 28%, #fecaca 28%)", label: "Red Marker" },
+    { color: "#6b7280", gradient: "linear-gradient(#6b7280 0 28%, #e5e7eb 28%)", label: "Gray Marker" },
   ];
 
   const colorDots = [
-    { color: "#000000", label: "Black" },
-    { color: "#0054ff", label: "Blue" },
-    { color: "#22c55e", label: "Green" },
+    { color: "#111111", label: "Black" },
+    { color: "#16a34a", label: "Green" },
     { color: "#ef4444", label: "Red" },
+    { color: "#6b7280", label: "Gray" },
     { color: "#8b5cf6", label: "Purple" },
   ];
 
   return (
-    <article className="whiteboard-card">
+    <article className="whiteboard-card" ref={cardRef}>
       <div className="whiteboard-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <h2>Whiteboard</h2>
@@ -2335,14 +3129,14 @@ const InteractiveWhiteboard = ({
                 gap: 6,
                 padding: "3px 10px",
                 borderRadius: 20,
-                background: "#eff6ff",
-                color: "#0054ff",
+                background: "#f0fdf4",
+                color: "#16a34a",
                 fontSize: 12,
                 fontWeight: 600,
-                border: "1px solid #bfdbfe",
+                border: "1px solid #bbf7d0",
               }}
             >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#0054ff", animation: "pulse 1.5s infinite" }} />
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#16a34a", animation: "pulse 1.5s infinite" }} />
               AI Watching Live
             </span>
           )}
@@ -2370,35 +3164,42 @@ const InteractiveWhiteboard = ({
             position: "absolute",
             inset: 0,
             zIndex: 5,
-            cursor: activeTool === "pen" || activeTool === "highlighter" ? "crosshair" : activeTool === "eraser" ? "cell" : "default",
-            pointerEvents: activeTool === "pointer" ? "none" : "auto",
+            cursor: activeTool === "pen" || activeTool === "highlighter" ? "crosshair" : activeTool === "eraser" ? "cell" : activeTool === "shapes" ? "crosshair" : "default",
+            pointerEvents: "auto",
             touchAction: "none",
           }}
         >
           {dimensions.width > 0 && dimensions.height > 0 && (
             <Stage
-              ref={stageRef}
+              ref={effectiveStageRef}
               width={dimensions.width}
               height={dimensions.height}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerLeave={handlePointerUp}
+              onMouseDown={handlePointerDown}
+              onMouseMove={handlePointerMove}
+              onMouseUp={handlePointerUp}
+              onTouchStart={handlePointerDown}
+              onTouchMove={handlePointerMove}
+              onTouchEnd={handlePointerUp}
             >
               <Layer>
-                {lines.map((line, i) => (
+                {localLines.map((line, i) => (
                   <Line
                     key={i}
                     points={line.points}
-                    stroke={line.color}
-                    strokeWidth={line.tool === "highlighter" ? 28 : line.tool === "eraser" ? 36 : 3.5}
-                    tension={0.5}
+                    stroke={line.tool === "eraser" ? "#ffffff" : line.color || "#111111"}
+                    strokeWidth={line.strokeWidth || (line.tool === "highlighter" ? 26 : line.tool === "eraser" ? 36 : 3.5)}
+                    tension={line.tool === "shape-rect" ? 0 : 0.4}
+                    closed={line.tool === "shape-rect"}
                     lineCap="round"
                     lineJoin="round"
                     globalCompositeOperation={
                       line.tool === "eraser" ? "destination-out" : "source-over"
                     }
-                    opacity={line.tool === "highlighter" ? 0.4 : 1}
+                    opacity={line.tool === "highlighter" ? 0.35 : 1}
                   />
                 ))}
               </Layer>
@@ -2445,11 +3246,11 @@ const InteractiveWhiteboard = ({
               position: "absolute",
               left: `${hint.x || 10}%`,
               top: `${hint.y || 10}%`,
-              background: "linear-gradient(135deg, #0054ff, #4338ca)",
+              background: "#111111",
               color: "#ffffff",
               padding: "8px 14px",
               borderRadius: 10,
-              boxShadow: "0 8px 24px rgba(0, 84, 255, 0.35)",
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
               fontSize: 14,
               fontWeight: 600,
               zIndex: 7,
@@ -2457,7 +3258,7 @@ const InteractiveWhiteboard = ({
               display: "flex",
               alignItems: "center",
               gap: 8,
-              border: "1px solid rgba(255,255,255,0.2)",
+              border: "1px solid rgba(255,255,255,0.15)",
             }}
           >
             <Sparkles size={16} />
@@ -2467,9 +3268,15 @@ const InteractiveWhiteboard = ({
 
         {/* Lesson content overlay — driven by props */}
         {(lessonTitle || (lessonSteps && lessonSteps.length > 0)) && (
-          <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", userSelect: "none" }}>
-            {lessonTitle && <h3>{lessonTitle}</h3>}
-            {lessonSteps && lessonSteps.length > 0 && (
+          <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", userSelect: "none", padding: "28px 32px" }}>
+            {lessonTitle && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 16, borderBottom: "2px solid #111111", paddingBottom: 6 }}>
+                <h3 style={{ margin: 0, color: "#111111", fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em" }}>
+                  {lessonTitle}
+                </h3>
+              </div>
+            )}
+            {lessonSteps && lessonSteps.length > 0 ? (
               <div className="equation-block">
                 {lessonSteps.map((step, idx) => (
                   <p
@@ -2480,6 +3287,16 @@ const InteractiveWhiteboard = ({
                     {step.text}
                   </p>
                 ))}
+              </div>
+            ) : (
+              <div className="equation-block" style={{ color: "#333333", fontSize: 17, lineHeight: 1.8 }}>
+                <p style={{ margin: "4px 0", color: "#111111", fontWeight: 600 }}>Topic: Solving Linear Equations</p>
+                <p style={{ margin: "4px 0", color: "#666666" }}>Example: Solve for <span style={{ fontFamily: "serif", fontStyle: "italic", fontWeight: 600 }}>x</span></p>
+                <div style={{ padding: "12px 18px", background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 10, display: "inline-block", margin: "8px 0" }}>
+                  <p style={{ margin: "2px 0", fontSize: 18, fontFamily: "serif", letterSpacing: 1 }}>2x + 5 = 15</p>
+                  <p style={{ margin: "2px 0", fontSize: 18, fontFamily: "serif", letterSpacing: 1 }}>2x = 10</p>
+                  <p style={{ margin: "4px 0 2px", fontSize: 18, fontFamily: "serif", fontWeight: 700, color: "#111111", border: "2px solid #111111", display: "inline-block", padding: "2px 12px", borderRadius: 6 }}>x = 5</p>
+                </div>
               </div>
             )}
           </div>
@@ -2507,7 +3324,7 @@ const InteractiveWhiteboard = ({
                 style={{
                   background: m.gradient,
                   transform: activeColor === m.color && activeTool === "pen" ? "translateY(-4px)" : "none",
-                  boxShadow: activeColor === m.color && activeTool === "pen" ? "0 4px 10px rgba(0,84,255,0.3)" : "none",
+                  boxShadow: activeColor === m.color && activeTool === "pen" ? "0 4px 10px rgba(0,0,0,0.25)" : "none",
                   transition: "transform 0.15s ease, box-shadow 0.15s ease",
                 }}
               />
@@ -2537,7 +3354,7 @@ const InteractiveWhiteboard = ({
                 style={{
                   background: c.color,
                   transform: activeColor === c.color && activeTool === "pen" ? "scale(1.3)" : "scale(1)",
-                  boxShadow: activeColor === c.color && activeTool === "pen" ? "0 0 0 3px rgba(0, 84, 255, 0.35)" : "none",
+                  boxShadow: activeColor === c.color && activeTool === "pen" ? "0 0 0 3px rgba(0, 0, 0, 0.25)" : "none",
                   transition: "transform 0.15s ease, box-shadow 0.15s ease",
                 }}
               />
@@ -2550,7 +3367,7 @@ const InteractiveWhiteboard = ({
               height: 38,
               padding: "0 14px",
               borderRadius: 8,
-              background: "#0054ff",
+              background: "#0a0a0a",
               color: "#ffffff",
               border: 0,
               fontFamily: "Outfit, sans-serif",
@@ -2561,7 +3378,7 @@ const InteractiveWhiteboard = ({
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              boxShadow: "0 4px 12px rgba(0, 84, 255, 0.2)",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
             }}
             title="Ask AI Teacher to inspect whiteboard work"
           >
@@ -2571,7 +3388,7 @@ const InteractiveWhiteboard = ({
           <button
             type="button"
             className="tool-button"
-            style={{ border: "1px solid #dfe8f7" }}
+            style={{ border: "1px solid #e5e5e5" }}
             title="Clear Board"
             onClick={handleClear}
           >
@@ -2586,10 +3403,12 @@ const InteractiveWhiteboard = ({
 const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", lessonProgress = 0 }) => {
   const [activeRailTab, setActiveRailTab] = useState("Overview");
   const [activeTool, setActiveTool] = useState("pen");
-  const [activeColor, setActiveColor] = useState("#0054ff");
+  const [activeColor, setActiveColor] = useState("#111111");
   const [clearTrigger, setClearTrigger] = useState(0);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [attachedFile, setAttachedFile] = useState(null);
+  const fileInputRef = useRef(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -2599,11 +3418,47 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const [aiHighlights, setAiHighlights] = useState([]);
   const [aiHints, setAiHints] = useState([]);
   const [liveTranscript, setLiveTranscript] = useState("");
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+
+  // Multi-page Whiteboard Support
+  const [pages, setPages] = useState([
+    { id: 1, title: "Solving Linear Equations", subtitle: "Example 1: 2x + 5 = 15", lines: [] },
+  ]);
+  const [activePageId, setActivePageId] = useState(1);
 
   const wsRef = useRef(null);
   const playerRef = useRef(null);
   const recorderRef = useRef(null);
   const chatScrollRef = useRef(null);
+  const stageRef = useRef(null);
+
+  const currentPage = pages.find((p) => p.id === activePageId) || pages[0] || { id: 1, lines: [] };
+  const currentLines = currentPage?.lines || [];
+
+  const handleCreatePage = () => {
+    const nextId = pages.length > 0 ? Math.max(...pages.map((p) => p.id)) + 1 : 1;
+    const newPage = {
+      id: nextId,
+      title: `Whiteboard Page ${nextId}`,
+      subtitle: `Created at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      lines: [],
+    };
+    setPages((prev) => [...prev, newPage]);
+    setActivePageId(nextId);
+  };
+
+  const handleCurrentLinesChange = (newLines) => {
+    setPages((prev) =>
+      prev.map((p) => (p.id === activePageId ? { ...p, lines: newLines } : p))
+    );
+  };
+
+  const handleClearPage = () => {
+    setPages((prev) =>
+      prev.map((p) => (p.id === activePageId ? { ...p, lines: [] } : p))
+    );
+    setClearTrigger((t) => t + 1);
+  };
 
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -2611,11 +3466,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     }
   }, [chatMessages, liveTranscript, loadingAI]);
 
-  // Setup Live Audio Player & WebSocket (Single persistent session)
   useEffect(() => {
     let isMounted = true;
-
-    // 1. Initialize Audio Player
     const player = new AudioStreamPlayer({
       onPlayStateChange: (playing) => {
         if (isMounted) setIsSpeaking(playing);
@@ -2623,7 +3475,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     });
     playerRef.current = player;
 
-    // 2. Initialize Audio Recorder
     const recorder = new AudioStreamRecorder({
       onChunk: (base64Pcm) => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -2636,7 +3487,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     });
     recorderRef.current = recorder;
 
-    // 3. Connect to WebSocket
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//localhost:8080/api/v1/live-tutor`;
     const ws = new WebSocket(wsUrl);
@@ -2646,7 +3496,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
       if (!isMounted) return;
       setIsLiveConnected(true);
       setLoadingAI(false);
-      // Send initial opening message to trigger the teacher's greeting
       const initTopic = lessonTitle || "Algebra";
       ws.send(
         JSON.stringify({
@@ -2662,7 +3511,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
         if (msg.type === "ready") {
           setIsLiveConnected(true);
         } else if (msg.type === "audio" && msg.data) {
-          // Play low-latency 24kHz PCM chunk
           if (!isMuted && playerRef.current) {
             playerRef.current.playChunk(msg.data, 24000);
           }
@@ -2677,13 +3525,11 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             return "";
           });
         } else if (msg.type === "interrupted") {
-          // Native Barge-in: student spoke, stop AI playback instantly!
           if (playerRef.current) {
             playerRef.current.interrupt();
           }
           setIsSpeaking(false);
         } else if (msg.type === "tool_call") {
-          // AI co-drawing & annotation tool handling
           const { call_id, name, args } = msg;
           if (name === "highlight_board") {
             const newHl = {
@@ -2708,7 +3554,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             setAiHints([]);
           }
 
-          // Acknowledge tool call back to Gemini
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(
               JSON.stringify({
@@ -2742,136 +3587,85 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     };
   }, [lessonTitle]);
 
-  const speechRecRef = useRef(null);
-  const speechSilenceTimerRef = useRef(null);
-
-  // Toggle Live Microphone Streaming
   const toggleLiveMic = async () => {
-    unlockAudioContext();
-    if (isMicStreaming) {
-      recorderRef.current?.stop();
-      if (speechSilenceTimerRef.current) clearTimeout(speechSilenceTimerRef.current);
-      if (speechRecRef.current) {
-        try { speechRecRef.current.abort(); } catch(e) {}
-      }
-      setIsMicStreaming(false);
-    } else {
+    if (!isMicStreaming) {
       try {
+        await unlockAudioContext();
         await recorderRef.current?.start();
         setIsMicStreaming(true);
-
-        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRec) {
-          const rec = new SpeechRec();
-          rec.continuous = true;
-          rec.interimResults = true;
-          rec.lang = "en-US";
-
-          rec.onresult = (evt) => {
-            let interimTranscript = "";
-            let finalTranscript = "";
-
-            for (let i = evt.resultIndex; i < evt.results.length; ++i) {
-              if (evt.results[i].isFinal) {
-                finalTranscript += evt.results[i][0].transcript;
-              } else {
-                interimTranscript += evt.results[i][0].transcript;
-              }
-            }
-
-            const currentSpoken = (finalTranscript || interimTranscript).trim();
-            if (currentSpoken) {
-              setChatInput(currentSpoken);
-              handleInterrupt();
-
-              if (speechSilenceTimerRef.current) clearTimeout(speechSilenceTimerRef.current);
-
-              if (finalTranscript) {
-                handleSendMessage(currentSpoken);
-                setChatInput("");
-              } else {
-                // Short answers (e.g. "4", "x is 5", "subtract 3") trigger auto-send after 900ms pause!
-                speechSilenceTimerRef.current = setTimeout(() => {
-                  if (currentSpoken) {
-                    handleSendMessage(currentSpoken);
-                    setChatInput("");
-                  }
-                }, 900);
-              }
-            }
-          };
-
-          rec.onerror = (e) => {
-            console.warn("Speech recognition warning:", e);
-          };
-
-          rec.onend = () => {
-            if (isMicStreaming && speechRecRef.current) {
-              try { rec.start(); } catch(e) {}
-            }
-          };
-
-          try { rec.start(); speechRecRef.current = rec; } catch(e) {}
-        }
       } catch (err) {
-        console.error("Could not access microphone:", err);
-        alert("Could not access your microphone. Please allow microphone permissions in your browser.");
+        console.error("Microphone access denied or error:", err);
       }
+    } else {
+      recorderRef.current?.stop();
+      setIsMicStreaming(false);
+      setStudentVolume(0);
     }
   };
 
-  // Instant interruption / barge-in action
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    if (!isMuted && playerRef.current) {
+      playerRef.current.interrupt();
+    }
+  };
+
   const handleInterrupt = () => {
     if (playerRef.current) {
       playerRef.current.interrupt();
     }
     setIsSpeaking(false);
-  };
-
-  // Push Canvas Frame over WebSocket to Gemini
-  const handleCanvasFrame = (dataUrl, triggerTurn = false) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: "canvas_frame",
-          data: dataUrl,
-          mime_type: "image/jpeg",
-          trigger_turn: triggerTurn,
-          prompt: triggerTurn ? "Please look at my whiteboard drawing and give me quick, clear feedback on what I just wrote." : undefined,
-        })
-      );
+      wsRef.current.send(JSON.stringify({ type: "interrupt" }));
     }
   };
 
-  const handleSendMessage = (textToSend = null) => {
-    const text = (textToSend || chatInput).trim();
-    if (!text) return;
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAttachedFile(file);
+    }
+  };
 
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    setChatMessages((prev) => [...prev, { sender: "student", text, time: now }]);
-    if (!textToSend) setChatInput("");
+  const handleSendMessage = (customText) => {
+    const textToSend = customText || chatInput;
+    if (!textToSend.trim() && !attachedFile) return;
+
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const fullText = attachedFile
+      ? `${textToSend ? textToSend + " " : ""}[Attached: ${attachedFile.name}]`
+      : textToSend;
+
+    setChatMessages((prev) => [...prev, { sender: "student", text: fullText, time }]);
+    if (!customText) setChatInput("");
+    setAttachedFile(null);
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      // If AI is currently talking, interrupt it first
-      handleInterrupt();
-      wsRef.current.send(JSON.stringify({ type: "text", text }));
+      wsRef.current.send(JSON.stringify({ type: "text", text: fullText }));
     }
   };
 
-  const toggleMute = () => {
-    if (!isMuted && playerRef.current) {
-      playerRef.current.interrupt();
-      setIsSpeaking(false);
+  const handleCanvasFrame = (base64Image) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "canvas_frame", data: base64Image }));
     }
-    setIsMuted((prev) => !prev);
+  };
+
+  const formatAIText = (text) => {
+    if (!text) return "";
+    return text.split("\n").map((line, i) => (
+      <React.Fragment key={i}>
+        {line}
+        <br />
+      </React.Fragment>
+    ));
   };
 
   const railItems = [
-    { label: "Overview", icon: Home },
+    { label: "Overview", icon: Activity },
     { label: "Whiteboard", icon: PenLine },
-    { label: "Resources", icon: FileText },
-    { label: "Lesson Notes", icon: BookOpen },
-    { label: "Homework", icon: ClipboardList },
+    { label: "Lesson Notes", icon: FileText },
+    { label: "Resources", icon: BookOpen },
   ];
 
   const isWhiteboard = activeRailTab === "Whiteboard";
@@ -2898,13 +3692,13 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                background: isLiveConnected ? "#eff6ff" : "#fef2f2",
-                color: isLiveConnected ? "#0054ff" : "#ef4444",
+                background: isLiveConnected ? "#f0fdf4" : "#f5f5f5",
+                color: isLiveConnected ? "#16a34a" : "#222222",
                 padding: "4px 12px",
-                borderRadius: 20,
+                borderRadius: 6,
                 fontSize: 13,
                 fontWeight: 700,
-                border: `1px solid ${isLiveConnected ? "#bfdbfe" : "#fecaca"}`,
+                border: `1px solid ${isLiveConnected ? "#bbf7d0" : "#e5e5e5"}`,
               }}
             >
               <Radio size={14} className={isLiveConnected ? "pulse-icon" : ""} />
@@ -2917,15 +3711,30 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <button
             type="button"
             className="top-action"
+            onClick={() => setShowSummaryModal(true)}
+            style={{
+              background: "#ffffff",
+              color: "#111111",
+              borderColor: "#e5e5e5",
+              fontWeight: 600,
+            }}
+            title="Export Whiteboard & Notes"
+          >
+            <Download size={17} />
+            Export
+          </button>
+          <button
+            type="button"
+            className="top-action"
             onClick={toggleLiveMic}
             style={{
-              background: isMicStreaming ? "#fee2e2" : "#f0fdf4",
-              color: isMicStreaming ? "#ef4444" : "#16a34a",
-              borderColor: isMicStreaming ? "#fca5a5" : "#bbf7d0",
+              background: isMicStreaming ? "#f0fdf4" : "#ffffff",
+              color: isMicStreaming ? "#16a34a" : "#111111",
+              borderColor: isMicStreaming ? "#bbf7d0" : "#e5e5e5",
               fontWeight: 600,
             }}
           >
-            {isMicStreaming ? <Mic size={18} /> : <MicOff size={18} />}
+            {isMicStreaming ? <Mic size={18} color="#16a34a" /> : <MicOff size={18} color="#666666" />}
             {isMicStreaming ? "Live Mic ON" : "Turn Mic ON"}
           </button>
           <button
@@ -2934,7 +3743,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             onClick={toggleMute}
             title={isMuted ? "Unmute AI Voice" : "Mute AI Voice"}
           >
-            {isMuted ? <VolumeX size={19} color="#ef4444" /> : <Volume2 size={19} color="#0054ff" />}
+            {isMuted ? <VolumeX size={19} color="#ef4444" /> : <Volume2 size={19} color="#111111" />}
           </button>
           <button
             type="button"
@@ -2949,12 +3758,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <button
             type="button"
             className="end-lesson"
-            onClick={() => {
-              recorderRef.current?.stop();
-              playerRef.current?.destroy();
-              wsRef.current?.close();
-              onEnd();
-            }}
+            onClick={() => setShowSummaryModal(true)}
           >
             <Phone size={18} />
             End Lesson
@@ -2988,7 +3792,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <div className="live-progress-track">
             <div className="live-progress-fill" style={{ width: `${lessonProgress}%` }} />
           </div>
-          {lessonProgress >= 50 && <p style={{ margin: 0, color: "#334f87", fontSize: 12 }}>You're doing great!</p>}
         </div>
       </aside>
 
@@ -2997,12 +3800,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <h2 className="live-section-title">Teacher</h2>
           <article className="live-teacher-card">
             <div className="teacher-photo" />
-            <h2>TutorFlow AI</h2>
+            <h2>Tutor AI</h2>
             <VoiceBars active={isSpeaking} muted={isMuted} />
-            <br />
-            <span className="speaking-badge">
-              {isSpeaking ? "• Speaking Live" : isMuted ? "• Muted" : "• Listening Live"}
-            </span>
           </article>
           <article className="teacher-message">
             {liveTranscript ? (
@@ -3020,7 +3819,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               onClick={toggleLiveMic}
               title={isMicStreaming ? "Mute Microphone" : "Unmute Microphone"}
             >
-              {isMicStreaming ? <Mic size={22} color="#0054ff" /> : <MicOff size={22} color="#ef4444" />}
+              {isMicStreaming ? <Mic size={22} color="#16a34a" /> : <MicOff size={22} color="#ef4444" />}
               <span>{isMicStreaming ? "Mic On" : "Mic Off"}</span>
             </button>
             <button
@@ -3029,7 +3828,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               onClick={toggleMute}
               title={isMuted ? "Unmute AI" : "Mute AI"}
             >
-              {isMuted ? <VolumeX size={22} color="#ef4444" /> : <Volume2 size={22} color="#0054ff" />}
+              {isMuted ? <VolumeX size={22} color="#ef4444" /> : <Volume2 size={22} color="#111111" />}
               <span>{isMuted ? "Unmute" : "Mute"}</span>
             </button>
             <button type="button" className="control-button" onClick={handleInterrupt} title="Interrupt AI">
@@ -3042,7 +3841,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             <span className="wave-label">AI Teacher (24kHz Live Audio)</span>
             <div className="wave-row">
               <VoiceBars active={isSpeaking} muted={isMuted} />
-              <Volume2 size={18} color={isSpeaking ? "#0054ff" : "#94a3b8"} />
+              <Volume2 size={18} color={isSpeaking ? "#111111" : "#94a3b8"} />
             </div>
             <span className="wave-label" style={{ display: "block", marginTop: 16 }}>
               Student Mic {isMicStreaming ? "(Streaming 16kHz PCM)" : "(Muted)"}
@@ -3054,8 +3853,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 onClick={toggleLiveMic}
                 style={{
                   border: 0,
-                  background: isMicStreaming ? "#fee2e2" : "#f1f5f9",
-                  color: isMicStreaming ? "#ef4444" : "#64748b",
+                  background: isMicStreaming ? "#f0fdf4" : "#f5f5f5",
+                  color: isMicStreaming ? "#16a34a" : "#666666",
                   padding: 6,
                   borderRadius: 8,
                   cursor: "pointer",
@@ -3073,10 +3872,13 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
       )}
 
       <section className="whiteboard-zone">
-        {activeRailTab === "Resources" || activeRailTab === "Lesson Notes" || activeRailTab === "Homework" ? (
+        {activeRailTab === "Resources" || activeRailTab === "Lesson Notes" ? (
           <ContentListView type={activeRailTab} topic={lessonTitle} />
         ) : (
           <InteractiveWhiteboard
+            stageRef={stageRef}
+            lines={currentLines}
+            setLines={handleCurrentLinesChange}
             activeTool={activeTool}
             setActiveTool={setActiveTool}
             activeColor={activeColor}
@@ -3096,19 +3898,30 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
         <WhiteboardSidebar
           activeTool={activeTool}
           setActiveTool={setActiveTool}
-          onClear={() => setClearTrigger((t) => t + 1)}
+          onClear={handleClearPage}
+          pages={pages}
+          activePageId={activePageId}
+          onSelectPage={setActivePageId}
+          onCreatePage={handleCreatePage}
         />
       ) : (
         <aside className="chat-panel">
-          <div className="chat-tabs">
-            <button type="button" className="chat-tab active">Class Chat</button>
-            <button type="button" className="chat-tab">Live Feed</button>
+          <div className="chat-header">
+            <h3>Class Chat</h3>
+            <span className="live-chat-badge">
+              <Sparkles size={13} />
+              Tutor AI
+            </span>
           </div>
           <div className="chat-scroll" ref={chatScrollRef}>
             {chatMessages.length === 0 && !liveTranscript && (
-              <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
-                AI Teacher is listening & watching the whiteboard. Speak or write anytime!
-              </p>
+              <div className="chat-empty-state">
+                <div className="chat-empty-icon">
+                  <Sparkles size={24} color="#111111" />
+                </div>
+                <h4>Start a Conversation</h4>
+                <p>Ask a question, upload a worksheet, or ask Tutor AI to inspect your whiteboard.</p>
+              </div>
             )}
             {chatMessages.map((msg, idx) =>
               msg.sender === "ai" ? (
@@ -3116,7 +3929,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                   <div className="chat-avatar" />
                   <div>
                     <div className="message-head">
-                      <span>TutorFlow AI</span>
+                      <span>Tutor AI</span>
                       <span className="message-time">{msg.time}</span>
                     </div>
                     <div>{formatAIText(msg.text)}</div>
@@ -3133,11 +3946,11 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               )
             )}
             {liveTranscript && (
-              <div className="chat-message" style={{ borderLeft: "3px solid #0054ff", paddingLeft: 8 }}>
+              <div className="chat-message" style={{ borderLeft: "3px solid #111111", paddingLeft: 8 }}>
                 <div className="chat-avatar" />
                 <div>
                   <div className="message-head">
-                    <span style={{ color: "#0054ff", fontWeight: 700 }}>TutorFlow AI (Live)</span>
+                    <span style={{ color: "#111111", fontWeight: 700 }}>Tutor AI (Live)</span>
                     <span className="message-time">Now</span>
                   </div>
                   <div>{formatAIText(liveTranscript)}</div>
@@ -3153,54 +3966,133 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             </div>
           </div>
           <div className="chat-input-wrap">
+            {attachedFile && (
+              <div className="attached-file-chip">
+                <FileText size={14} />
+                <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {attachedFile.name}
+                </span>
+                <button
+                  type="button"
+                  className="attached-file-remove"
+                  onClick={() => setAttachedFile(null)}
+                  title="Remove file"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={handleFileUpload}
+              accept="image/*,.pdf,.doc,.docx,.txt"
+            />
             <input
               className="chat-input"
-              placeholder={isMicStreaming ? "Speaking live or type a message..." : "Type or turn on Live Mic..."}
+              placeholder={isMicStreaming ? "Speaking live or type a message..." : "Type a message or attach a file..."}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && chatInput.trim()) {
+                if (e.key === "Enter" && (chatInput.trim() || attachedFile)) {
                   handleSendMessage();
                 }
               }}
             />
             <div className="chat-input-actions">
+              <div className="chat-action-left">
+                <button
+                  type="button"
+                  className="chat-icon-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload image or file"
+                >
+                  <Paperclip size={17} />
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleLiveMic}
+                  style={{
+                    border: 0,
+                    background: isMicStreaming ? "#f0fdf4" : "#f5f5f5",
+                    color: isMicStreaming ? "#16a34a" : "#555555",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    transition: "all 0.15s ease",
+                  }}
+                  title={isMicStreaming ? "Live microphone is streaming. Click to mute." : "Click to stream voice"}
+                >
+                  {isMicStreaming ? <Mic size={16} className="pulse-icon" /> : <MicOff size={16} />}
+                  <span>{isMicStreaming ? "Mic On" : "Mic Off"}</span>
+                </button>
+              </div>
+
               <button
                 type="button"
-                onClick={toggleLiveMic}
-                style={{
-                  border: 0,
-                  background: isMicStreaming ? "#fee2e2" : "transparent",
-                  color: isMicStreaming ? "#ef4444" : "#64748b",
-                  padding: 6,
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                title={isMicStreaming ? "Live microphone is streaming. Click to mute." : "Click to stream voice"}
-              >
-                <Mic size={18} className={isMicStreaming ? "pulse-icon" : ""} />
-              </button>
-              <Send
-                size={18}
-                style={{ cursor: chatInput.trim() ? "pointer" : "default", color: chatInput.trim() ? "#0054ff" : "#94a3b8" }}
                 onClick={() => {
-                  if (chatInput.trim()) {
+                  if (chatInput.trim() || attachedFile) {
                     handleSendMessage();
                   }
                 }}
-              />
+                style={{
+                  border: 0,
+                  background: (chatInput.trim() || attachedFile) ? "#0a0a0a" : "#f5f5f5",
+                  color: (chatInput.trim() || attachedFile) ? "#ffffff" : "#a1a1aa",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: (chatInput.trim() || attachedFile) ? "pointer" : "default",
+                  transition: "all 0.15s ease",
+                }}
+                title="Send message"
+              >
+                <ArrowUp size={16} strokeWidth={2.5} />
+              </button>
             </div>
           </div>
         </aside>
       )}
+
+      <SessionSummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        onFinish={() => {
+          recorderRef.current?.stop();
+          playerRef.current?.destroy();
+          wsRef.current?.close();
+          onEnd();
+        }}
+        lessonTitle={lessonTitle}
+        pagesCount={pages.length}
+        chatMessages={chatMessages}
+        stageRef={stageRef}
+      />
     </main>
   );
 };
 
 const AIClassroom = () => {
+  const navigate = useNavigate();
+  const [user] = useState(() => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const firstName = user?.full_name?.split(" ")[0] || "Student";
   const [subjectsList, setSubjectsList] = useState([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -3240,12 +4132,12 @@ const AIClassroom = () => {
           const matchingIcon = (courseName.includes("Algebra") && !courseName.includes("Pre"))
             ? Calculator
             : courseName.includes("Functions")
-            ? FunctionSquare
-            : courseName.includes("Geometry")
-            ? Shapes
-            : courseName.includes("Statistics")
-            ? BarChart3
-            : Divide;
+              ? FunctionSquare
+              : courseName.includes("Geometry")
+                ? Shapes
+                : courseName.includes("Statistics")
+                  ? BarChart3
+                  : Divide;
 
           const details = getSubjectDetails(courseName);
 
@@ -3261,6 +4153,26 @@ const AIClassroom = () => {
           };
         });
 
+        const mockSubject = {
+          name: "Algebra",
+          description: "Build strong foundations in algebra.",
+          detailDescription: "Master variables, expressions, combining like terms, and solving linear equations step by step.",
+          progress: 68,
+          lessons: 12,
+          level: "Intermediate",
+          icon: Calculator,
+          lessonsList: [
+            { title: "Solving Multi-Step Linear Equations", duration: "15 min", completed: true },
+            { title: "Graphing Lines & Slope-Intercept Form", duration: "20 min", completed: true },
+            { title: "Systems of Linear Equations", duration: "25 min", completed: false },
+            { title: "Inequalities & Absolute Values", duration: "20 min", completed: false },
+          ],
+        };
+
+        if (dynamicSubjects.length === 0) {
+          dynamicSubjects.push(mockSubject);
+        }
+
         dynamicSubjects.push({
           name: "More Subjects",
           description: "Coming soon.",
@@ -3272,6 +4184,33 @@ const AIClassroom = () => {
         });
 
         setSubjectsList(dynamicSubjects);
+      } else {
+        setSubjectsList([
+          {
+            name: "Algebra",
+            description: "Build strong foundations in algebra.",
+            detailDescription: "Master variables, expressions, combining like terms, and solving linear equations step by step.",
+            progress: 68,
+            lessons: 12,
+            level: "Intermediate",
+            icon: Calculator,
+            lessonsList: [
+              { title: "Solving Multi-Step Linear Equations", duration: "15 min", completed: true },
+              { title: "Graphing Lines & Slope-Intercept Form", duration: "20 min", completed: true },
+              { title: "Systems of Linear Equations", duration: "25 min", completed: false },
+              { title: "Inequalities & Absolute Values", duration: "20 min", completed: false },
+            ],
+          },
+          {
+            name: "More Subjects",
+            description: "Coming soon.",
+            progress: null,
+            lessons: null,
+            level: null,
+            icon: MoreHorizontal,
+            comingSoon: true,
+          },
+        ]);
       }
       setLoadingSubjects(false);
     });
@@ -3305,9 +4244,18 @@ const AIClassroom = () => {
         <style>{styles}</style>
 
         <div className="detail-top-actions">
-          <button type="button" className="lessons-bell" aria-label="Notifications">
-            <Bell size={30} strokeWidth={1.75} />
-          </button>
+          <div className="tf-header-actions">
+            <button type="button" className="tf-bell-btn" aria-label="Notifications">
+              <Bell size={22} strokeWidth={2} />
+            </button>
+            <div
+              className="tf-user-avatar"
+              onClick={() => navigate("/profile")}
+              title="View Profile"
+            >
+              {firstName ? firstName[0].toUpperCase() : "M"}
+            </div>
+          </div>
         </div>
 
         <section>
@@ -3317,10 +4265,12 @@ const AIClassroom = () => {
           </button>
 
           <div className="lesson-hero">
-            {(() => {
-              const details = getSubjectDetails(selectedSubject.name);
-              return <div className="lesson-icon-large">{details.badge}</div>;
-            })()}
+            <div className="lesson-icon-large">
+              {(() => {
+                const Icon = selectedSubject.icon || Calculator;
+                return <Icon size={52} strokeWidth={2} />;
+              })()}
+            </div>
             <div>
               <p className="lesson-kicker">{selectedSubject.name} • {selectedSubject.level || "Beginner"}</p>
               <h1 className="lesson-title-large">{selectedSubject.name}</h1>
@@ -3335,7 +4285,7 @@ const AIClassroom = () => {
                 <span className="meta-divider" />
                 <span className="lesson-meta-item">
                   <BarChart3 size={17} />
-                  Beginner
+                  {selectedSubject.level || "Intermediate"}
                 </span>
                 <span className="meta-divider" />
                 <span className="status-badge">In Progress</span>
@@ -3343,52 +4293,84 @@ const AIClassroom = () => {
             </div>
           </div>
 
-          <nav className="detail-tabs" aria-label="Lesson sections">
-            {["Overview", "Objectives", "Skills You’ll Learn", "Resources", "Preview"].map(
-              (tab, index) => (
-                <button
-                  type="button"
-                  className={`detail-tab${index === 0 ? " active" : ""}`}
-                  key={tab}
-                >
-                  {tab}
-                </button>
-              )
-            )}
-          </nav>
-
           <div className="detail-stack">
             <article className="detail-card overview-card">
-              <div>
-                <h2>Overview</h2>
-                <p style={{ margin: "0 0 12px 0", color: "#263d73", fontSize: "15.5px", lineHeight: "26px" }}>
-                  {selectedSubject.detailDescription || getSubjectDetails(selectedSubject.name).detailDescription}
-                </p>
-                {nextLessonData?.outcomes && (
-                  <div>
-                    <p style={{ fontWeight: 600, marginBottom: 6, color: "#0054ff", fontSize: "14.5px" }}>
-                      Target Lesson: {nextLessonData.lesson}
-                    </p>
-                    <ul style={{ margin: 0, paddingLeft: 18, color: "#263d73", fontSize: "14px", lineHeight: "22px" }}>
-                      {nextLessonData.outcomes.map((out, idx) => (
-                        <li key={idx} style={{ marginBottom: 3 }}>{out}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <div className="board-illustration" aria-hidden="true">
-                {(() => {
-                  const details = getSubjectDetails(selectedSubject.name);
-                  return (
-                    <div className="mini-board">
-                      <span>{details.board[0]}</span>
-                      <span>{details.board[1]}</span>
-                      <span className="mini-board-box">{details.board[2]}</span>
+              {/* Overview & Whiteboard */}
+              <div className="overview-hero-row">
+                <div>
+                  <h2>Overview</h2>
+                  <p>
+                    {selectedSubject.detailDescription || getSubjectDetails(selectedSubject.name).detailDescription}
+                  </p>
+                  {nextLessonData?.outcomes && (
+                    <div style={{ marginTop: 14 }}>
+                      <p style={{ fontWeight: 600, marginBottom: 6, color: "#111111", fontSize: "14.5px" }}>
+                        Target Lesson: {nextLessonData.lesson}
+                      </p>
+                      <ul style={{ margin: 0, paddingLeft: 18, color: "#666666", fontSize: "14px", lineHeight: "22px" }}>
+                        {nextLessonData.outcomes.map((out, idx) => (
+                          <li key={idx} style={{ marginBottom: 3 }}>{out}</li>
+                        ))}
+                      </ul>
                     </div>
-                  );
-                })()}
-                <div className="mini-pen" />
+                  )}
+                </div>
+                <div className="detail-board-wrap" aria-hidden="true">
+                  <img
+                    src="/whiteboard.webp"
+                    alt="Interactive Whiteboard"
+                    className="detail-whiteboard-img"
+                  />
+                </div>
+              </div>
+
+              {/* Objectives */}
+              <div className="detail-section-block">
+                <h3 className="detail-section-title">
+                  <ClipboardList size={18} />
+                  Objectives
+                </h3>
+                <ul className="objectives-list">
+                  <li>Understand foundational algebraic terminology and operations.</li>
+                  <li>Solve multi-step linear equations and inequalities with confidence.</li>
+                  <li>Analyze graphs, slope, and linear relations on a Cartesian plane.</li>
+                  <li>Apply mathematical problem-solving strategies in guided interactive exercises.</li>
+                </ul>
+              </div>
+
+              {/* Skills You'll Learn */}
+              <div className="detail-section-block">
+                <h3 className="detail-section-title">
+                  <GraduationCap size={18} />
+                  Skills You’ll Learn
+                </h3>
+                <div className="skills-tags-wrap">
+                  {["Linear Equations", "Graphing & Slope", "Combining Like Terms", "Inequalities", "Systems of Equations", "Algebraic Modeling"].map((skill) => (
+                    <span key={skill} className="skill-badge">{skill}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Resources */}
+              <div className="detail-section-block">
+                <h3 className="detail-section-title">
+                  <FileText size={18} />
+                  Resources
+                </h3>
+                <div className="resources-grid">
+                  <div className="resource-item">
+                    <BookOpen size={16} />
+                    <span>Practice Worksheets</span>
+                  </div>
+                  <div className="resource-item">
+                    <File size={16} />
+                    <span>Formula Cheat Sheet</span>
+                  </div>
+                  <div className="resource-item">
+                    <PenLine size={16} />
+                    <span>Whiteboard Notes</span>
+                  </div>
+                </div>
               </div>
             </article>
 
@@ -3428,13 +4410,8 @@ const AIClassroom = () => {
           <article className="detail-card side-card teacher-card">
             <h2>Your Teacher</h2>
             <div className="teacher-avatar" />
-            <p className="teacher-name">TutorFlow AI</p>
+            <p className="teacher-name">Tutor AI</p>
             <p className="teacher-sub">Your personal AI Teacher</p>
-            <div className="personality-box">
-              Patient • Supportive • Clear
-              <br />
-              Always here to help you succeed.
-            </div>
           </article>
 
           <article className="detail-card side-card">
@@ -3485,10 +4462,19 @@ const AIClassroom = () => {
           <p className="lessons-subtitle">All your subjects and courses in one place.</p>
         </div>
 
-        <div className="lessons-actions">
-          <button type="button" className="lessons-bell" aria-label="Notifications">
-            <Bell size={30} strokeWidth={1.75} />
-          </button>
+        <div className="tf-header-actions">
+          <NotificationDropdown>
+            <button type="button" className="tf-bell-btn" aria-label="Notifications">
+              <Bell size={22} strokeWidth={2} />
+            </button>
+          </NotificationDropdown>
+          <div
+            className="tf-user-avatar"
+            onClick={() => navigate("/profile")}
+            title="View Profile"
+          >
+            {user?.full_name ? user.full_name[0].toUpperCase() : (user?.email ? user.email[0].toUpperCase() : "S")}
+          </div>
         </div>
       </header>
 
@@ -3515,19 +4501,40 @@ const AIClassroom = () => {
 
         <div className="subject-grid">
           {loadingSubjects ? (
-            [1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="subject-card" style={{ opacity: 0.6 }}>
-                <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-                  <div className="tf-skeleton" style={{ width: 44, height: 44, borderRadius: 12 }} />
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div className="tf-skeleton" style={{ height: 18, width: "60%" }} />
-                    <div className="tf-skeleton" style={{ height: 14, width: "90%" }} />
-                  </div>
-                </div>
-                <div className="tf-skeleton" style={{ height: 6, borderRadius: 99, marginBottom: 12 }} />
-                <div className="tf-skeleton" style={{ height: 14, width: "40%" }} />
-              </div>
-            ))
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "260px",
+                gap: "14px",
+              }}
+            >
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  border: "3px solid #f0f0f0",
+                  borderTopColor: "#111111",
+                  borderRadius: "50%",
+                  animation: "spin 0.7s linear infinite",
+                }}
+              />
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              <p
+                style={{
+                  color: "#666666",
+                  fontSize: "16px",
+                  margin: 0,
+                  fontWeight: 500,
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              >
+                Loading subjects…
+              </p>
+            </div>
           ) : (
             subjectsList.map((subject) => (
               <SubjectCard subject={subject} key={subject.name} onOpen={setSelectedSubject} />

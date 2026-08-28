@@ -40,7 +40,7 @@ const S = {
     fontFamily: "'Outfit', sans-serif",
     fontSize: "24px",
     fontWeight: "700",
-    color: "#1D4ED8",
+    color: "#111111",
     letterSpacing: "-0.3px",
   },
 
@@ -90,8 +90,8 @@ const S = {
   },
   forgotLink: {
     fontSize: "15px",
-    fontWeight: "500",
-    color: "#2563EB",
+    fontWeight: "600",
+    color: "#111111",
     textDecoration: "none",
     fontFamily: "'Outfit', sans-serif",
   },
@@ -111,7 +111,7 @@ const S = {
     borderRadius: "14px",
     fontSize: "16px",
     background: "#ffffff",
-    color: "#64748B",
+    color: "#0f172a",
     outline: "none",
     transition: "border-color 0.2s",
     boxSizing: "border-box",
@@ -134,13 +134,13 @@ const S = {
     alignItems: "center",
   },
   submitBtn: {
-    background: "#2563EB",
+    background: "#0a0a0a",
     color: "#ffffff",
     border: "none",
     borderRadius: "14px",
     height: "56px",
     fontSize: "17px",
-    fontWeight: "500",
+    fontWeight: "600",
     cursor: "pointer",
     marginTop: "4px",
     transition: "background 0.2s",
@@ -197,7 +197,7 @@ const S = {
     width: "56px",
     height: "56px",
     borderRadius: "16px",
-    background: "#eef4ff",
+    background: "#f5f5f5",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -231,7 +231,7 @@ const S = {
     marginTop: "40px",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
   },
-  footerLink: { color: "#2563eb", fontWeight: "600", textDecoration: "none" },
+  footerLink: { color: "#111111", fontWeight: "600", textDecoration: "none" },
 
   /* ── RIGHT PANEL ── */
   right: {
@@ -367,7 +367,7 @@ const Login = () => {
         }
         
         .custom-input:focus {
-          border: 2px solid #7ca1f1 !important;
+          border: 2px solid #111111 !important;
         }
         
         .google-btn:hover {
@@ -413,7 +413,7 @@ const Login = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   style={S.input}
                   className="custom-input"
-                  onFocus={(e) => (e.target.style.borderColor = "#1a56db")}
+                  onFocus={(e) => (e.target.style.borderColor = "#111111")}
                   onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
               </div>
@@ -441,7 +441,7 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   style={S.input}
                   className="custom-input"
-                  onFocus={(e) => (e.target.style.borderColor = "#1a56db")}
+                  onFocus={(e) => (e.target.style.borderColor = "#111111")}
                   onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
                 <button
@@ -459,10 +459,10 @@ const Login = () => {
               disabled={loading}
               style={S.submitBtn}
               onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "#1e40af")
+                (e.currentTarget.style.background = "#222222")
               }
               onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "#1a56db")
+                (e.currentTarget.style.background = "#0a0a0a")
               }
             >
               {loading ? "Logging in…" : "Log in"}
@@ -511,14 +511,14 @@ const Login = () => {
           >
             <div style={S.continueCardLeft}>
               <div style={S.continueIcon}>
-                <Book size={24} color="#2563EB" />
+                <Book size={24} color="#111111" />
               </div>
               <div>
                 <div style={S.continueTitle}>Continue learning</div>
                 <div style={S.continueSub}>Pick up where you left off</div>
               </div>
             </div>
-            <ChevronRight size={24} color="#2563EB" />
+            <ChevronRight size={24} color="#111111" />
           </div>
         </div>
 
@@ -541,9 +541,9 @@ const RightPanel = () => {
     <div style={S.right} className="right-panel-wrapper">
       <div style={S.tagline}>
         <h2 style={S.taglineH2}>
-          <span style={{ color: "#1a56db" }}>Your AI Tutor.</span>
+          <span style={{ color: "#111111" }}>Your AI Tutor.</span>
           <br />
-          <span style={{ color: "#1a56db" }}>Your Learning Flow.</span>
+          <span style={{ color: "#111111" }}>Your Learning Flow.</span>
         </h2>
         <p style={S.taglineSub}>Teach. Understand. Improve.</p>
       </div>

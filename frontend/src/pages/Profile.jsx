@@ -1,429 +1,432 @@
 import React, { useEffect, useState } from "react";
 import {
-  User,
-  Mail,
-  BookOpen,
-  GraduationCap,
-  Building2,
-  Target,
+  Bell,
+  Camera,
+  Lock,
+  Trash2,
   Save,
-  Edit3,
-  CheckCircle,
-  AlertCircle,
   Plus,
   X,
+  ChevronRight,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useNotification } from "../components/NotificationBanner";
+import NotificationDropdown from "../components/NotificationDropdown";
 
 const styles = `
-  .pf-page {
+  .pf-page-wrapper {
     min-height: 100vh;
-    padding: 30px 38px 48px;
     background: #ffffff;
-    color: #0f172a;
+    padding: 32px 40px 48px;
     font-family: "Outfit", sans-serif;
-    max-width: 900px;
+    color: #111111;
+  }
+
+  .pf-page-container {
+    max-width: 1100px;
     margin: 0 auto;
   }
 
+  /* ── Unified Dashboard Header ── */
   .pf-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 32px;
   }
 
-  .pf-title {
-    margin: 0 0 6px;
-    color: #020b3d;
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-  }
-
-  .pf-subtitle {
+  .pf-welcome-title {
     margin: 0;
-    color: #475b8f;
-    font-size: 17px;
-    font-weight: 400;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #111111;
+    letter-spacing: -0.02em;
   }
 
-  .pf-avatar-row {
+  .pf-welcome-subtitle {
+    margin: 6px 0 0;
+    font-size: 18px;
+    font-weight: 400;
+    color: #666666;
+    line-height: 26px;
+  }
+
+  .tf-header-actions {
     display: flex;
     align-items: center;
-    gap: 24px;
-    padding: 28px;
-    border: 1px solid #e3eaf8;
+    gap: 16px;
+  }
+
+  .tf-bell-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #111111;
+    transition: background 0.2s ease;
+  }
+
+  .tf-bell-btn:hover {
+    background: #f5f5f5;
+  }
+
+  .tf-user-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #111111;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* ── Cards ── */
+  .pf-card {
+    background: #ffffff;
+    border: 1px solid #f0f0f0;
     border-radius: 16px;
-    background: #f8faff;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  }
+
+  .pf-card-header {
     margin-bottom: 24px;
   }
 
-  .pf-avatar {
-    width: 80px;
-    height: 80px;
+  .pf-card-title {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111111;
+    letter-spacing: -0.01em;
+  }
+
+  .pf-card-desc {
+    margin: 0;
+    font-size: 15px;
+    color: #666666;
+  }
+
+  /* ── Profile Information ── */
+  .pf-info-layout {
+    display: flex;
+    gap: 36px;
+    align-items: flex-start;
+  }
+
+  .pf-avatar-box {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .pf-avatar-circle {
+    width: 88px;
+    height: 88px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #0054ff 0%, #4d94ff 100%);
+    background: #111111;
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 32px;
     font-weight: 700;
-    flex-shrink: 0;
-    letter-spacing: -0.02em;
   }
 
-  .pf-avatar-info h2 {
-    margin: 0 0 4px;
-    color: #020b3d;
-    font-size: 22px;
-    font-weight: 700;
-  }
-
-  .pf-avatar-info p {
-    margin: 0;
-    color: #475b8f;
-    font-size: 15px;
-  }
-
-  .pf-card {
-    border: 1px solid #e3eaf8;
-    border-radius: 16px;
+  .pf-avatar-cam-btn {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
     background: #ffffff;
-    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
-    margin-bottom: 20px;
-    overflow: hidden;
-  }
-
-  .pf-card-header {
+    border: 1px solid #e5e5e5;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 20px 24px;
-    border-bottom: 1px solid #eef2f7;
-  }
-
-  .pf-card-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0;
-    color: #020b3d;
-    font-size: 17px;
-    font-weight: 700;
-  }
-
-  .pf-edit-btn {
-    height: 36px;
-    padding: 0 16px;
-    border: 1px solid #dfe8f7;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #0054ff;
-    font-family: "Outfit", sans-serif;
-    font-size: 14px;
-    font-weight: 600;
+    justify-content: center;
+    color: #111111;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: background 0.15s, border-color 0.15s;
+    transition: all 0.15s ease;
   }
 
-  .pf-edit-btn:hover {
-    background: #eef4ff;
-    border-color: #a3c0ff;
+  .pf-avatar-cam-btn:hover {
+    background: #f5f5f5;
   }
 
-  .pf-card-body {
-    padding: 24px;
+  .pf-fields-grid {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
   }
 
-  .pf-field-row {
+  .pf-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pf-field-group.half-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-
-  .pf-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .pf-field.full {
-    grid-column: 1 / -1;
+    gap: 18px;
   }
 
   .pf-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #4d6091;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .pf-value {
-    color: #020b3d;
-    font-size: 16px;
-    font-weight: 500;
-    min-height: 24px;
-  }
-
-  .pf-value.empty {
-    color: #94a3b8;
-    font-style: italic;
-    font-weight: 400;
+    color: #111111;
   }
 
   .pf-input {
-    height: 48px;
-    padding: 0 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    width: 100%;
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
     background: #ffffff;
-    color: #020b3d;
+    color: #111111;
     font-family: "Outfit", sans-serif;
     font-size: 15px;
     outline: none;
-    transition: border-color 0.2s;
-    width: 100%;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     box-sizing: border-box;
   }
 
   .pf-input:focus {
-    border-color: #0054ff;
-    box-shadow: 0 0 0 3px rgba(0, 84, 255, 0.08);
+    border-color: #111111;
+    box-shadow: 0 0 0 1px #111111;
   }
 
-  .pf-textarea {
-    padding: 12px 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #ffffff;
-    color: #020b3d;
-    font-family: "Outfit", sans-serif;
-    font-size: 15px;
-    outline: none;
-    transition: border-color 0.2s;
-    width: 100%;
-    box-sizing: border-box;
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  .pf-textarea:focus {
-    border-color: #0054ff;
-    box-shadow: 0 0 0 3px rgba(0, 84, 255, 0.08);
+  .pf-input:disabled {
+    background: #fafafa;
+    color: #777777;
+    cursor: not-allowed;
   }
 
   .pf-select {
-    height: 48px;
-    padding: 0 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    width: 100%;
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
     background: #ffffff;
-    color: #020b3d;
+    color: #111111;
     font-family: "Outfit", sans-serif;
     font-size: 15px;
     outline: none;
     cursor: pointer;
-    width: 100%;
+    transition: border-color 0.15s ease;
     box-sizing: border-box;
-    appearance: none;
   }
 
   .pf-select:focus {
-    border-color: #0054ff;
-    box-shadow: 0 0 0 3px rgba(0, 84, 255, 0.08);
+    border-color: #111111;
   }
 
-  .pf-tags {
+  .pf-textarea {
+    width: 100%;
+    min-height: 90px;
+    padding: 12px 16px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111111;
+    font-family: "Outfit", sans-serif;
+    font-size: 15px;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+  }
+
+  .pf-textarea:focus {
+    border-color: #111111;
+    box-shadow: 0 0 0 1px #111111;
+  }
+
+  .pf-tags-list {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    align-items: center;
+    margin-top: 4px;
   }
 
-  .pf-tag {
+  .pf-tag-item {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 12px;
-    border-radius: 999px;
-    background: #eef4ff;
-    color: #0054ff;
+    padding: 6px 14px;
+    background: #f5f5f5;
+    border: 1px solid #ebebeb;
+    border-radius: 6px;
     font-size: 14px;
     font-weight: 500;
+    color: #111111;
   }
 
-  .pf-tag-remove {
+  .pf-tag-remove-btn {
     border: 0;
     background: transparent;
-    color: #0054ff;
     cursor: pointer;
     padding: 0;
     display: flex;
-    align-items: center;
-    opacity: 0.7;
+    color: #666666;
   }
 
-  .pf-tag-remove:hover { opacity: 1; }
+  .pf-tag-remove-btn:hover {
+    color: #ef4444;
+  }
 
-  .pf-tag-add {
+  .pf-add-goal-btn {
+    border: 1px dashed #cccccc;
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: "Outfit", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #555555;
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    height: 32px;
-    padding: 0 12px;
-    border: 1px dashed #a3c0ff;
-    border-radius: 999px;
-    background: transparent;
-    color: #0054ff;
-    font-family: "Outfit", sans-serif;
-    font-size: 14px;
-    cursor: pointer;
+    gap: 4px;
+    transition: all 0.15s ease;
   }
 
-  .pf-tag-input {
-    height: 32px;
-    padding: 0 10px;
-    border: 1px solid #0054ff;
-    border-radius: 999px;
-    background: #eef4ff;
-    color: #020b3d;
-    font-family: "Outfit", sans-serif;
-    font-size: 14px;
-    outline: none;
-    width: 160px;
+  .pf-add-goal-btn:hover {
+    border-color: #111111;
+    color: #111111;
+    background: #fafafa;
   }
 
-  .pf-save-row {
+  .pf-save-btn-row {
     display: flex;
-    align-items: center;
     justify-content: flex-end;
-    gap: 12px;
-    padding: 16px 24px;
-    border-top: 1px solid #eef2f7;
-  }
-
-  .pf-cancel-btn {
-    height: 44px;
-    padding: 0 20px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #ffffff;
-    color: #475b8f;
-    font-family: "Outfit", sans-serif;
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
+    margin-top: 10px;
   }
 
   .pf-save-btn {
     height: 44px;
-    padding: 0 24px;
-    border: 0;
-    border-radius: 10px;
-    background: #0054ff;
+    padding: 0 28px;
+    background: #0a0a0a;
     color: #ffffff;
+    border: 0;
+    border-radius: 8px;
     font-family: "Outfit", sans-serif;
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 8px 20px rgba(0, 84, 255, 0.22);
-    transition: background 0.15s;
   }
 
-  .pf-save-btn:hover { background: #1d4ed8; }
-  .pf-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .pf-save-btn:hover:not(:disabled) {
+    background: #222222;
+  }
 
-  .pf-toast {
+  .pf-save-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  /* ── Account Section ── */
+  .pf-account-rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pf-action-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 18px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 20px;
+    justify-content: space-between;
+    padding: 18px 0;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+    transition: background 0.15s ease;
   }
 
-  .pf-toast.success {
-    background: #f0fdf4;
-    border: 1px solid #86efac;
-    color: #15803d;
+  .pf-action-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 4px;
   }
 
-  .pf-toast.error {
-    background: #fef2f2;
-    border: 1px solid #fca5a5;
-    color: #dc2626;
+  .pf-action-row:first-child {
+    padding-top: 4px;
   }
 
-  .pf-stat-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+  .pf-action-left {
+    display: flex;
+    align-items: center;
     gap: 16px;
   }
 
-  .pf-stat {
-    padding: 18px 20px;
-    border: 1px solid #e3eaf8;
-    border-radius: 12px;
-    background: #f8faff;
+  .pf-icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #111111;
+    flex-shrink: 0;
+  }
+
+  .pf-action-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111111;
+    margin: 0 0 2px;
+  }
+
+  .pf-action-desc {
+    font-size: 13.5px;
+    color: #666666;
+    margin: 0;
+  }
+
+  /* ── Footer ── */
+  .pf-footer {
     text-align: center;
-  }
-
-  .pf-stat-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: #0054ff;
-    letter-spacing: -0.02em;
-  }
-
-  .pf-stat-label {
-    margin-top: 4px;
-    font-size: 13px;
-    color: #475b8f;
-    font-weight: 500;
-  }
-
-  .pf-skeleton {
-    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-    border-radius: 8px;
-    height: 20px;
-  }
-
-  @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    padding: 40px 0 16px;
+    color: #888888;
+    font-size: 14px;
   }
 `;
 
 const GRADE_OPTIONS = [
-  "8th Grade", "9th Grade", "10th Grade", "11th Grade", "12th Grade", "College",
+  "8th Grade",
+  "9th Grade",
+  "10th Grade",
+  "11th Grade",
+  "12th Grade",
+  "College",
 ];
 
 const Profile = () => {
   const notif = useNotification();
   const [profile, setProfile] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Editable form state
+  // Form state
   const [form, setForm] = useState({
     full_name: "",
     grade: "",
@@ -431,21 +434,26 @@ const Profile = () => {
     bio: "",
     learning_goals: [],
   });
+
   const [newGoal, setNewGoal] = useState("");
   const [addingGoal, setAddingGoal] = useState(false);
 
   useEffect(() => {
-    Promise.all([api("/profile"), api("/analytics/dashboard")])
-      .then(([profileData, analyticsData]) => {
-        setProfile(profileData);
-        setAnalytics(analyticsData);
-        setForm({
-          full_name: profileData.full_name || profileData.profile?.full_name || "",
-          grade: profileData.grade || profileData.profile?.grade || "",
-          school: profileData.school || profileData.profile?.school || "",
-          bio: profileData.bio || profileData.profile?.bio || "",
-          learning_goals: profileData.learning_goals || profileData.profile?.learning_goals || [],
-        });
+    Promise.all([
+      api("/profile").catch(() => null),
+      api("/analytics/dashboard").catch(() => null),
+    ])
+      .then(([profileData]) => {
+        if (profileData) {
+          setProfile(profileData);
+          setForm({
+            full_name: profileData.full_name || profileData.profile?.full_name || "",
+            grade: profileData.grade || profileData.profile?.grade || "",
+            school: profileData.school || profileData.profile?.school || "",
+            bio: profileData.bio || profileData.profile?.bio || "",
+            learning_goals: profileData.learning_goals || profileData.profile?.learning_goals || [],
+          });
+        }
       })
       .catch(() => {
         notif.error("Failed to load profile. Please try again.");
@@ -463,35 +471,24 @@ const Profile = () => {
         bio: form.bio || undefined,
         learning_goals: form.learning_goals.length ? form.learning_goals : undefined,
       };
+
       const updated = await api("/profile", {
         method: "PATCH",
         body: JSON.stringify(payload),
       });
+
       setProfile((prev) => ({ ...prev, ...updated }));
-      // Keep localStorage user fresh
+
+      // Update localStorage
       const stored = JSON.parse(localStorage.getItem("user") || "{}");
       localStorage.setItem("user", JSON.stringify({ ...stored, full_name: form.full_name }));
-      setEditing(false);
+
       notif.success("Profile updated successfully!");
     } catch (err) {
       notif.error(err.message || "Failed to save profile.");
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleCancel = () => {
-    // Reset form to current profile
-    setForm({
-      full_name: profile?.full_name || profile?.profile?.full_name || "",
-      grade: profile?.grade || profile?.profile?.grade || "",
-      school: profile?.school || profile?.profile?.school || "",
-      bio: profile?.bio || profile?.profile?.bio || "",
-      learning_goals: profile?.learning_goals || profile?.profile?.learning_goals || [],
-    });
-    setEditing(false);
-    setAddingGoal(false);
-    setNewGoal("");
   };
 
   const addGoal = () => {
@@ -507,209 +504,141 @@ const Profile = () => {
     setForm((f) => ({ ...f, learning_goals: f.learning_goals.filter((g) => g !== goal) }));
   };
 
-  // Derive display values
   const displayName =
-    profile?.full_name || profile?.profile?.full_name || profile?.email?.split("@")[0] || "Student";
-  const displayEmail = profile?.email || "—";
-  const initials = displayName
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+    form.full_name || profile?.full_name || profile?.profile?.full_name || profile?.email?.split("@")[0] || "";
+  const displayEmail = profile?.email || "";
 
-  const overallMastery = analytics ? Math.round((analytics.overall_mastery || 0) * 100) : null;
-  const accuracy = analytics ? Math.round((analytics.accuracy || 0) * 100) : null;
-  const streak = analytics?.current_streak ?? null;
+  const initials = displayName
+    ? displayName
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : (displayEmail ? displayEmail[0].toUpperCase() : "U");
 
   return (
-    <main className="pf-page">
+    <div className="pf-page-wrapper">
       <style>{styles}</style>
 
-      <header className="pf-header">
-        <h1 className="pf-title">My Profile</h1>
-        <p className="pf-subtitle">Manage your account details and learning preferences.</p>
-      </header>
-
-      {/* Avatar + name row */}
-      <div className="pf-avatar-row">
-        {loading ? (
-          <div className="pf-avatar" style={{ background: "#e2e8f0" }} />
-        ) : (
-          <div className="pf-avatar">{initials || "S"}</div>
-        )}
-        <div className="pf-avatar-info">
-          {loading ? (
-            <>
-              <div className="pf-skeleton" style={{ width: 180, marginBottom: 8 }} />
-              <div className="pf-skeleton" style={{ width: 220, height: 14 }} />
-            </>
-          ) : (
-            <>
-              <h2>{displayName}</h2>
-              <p>{displayEmail}</p>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Stats row */}
-      <div className="pf-stat-row" style={{ marginBottom: 20 }}>
-        {[
-          { label: "Overall Mastery", value: loading ? "—" : overallMastery !== null ? `${overallMastery}%` : "—" },
-          { label: "Accuracy", value: loading ? "—" : accuracy !== null ? `${accuracy}%` : "—" },
-          { label: "Day Streak", value: loading ? "—" : streak !== null ? `${streak}` : "—" },
-        ].map((s) => (
-          <div className="pf-stat" key={s.label}>
-            <div className="pf-stat-value">{s.value}</div>
-            <div className="pf-stat-label">{s.label}</div>
+      <div className="pf-page-container">
+        {/* Unified Dashboard / My Lessons Header */}
+        <header className="pf-header">
+          <div>
+            <h1 className="pf-welcome-title">Settings</h1>
+            <p className="pf-welcome-subtitle">Manage your account, preferences, and learning experience.</p>
           </div>
-        ))}
-      </div>
 
-      {/* Personal info card */}
-      <div className="pf-card">
-        <div className="pf-card-header">
-          <h2 className="pf-card-title">
-            <User size={18} color="#0054ff" />
-            Personal Information
-          </h2>
-          {!editing && (
-            <button className="pf-edit-btn" onClick={() => setEditing(true)}>
-              <Edit3 size={15} />
-              Edit
-            </button>
-          )}
-        </div>
+          <div className="tf-header-actions">
+            <NotificationDropdown>
+              <button type="button" className="tf-bell-btn" title="Notifications" aria-label="Notifications">
+                <Bell size={22} strokeWidth={2} />
+              </button>
+            </NotificationDropdown>
+            <div
+              className="tf-user-avatar"
+              title="Profile"
+            >
+              {initials || "YS"}
+            </div>
+          </div>
+        </header>
 
-        <div className="pf-card-body">
-          {/* Full name + email */}
-          <div className="pf-field-row">
-            <div className="pf-field">
-              <span className="pf-label">
-                <User size={14} /> Full Name
-              </span>
-              {editing ? (
+        {/* 1. Profile Information Card */}
+        <section className="pf-card">
+          <div className="pf-card-header">
+            <h2 className="pf-card-title">Profile Information</h2>
+          </div>
+
+          <div className="pf-info-layout">
+            <div className="pf-avatar-box">
+              <div className="pf-avatar-circle">
+                {initials || "YS"}
+              </div>
+              <button type="button" className="pf-avatar-cam-btn" title="Upload Photo" aria-label="Upload Photo">
+                <Camera size={14} />
+              </button>
+            </div>
+
+            <div className="pf-fields-grid">
+              <div className="pf-field-group">
+                <label className="pf-label">Full Name</label>
                 <input
                   className="pf-input"
                   value={form.full_name}
-                  placeholder="Your full name"
+                  placeholder="Full Name"
                   onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
                 />
-              ) : loading ? (
-                <div className="pf-skeleton" style={{ width: "70%" }} />
-              ) : (
-                <span className={`pf-value${!displayName ? " empty" : ""}`}>
-                  {displayName || "Not set"}
-                </span>
-              )}
-            </div>
+              </div>
 
-            <div className="pf-field">
-              <span className="pf-label">
-                <Mail size={14} /> Email Address
-              </span>
-              {loading ? (
-                <div className="pf-skeleton" style={{ width: "80%" }} />
-              ) : (
-                <span className="pf-value" style={{ color: "#475b8f" }}>{displayEmail}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Grade + school */}
-          <div className="pf-field-row">
-            <div className="pf-field">
-              <span className="pf-label">
-                <GraduationCap size={14} /> Grade / Level
-              </span>
-              {editing ? (
-                <select
-                  className="pf-select"
-                  value={form.grade}
-                  onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
-                >
-                  <option value="">Select grade…</option>
-                  {GRADE_OPTIONS.map((g) => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
-                </select>
-              ) : loading ? (
-                <div className="pf-skeleton" style={{ width: "50%" }} />
-              ) : (
-                <span className={`pf-value${!form.grade ? " empty" : ""}`}>
-                  {form.grade || "Not set"}
-                </span>
-              )}
-            </div>
-
-            <div className="pf-field">
-              <span className="pf-label">
-                <Building2 size={14} /> School
-              </span>
-              {editing ? (
+              <div className="pf-field-group">
+                <label className="pf-label">Email</label>
                 <input
                   className="pf-input"
-                  value={form.school}
-                  placeholder="Your school name"
-                  onChange={(e) => setForm((f) => ({ ...f, school: e.target.value }))}
+                  value={displayEmail}
+                  disabled
+                  placeholder="Email"
                 />
-              ) : loading ? (
-                <div className="pf-skeleton" style={{ width: "60%" }} />
-              ) : (
-                <span className={`pf-value${!form.school ? " empty" : ""}`}>
-                  {form.school || "Not set"}
-                </span>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* Bio */}
-          <div className="pf-field full">
-            <span className="pf-label">
-              <BookOpen size={14} /> Bio
-            </span>
-            {editing ? (
-              <textarea
-                className="pf-textarea"
-                value={form.bio}
-                placeholder="Tell us a little about yourself…"
-                onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
-              />
-            ) : loading ? (
-              <div className="pf-skeleton" style={{ height: 40, width: "90%" }} />
-            ) : (
-              <span className={`pf-value${!form.bio ? " empty" : ""}`}>
-                {form.bio || "No bio yet."}
-              </span>
-            )}
-          </div>
+              <div className="pf-field-group half-row">
+                <div>
+                  <label className="pf-label">Grade / Level</label>
+                  <select
+                    className="pf-select"
+                    value={form.grade}
+                    onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
+                  >
+                    <option value="">Select Grade</option>
+                    {GRADE_OPTIONS.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="pf-label">School</label>
+                  <input
+                    className="pf-input"
+                    value={form.school}
+                    placeholder="Your School"
+                    onChange={(e) => setForm((f) => ({ ...f, school: e.target.value }))}
+                  />
+                </div>
+              </div>
 
-          {/* Learning goals */}
-          <div className="pf-field full">
-            <span className="pf-label">
-              <Target size={14} /> Learning Goals
-            </span>
-            {loading ? (
-              <div className="pf-skeleton" style={{ height: 32, width: "50%" }} />
-            ) : (
-              <div className="pf-tags">
-                {form.learning_goals.map((goal) => (
-                  <span className="pf-tag" key={goal}>
-                    {goal}
-                    {editing && (
-                      <button className="pf-tag-remove" onClick={() => removeGoal(goal)} aria-label={`Remove ${goal}`}>
-                        <X size={12} />
+              <div className="pf-field-group">
+                <label className="pf-label">Bio</label>
+                <textarea
+                  className="pf-textarea"
+                  value={form.bio}
+                  placeholder="Tell us about yourself..."
+                  onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+                />
+              </div>
+
+              <div className="pf-field-group">
+                <label className="pf-label">Learning Goals</label>
+                <div className="pf-tags-list">
+                  {form.learning_goals.map((g) => (
+                    <span className="pf-tag-item" key={g}>
+                      {g}
+                      <button
+                        type="button"
+                        className="pf-tag-remove-btn"
+                        onClick={() => removeGoal(g)}
+                        aria-label={`Remove goal ${g}`}
+                      >
+                        <X size={13} />
                       </button>
-                    )}
-                  </span>
-                ))}
-                {editing && (
-                  addingGoal ? (
+                    </span>
+                  ))}
+                  {addingGoal ? (
                     <input
                       autoFocus
-                      className="pf-tag-input"
-                      placeholder="Type goal…"
+                      className="pf-input"
+                      style={{ height: 34, width: 150, padding: "0 10px", fontSize: 13 }}
+                      placeholder="Add goal..."
                       value={newGoal}
                       onChange={(e) => setNewGoal(e.target.value)}
                       onKeyDown={(e) => {
@@ -719,59 +648,76 @@ const Profile = () => {
                       onBlur={addGoal}
                     />
                   ) : (
-                    <button className="pf-tag-add" onClick={() => setAddingGoal(true)}>
-                      <Plus size={13} /> Add goal
+                    <button type="button" className="pf-add-goal-btn" onClick={() => setAddingGoal(true)}>
+                      <Plus size={13} /> Add Goal
                     </button>
-                  )
-                )}
-                {!editing && form.learning_goals.length === 0 && (
-                  <span className="pf-value empty">No goals set yet.</span>
-                )}
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {editing && (
-          <div className="pf-save-row">
-            <button className="pf-cancel-btn" onClick={handleCancel}>Cancel</button>
-            <button className="pf-save-btn" onClick={handleSave} disabled={saving}>
-              <Save size={16} />
-              {saving ? "Saving…" : "Save Changes"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Account info card (read-only) */}
-      <div className="pf-card">
-        <div className="pf-card-header">
-          <h2 className="pf-card-title">
-            <Mail size={18} color="#0054ff" />
-            Account
-          </h2>
-        </div>
-        <div className="pf-card-body">
-          <div className="pf-field-row">
-            <div className="pf-field">
-              <span className="pf-label"><Mail size={14} /> Email</span>
-              <span className="pf-value" style={{ color: "#475b8f" }}>{displayEmail}</span>
-            </div>
-            <div className="pf-field">
-              <span className="pf-label"><User size={14} /> Account Type</span>
-              <span className="pf-value">Student</span>
+              <div className="pf-save-btn-row">
+                <button
+                  type="button"
+                  className="pf-save-btn"
+                  onClick={handleSave}
+                  disabled={saving || loading}
+                >
+                  <Save size={16} />
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
             </div>
           </div>
-          <p style={{ margin: 0, fontSize: 13, color: "#94a3b8" }}>
-            To change your email or password, use the{" "}
-            <a href="/forgot-password" style={{ color: "#0054ff", textDecoration: "none", fontWeight: 600 }}>
-              password reset
-            </a>{" "}
-            flow.
-          </p>
+        </section>
+
+        {/* 2. Account Card */}
+        <section className="pf-card">
+          <div className="pf-card-header">
+            <h2 className="pf-card-title">Account</h2>
+            <p className="pf-card-desc">Manage your account settings.</p>
+          </div>
+
+          <div className="pf-account-rows">
+            <div
+              className="pf-action-row"
+              onClick={() => notif.info("Password change flow opened.")}
+            >
+              <div className="pf-action-left">
+                <div className="pf-icon-box">
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <h3 className="pf-action-title">Change Password</h3>
+                  <p className="pf-action-desc">Update your password</p>
+                </div>
+              </div>
+              <ChevronRight size={18} color="#888888" />
+            </div>
+
+            <div
+              className="pf-action-row"
+              onClick={() => notif.error("Account deletion requires confirmation.")}
+            >
+              <div className="pf-action-left">
+                <div className="pf-icon-box">
+                  <Trash2 size={18} />
+                </div>
+                <div>
+                  <h3 className="pf-action-title">Delete Account</h3>
+                  <p className="pf-action-desc">Permanently delete your account and all data</p>
+                </div>
+              </div>
+              <ChevronRight size={18} color="#888888" />
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <div className="pf-footer">
+          TutorFlow © 2025. All rights reserved.
         </div>
       </div>
-    </main>
+    </div>
   );
 };
 
