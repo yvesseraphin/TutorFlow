@@ -106,16 +106,13 @@ def forgot_password(credentials: PasswordResetRequest):
 
 @router.get("/me")
 def me(user: dict = Depends(current_user)) -> dict:
-    profile = (
-        admin_client()
-        .table("profiles")
-        .select("*")
-        .eq("id", user["id"])
-        .maybe_single()
-        .execute()
-        .data
-        or {}
-    )
+    profile = {}
+    try:
+        res = admin_client().table("profiles").select("*").eq("id", user["id"]).execute()
+        if res and res.data and len(res.data) > 0:
+            profile = res.data[0]
+    except Exception:
+        profile = {}
     return {**user, "profile": profile}
 
 

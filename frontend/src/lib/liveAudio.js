@@ -18,11 +18,14 @@ export function getOrCreateAudioContext() {
   return sharedAudioCtx;
 }
 
-export function unlockAudioContext() {
+export async function unlockAudioContext() {
   const ctx = getOrCreateAudioContext();
   if (ctx && ctx.state === "suspended") {
-    ctx.resume().catch(() => {});
+    try {
+      await ctx.resume();
+    } catch (e) {}
   }
+  return ctx;
 }
 
 // Helper to convert base64 string to Uint8Array / ArrayBuffer

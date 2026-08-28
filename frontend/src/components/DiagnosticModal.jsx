@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Brain, RotateCcw } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Activity, RotateCcw } from "lucide-react";
 import { api } from "../lib/api";
 
 export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, onComplete = null }) {
@@ -118,26 +118,23 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
           padding: "24px 32px",
           borderBottom: "1px solid #f3f4f6"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{
               width: "36px",
               height: "36px",
               borderRadius: "10px",
-              background: "#0066FF",
+              background: "#111111",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#ffffff"
             }}>
-              <Brain size={20} />
+              <Activity size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#111827" }}>
-                AI Diagnostic & Gap Assessment
+              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#111111" }}>
+                Diagnostic Check
               </h3>
-              <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
-                {targetTopic ? `Target Topic: ${targetTopic}` : "Foundational Mathematics Readiness"}
-              </p>
             </div>
           </div>
           <button
@@ -163,9 +160,9 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
         <div style={{ padding: "32px", maxHeight: "75vh", overflowY: "auto" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <Sparkles size={36} color="#0066FF" style={{ animation: "spin 2s linear infinite" }} />
+              <Sparkles size={36} color="#111111" style={{ animation: "spin 2s linear infinite" }} />
               <p style={{ marginTop: "16px", color: "#4b5563", fontWeight: "500" }}>
-                AI Teacher is crafting personalized diagnostic questions...
+                Preparing diagnostic questions...
               </p>
             </div>
           ) : report ? (
@@ -174,48 +171,48 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
               <div style={{
                 textAlign: "center",
                 padding: "24px",
-                background: "#f8fafc",
+                background: "#f9fafb",
                 borderRadius: "16px",
                 marginBottom: "24px",
-                border: "1px solid #e2e8f0"
+                border: "1px solid #e5e7eb"
               }}>
                 <div style={{
                   fontSize: "36px",
                   fontWeight: "800",
-                  color: report.overall_score >= 0.7 ? "#10b981" : "#0066FF"
+                  color: "#111111"
                 }}>
                   {Math.round(report.overall_score * 100)}%
                 </div>
-                <div style={{ fontSize: "14px", fontWeight: "600", color: "#374151", marginTop: "4px" }}>
-                  Diagnostic Accuracy ({report.total_correct}/{report.total_questions} Correct)
+                <div style={{ fontSize: "14px", fontWeight: "600", color: "#111111", marginTop: "4px" }}>
+                  Accuracy: {report.total_correct} of {report.total_questions} Correct
                 </div>
-                <p style={{ fontSize: "13px", color: "#64748b", marginTop: "8px", lineHeight: "1.5" }}>
+                <p style={{ fontSize: "13px", color: "#555555", marginTop: "8px", lineHeight: "1.5" }}>
                   {report.evaluation_summary}
                 </p>
               </div>
 
               {report.detected_gaps && report.detected_gaps.length > 0 ? (
                 <div style={{ marginBottom: "24px" }}>
-                  <h4 style={{ fontSize: "14px", fontWeight: "700", color: "#111827", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <AlertCircle size={16} color="#f59e0b" />
-                    Identified Knowledge Gaps to Strengthen:
+                  <h4 style={{ fontSize: "14px", fontWeight: "700", color: "#111111", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <AlertCircle size={16} color="#111111" />
+                    Recommended Review Topics:
                   </h4>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {report.detected_gaps.map((gap, idx) => (
                       <div key={idx} style={{
                         padding: "12px 16px",
-                        background: "#fffbeb",
-                        border: "1px solid #fef3c7",
+                        background: "#f9fafb",
+                        border: "1px solid #e5e7eb",
                         borderRadius: "12px",
                         fontSize: "13px",
-                        color: "#92400e",
+                        color: "#111111",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center"
                       }}>
                         <span style={{ fontWeight: "600" }}>{gap}</span>
-                        <span style={{ fontSize: "12px", background: "#fef3c7", padding: "4px 8px", borderRadius: "6px" }}>
-                          Foundation Review
+                        <span style={{ fontSize: "12px", background: "#111111", color: "#ffffff", padding: "4px 10px", borderRadius: "6px", fontWeight: "600" }}>
+                          Review
                         </span>
                       </div>
                     ))}
@@ -224,10 +221,10 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
               ) : (
                 <div style={{
                   padding: "16px",
-                  background: "#ecfdf5",
-                  border: "1px solid #d1fae5",
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
                   borderRadius: "12px",
-                  color: "#065f46",
+                  color: "#111111",
                   fontSize: "14px",
                   fontWeight: "600",
                   marginBottom: "24px",
@@ -235,8 +232,8 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
                   alignItems: "center",
                   gap: "8px"
                 }}>
-                  <CheckCircle2 size={18} color="#10b981" />
-                  All foundational prerequisites verified! You are ready for advanced topics.
+                  <CheckCircle2 size={18} color="#111111" />
+                  All foundational skills verified! Ready for next lessons.
                 </div>
               )}
 
@@ -264,7 +261,7 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
                     padding: "10px 24px",
                     borderRadius: "12px",
                     border: "none",
-                    background: "#0066FF",
+                    background: "#111111",
                     color: "#ffffff",
                     fontWeight: "600",
                     fontSize: "14px",
@@ -280,7 +277,7 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
             <div>
               {/* Progress Indicator */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-                <span style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em", color: "#0066FF" }}>
+                <span style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em", color: "#111111" }}>
                   Question {currentIndex + 1} of {questions.length}
                 </span>
                 <span style={{ fontSize: "12px", color: "#6b7280", background: "#f3f4f6", padding: "4px 10px", borderRadius: "8px" }}>
@@ -293,7 +290,7 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
                 <div style={{
                   width: `${((currentIndex + 1) / questions.length) * 100}%`,
                   height: "100%",
-                  background: "#0066FF",
+                  background: "#111111",
                   borderRadius: "999px",
                   transition: "width 0.3s ease"
                 }} />
@@ -321,9 +318,9 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
                       style={{
                         padding: "16px 20px",
                         borderRadius: "14px",
-                        border: isSelected ? "2px solid #0066FF" : "1px solid #e5e7eb",
-                        background: isSelected ? "#eff6ff" : "#ffffff",
-                        color: isSelected ? "#0066FF" : "#374151",
+                        border: isSelected ? "2px solid #111111" : "1px solid #e5e7eb",
+                        background: isSelected ? "#f9fafb" : "#ffffff",
+                        color: isSelected ? "#111111" : "#374151",
                         fontSize: "15px",
                         fontWeight: isSelected ? "700" : "500",
                         textAlign: "left",
@@ -335,7 +332,7 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
                       }}
                     >
                       <span>{opt}</span>
-                      {isSelected && <CheckCircle2 size={18} color="#0066FF" />}
+                      {isSelected && <CheckCircle2 size={18} color="#111111" />}
                     </button>
                   );
                 })}
@@ -350,7 +347,7 @@ export default function DiagnosticModal({ isOpen, onClose, targetTopic = null, o
                     padding: "12px 28px",
                     borderRadius: "12px",
                     border: "none",
-                    background: selectedOption ? "#0066FF" : "#e5e7eb",
+                    background: selectedOption ? "#111111" : "#e5e7eb",
                     color: selectedOption ? "#ffffff" : "#9ca3af",
                     fontWeight: "700",
                     fontSize: "15px",

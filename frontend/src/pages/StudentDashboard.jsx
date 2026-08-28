@@ -12,6 +12,7 @@ import {
   Brain,
   Sparkles,
   AlertTriangle,
+  Activity,
 } from "lucide-react";
 import { api } from "../lib/api";
 import NotificationDropdown from "../components/NotificationDropdown";
@@ -518,25 +519,31 @@ const StudentDashboard = () => {
           </div>
 
           <div className="tf-header-actions">
-            <button
-              onClick={() => setShowDiagnosticModal(true)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "10px 18px",
-                borderRadius: "12px",
-                background: "#f0f7ff",
-                border: "1px solid #cce3ff",
-                color: "#0066FF",
-                fontWeight: "700",
-                fontSize: "14px",
-                cursor: "pointer"
-              }}
-            >
-              <Brain size={18} />
-              AI Diagnostic
-            </button>
+            {!analytics?.has_completed_diagnostic && (
+              <button
+                onClick={() => setShowDiagnosticModal(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 18px",
+                  borderRadius: "12px",
+                  background: "#111111",
+                  border: "1px solid #111111",
+                  color: "#ffffff",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+                  transition: "all 0.2s ease"
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#222222")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#111111")}
+              >
+                <Activity size={18} />
+                AI Diagnostic
+              </button>
+            )}
 
             <NotificationDropdown>
               <button type="button" className="tf-bell-btn" aria-label="Notifications">
@@ -597,7 +604,7 @@ const StudentDashboard = () => {
         <section className="tf-hero-card" aria-label="Tutor AI">
           <div className="tf-hero-copy">
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-              <Sparkles size={16} color="#0066FF" />
+              <Sparkles size={16} color="#111111" />
               <p className="tf-hero-kicker" style={{ margin: 0 }}>AI Teacher Insights</p>
             </div>
             <h2 className="tf-hero-heading">{nextLessonTitle}</h2>
@@ -706,7 +713,7 @@ const StudentDashboard = () => {
         isOpen={showDiagnosticModal}
         onClose={() => setShowDiagnosticModal(false)}
         onComplete={() => {
-          // Refresh analytics after completing diagnostic
+          setAnalytics(prev => ({ ...prev, has_completed_diagnostic: true }));
           api("/analytics/dashboard").then(data => setAnalytics(data)).catch(() => {});
         }}
       />

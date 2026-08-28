@@ -7,6 +7,13 @@ from backend.services.supabase import admin_client, current_user
 router = APIRouter(prefix="/curriculum", tags=["Curriculum"])
 
 
+@router.get("")
+@router.get("/")
+def get_curriculum_root(user: dict = Depends(current_user)) -> dict:
+    from backend.curriculum import CURRICULUM
+    return {"courses": CURRICULUM}
+
+
 @router.get("/tree")
 def get_curriculum_tree(user: dict = Depends(current_user)) -> dict:
     client = admin_client()
@@ -53,3 +60,19 @@ def get_curriculum_tree(user: dict = Depends(current_user)) -> dict:
         "categories": categories,
         "total_topics": len(nodes),
     }
+
+
+@router.get("/next-lesson")
+def get_next_lesson(topic: str = "Algebra", user: dict = Depends(current_user)) -> dict:
+    from backend.curriculum import lesson_for_learner
+    client = admin_client()
+    uid = user["id"]
+    mastery_res = (
+        client.table("student_learner_model")
+        .select("topic_id,mastery_score")
+        .eq("user_id", uid)
+        .execute()
+    )
+    mastery_rows = [{"skill": r["topic_id"], "mastery": float(r.get("mastery_score", 0))} for r in (mastery_res.data or [])]
+    return lesson_for_learner(topic, mastery_rows)
+

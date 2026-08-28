@@ -3266,39 +3266,14 @@ const InteractiveWhiteboard = ({
           </div>
         ))}
 
-        {/* Lesson content overlay — driven by props */}
-        {(lessonTitle || (lessonSteps && lessonSteps.length > 0)) && (
+        {/* Whiteboard Header: Only title, no hardcoded content */}
+        {lessonTitle && (
           <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", userSelect: "none", padding: "28px 32px" }}>
-            {lessonTitle && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 16, borderBottom: "2px solid #111111", paddingBottom: 6 }}>
-                <h3 style={{ margin: 0, color: "#111111", fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em" }}>
-                  {lessonTitle}
-                </h3>
-              </div>
-            )}
-            {lessonSteps && lessonSteps.length > 0 ? (
-              <div className="equation-block">
-                {lessonSteps.map((step, idx) => (
-                  <p
-                    key={idx}
-                    style={{ textAlign: step.align || "left" }}
-                    className={step.style || ""}
-                  >
-                    {step.text}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <div className="equation-block" style={{ color: "#333333", fontSize: 17, lineHeight: 1.8 }}>
-                <p style={{ margin: "4px 0", color: "#111111", fontWeight: 600 }}>Topic: Solving Linear Equations</p>
-                <p style={{ margin: "4px 0", color: "#666666" }}>Example: Solve for <span style={{ fontFamily: "serif", fontStyle: "italic", fontWeight: 600 }}>x</span></p>
-                <div style={{ padding: "12px 18px", background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 10, display: "inline-block", margin: "8px 0" }}>
-                  <p style={{ margin: "2px 0", fontSize: 18, fontFamily: "serif", letterSpacing: 1 }}>2x + 5 = 15</p>
-                  <p style={{ margin: "2px 0", fontSize: 18, fontFamily: "serif", letterSpacing: 1 }}>2x = 10</p>
-                  <p style={{ margin: "4px 0 2px", fontSize: 18, fontFamily: "serif", fontWeight: 700, color: "#111111", border: "2px solid #111111", display: "inline-block", padding: "2px 12px", borderRadius: 6 }}>x = 5</p>
-                </div>
-              </div>
-            )}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, borderBottom: "2px solid #111111", paddingBottom: 6 }}>
+              <h3 style={{ margin: 0, color: "#111111", fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em" }}>
+                {lessonTitle}
+              </h3>
+            </div>
           </div>
         )}
 
@@ -3400,7 +3375,7 @@ const InteractiveWhiteboard = ({
   );
 };
 
-const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", lessonProgress = 0 }) => {
+const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", lessonProgress = 0, userId = "" }) => {
   const [activeRailTab, setActiveRailTab] = useState("Overview");
   const [activeTool, setActiveTool] = useState("pen");
   const [activeColor, setActiveColor] = useState("#111111");
@@ -3411,6 +3386,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const fileInputRef = useRef(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMicStreaming, setIsMicStreaming] = useState(false);
   const [studentVolume, setStudentVolume] = useState(0);
@@ -3422,7 +3398,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
   // Multi-page Whiteboard Support
   const [pages, setPages] = useState([
-    { id: 1, title: "Solving Linear Equations", subtitle: "Example 1: 2x + 5 = 15", lines: [] },
+    { id: 1, title: lessonTitle || "Interactive Whiteboard", subtitle: lessonSubtitle || "Live Workspace", lines: [] },
   ]);
   const [activePageId, setActivePageId] = useState(1);
 
@@ -3487,22 +3463,29 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     });
     recorderRef.current = recorder;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//localhost:8080/api/v1/live-tutor`;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
+    const wsUrl = apiBase.replace(/^http/, "ws") + "/live-tutor";
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       if (!isMounted) return;
-      setIsLiveConnected(true);
-      setLoadingAI(false);
+      setLoadingAI(true);
       const initTopic = lessonTitle || "Algebra";
       ws.send(
         JSON.stringify({
-          type: "text",
-          text: `Hello teacher! Please start our 1-on-1 live lesson on ${initTopic}. Greet me warmly and ask an opening question to get us started.`,
+          topic: initTopic,
+          user_id: userId,
+          type: "handshake",
         })
       );
+      try {
+        await unlockAudioContext();
+        await recorder.start();
+        if (isMounted) setIsMicStreaming(true);
+      } catch (err) {
+        console.log("Microphone ready upon user interaction:", err);
+      }
     };
 
     ws.onmessage = (event) => {
@@ -3510,17 +3493,45 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
         const msg = JSON.parse(event.data);
         if (msg.type === "ready") {
           setIsLiveConnected(true);
+          setLoadingAI(false);
+        } else if (msg.type === "reconnecting") {
+          setIsLiveConnected(false);
+          setLoadingAI(true);
+          const t = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          setChatMessages((prev) => [
+            ...prev,
+            { sender: "ai", text: "Reconnecting to AI tutor... please wait.", time: t },
+          ]);
+        } else if (msg.type === "error") {
+          setIsLiveConnected(false);
+          setLoadingAI(false);
+          const errTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const errMsg = msg.message || "The AI tutor session could not start. Please try again.";
+          setChatMessages((prev) => [
+            ...prev,
+            { sender: "ai", text: `Session error: ${errMsg}`, time: errTime },
+          ]);
         } else if (msg.type === "audio" && msg.data) {
-          if (!isMuted && playerRef.current) {
+          setLoadingAI(false);
+          if (!isMutedRef.current && playerRef.current) {
             playerRef.current.playChunk(msg.data, 24000);
           }
-        } else if (msg.type === "text_delta" && msg.text) {
-          setLiveTranscript((prev) => prev + msg.text);
+        } else if ((msg.type === "text_delta" || msg.type === "text") && msg.text) {
+          setLoadingAI(false);
+          const raw = msg.text;
+          if (!raw.includes("**Acknowledge") && !raw.includes("**Plan") && !raw.includes("**Thought") && !raw.includes("**Reasoning")) {
+            setLiveTranscript((prev) => prev + raw);
+          }
         } else if (msg.type === "turn_complete") {
+          setLoadingAI(false);
           setLiveTranscript((current) => {
-            if (current.trim()) {
+            const cleaned = current
+              .replace(/\*\*[^*]+\*\*/g, "")
+              .replace(/^(Thought|Thinking|Plan|Acknowledge|Reasoning):.*/gim, "")
+              .trim();
+            if (cleaned) {
               const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-              setChatMessages((prev) => [...prev, { sender: "ai", text: current.trim(), time: now }]);
+              setChatMessages((prev) => [...prev, { sender: "ai", text: cleaned, time: now }]);
             }
             return "";
           });
@@ -3557,7 +3568,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             const hintMsg = args.hint_text || args.hint;
             if (hintMsg) {
               const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-              setChatMessages((prev) => [...prev, { sender: "ai", text: `💡 Hint: ${hintMsg}`, time: now }]);
+              setChatMessages((prev) => [...prev, { sender: "ai", text: `Hint: ${hintMsg}`, time: now }]);
             }
           } else if (name === "clear_board_annotations") {
             setAiHighlights([]);
@@ -3614,8 +3625,10 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   };
 
   const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (!isMuted && playerRef.current) {
+    const next = !isMuted;
+    isMutedRef.current = next;
+    setIsMuted(next);
+    if (next && playerRef.current) {
       playerRef.current.interrupt();
     }
   };
@@ -3637,9 +3650,13 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     }
   };
 
-  const handleSendMessage = (customText) => {
+  const handleSendMessage = async (customText) => {
     const textToSend = customText || chatInput;
     if (!textToSend.trim() && !attachedFile) return;
+
+    try {
+      await unlockAudioContext();
+    } catch (e) {}
 
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const fullText = attachedFile
@@ -3649,9 +3666,17 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     setChatMessages((prev) => [...prev, { sender: "student", text: fullText, time }]);
     if (!customText) setChatInput("");
     setAttachedFile(null);
+    setLoadingAI(true);
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "text", text: fullText }));
+    } else {
+      const errTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setChatMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "Connection lost. Please wait a moment and try again.", time: errTime },
+      ]);
+      setLoadingAI(false);
     }
   };
 
@@ -3663,7 +3688,12 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
   const formatAIText = (text) => {
     if (!text) return "";
-    return text.split("\n").map((line, i) => (
+    const cleaned = text
+      .replace(/\*\*[^*]+\*\*/g, "")
+      .replace(/^(Thought|Thinking|Plan|Acknowledge|Reasoning):.*/gim, "")
+      .trim();
+    if (!cleaned) return "";
+    return cleaned.split("\n").map((line, i) => (
       <React.Fragment key={i}>
         {line}
         <br />
@@ -4244,6 +4274,7 @@ const AIClassroom = () => {
         lessonTitle={title}
         lessonSubtitle={subtitle}
         lessonProgress={progress}
+        userId={user?.id || ""}
       />
     );
   }

@@ -25,21 +25,21 @@ def generate_diagnostic_questions(subject: str = "Mathematics", target_topic: Op
     questions = []
     default_questions_bank = {
         "Integers & Negative Numbers": {
-            "question": "What is -7 - (-12)?",
+            "question": "Calculate: -7 - (-12)",
             "options": ["-19", "-5", "5", "19"],
             "correct_answer": "5",
             "prerequisite_skill": "Signed Number Addition & Subtraction",
             "difficulty": 1,
         },
         "Order of Operations (PEMDAS)": {
-            "question": "Evaluate: 4 + 3 * (8 - 2^2)",
+            "question": "Evaluate: 4 + 3 × (8 - 2²)",
             "options": ["16", "28", "40", "12"],
             "correct_answer": "16",
             "prerequisite_skill": "Parentheses & Exponents Evaluation",
             "difficulty": 1,
         },
         "Variables & Expressions": {
-            "question": "If x = -3, evaluate the algebraic expression: 2x^2 - 4x + 1",
+            "question": "If x = -3, evaluate: 2x² - 4x + 1",
             "options": ["31", "7", "-5", "19"],
             "correct_answer": "31",
             "prerequisite_skill": "Negative Variable Substitution",

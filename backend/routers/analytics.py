@@ -201,6 +201,20 @@ def dashboard(user: dict = Depends(current_user)) -> dict:
         for r in mastery_rows
     ]
 
+    # Check if user completed a diagnostic assessment
+    try:
+        diag_check = (
+            client.table("diagnostic_assessments")
+            .select("id")
+            .eq("user_id", uid)
+            .eq("status", "completed")
+            .limit(1)
+            .execute()
+        )
+        has_completed_diagnostic = bool(diag_check.data)
+    except Exception:
+        has_completed_diagnostic = False
+
     return {
         "overall_mastery": overall_mastery,
         "mastered_count": mastered_count,
@@ -217,4 +231,148 @@ def dashboard(user: dict = Depends(current_user)) -> dict:
         "weekly_activity": weekly_activity,
         "recent_sessions": recent_sessions,
         "skill_mastery": skill_mastery_list,
+        "has_completed_diagnostic": has_completed_diagnostic,
     }
+
+
+@router.get("/notifications")
+def get_notifications(user: dict = Depends(current_user)) -> dict:
+    client = admin_client()
+    uid = user["id"]
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    notifications: List[Dict[str, Any]] = []
+
+    try:
+        # 1. Due Spaced Repetition Flashcards
+        due_cards_res = (
+            client.table("revision_flashcards")
+            .select("id,topic,next_review_at")
+            .eq("user_id", uid)
+            .lte("next_review_at", now_iso)
+            .order("next_review_at", desc=False)
+            .limit(10)
+            .execute()
+        )
+        due_cards = due_cards_res.data or []
+        if due_cards:
+            topics = list({c["topic"] for c in due_cards if c.get("topic")})
+            topic_str = ", ".join(topics[:2])
+            notifications.append({
+                "id": "flashcards-due",
+                "type": "flashcard",
+                "title": "Spaced Revision Due",
+                "desc": f"{len(due_cards)} flashcard(s) ready for review in {topic_str}.",
+                "created_at": due_cards[0].get("next_review_at") or now_iso,
+                "topic": topics[0] if topics else "Mathematics",
+                "action_url": f"/classroom?topic={topics[0]}" if topics else "/classroom",
+            })
+
+        # 2. Retention Risks from Learner Model
+        retention_res = (
+            client.table("student_learner_model")
+            .select("topic_id,mastery_score,next_review_due_at,updated_at")
+            .eq("user_id", uid)
+            .lte("next_review_due_at", now_iso)
+            .order("next_review_due_at", desc=False)
+            .limit(3)
+            .execute()
+        )
+        retention_rows = retention_res.data or []
+        for r in retention_rows:
+            notifications.append({
+                "id": f"retention-{r['topic_id']}",
+                "type": "retention",
+                "title": "Retention Alert",
+                "desc": f"Review due for {r['topic_id']} to retain your {int(float(r.get('mastery_score', 0)) * 100)}% mastery.",
+                "created_at": r.get("updated_at") or now_iso,
+                "topic": r["topic_id"],
+                "action_url": f"/classroom?topic={r['topic_id']}",
+            })
+
+        # 3. AI Learner Memories & Insights
+        memories_res = (
+            client.table("ai_learner_memories")
+            .select("id,memory_type,topic,summary,created_at")
+            .eq("user_id", uid)
+            .order("created_at", desc=True)
+            .limit(3)
+            .execute()
+        )
+        memories = memories_res.data or []
+        for m in memories:
+            m_type = m.get("memory_type", "insight").replace("_", " ").title()
+            notifications.append({
+                "id": f"mem-{m['id']}",
+                "type": "memory",
+                "title": f"AI Teacher Insight: {m_type}",
+                "desc": m.get("summary", ""),
+                "created_at": m.get("created_at") or now_iso,
+                "topic": m.get("topic", ""),
+                "action_url": f"/classroom?topic={m.get('topic', '')}" if m.get("topic") else "/classroom",
+            })
+
+        # 4. Recent Completed Tutoring Sessions
+        sessions_res = (
+            client.table("tutoring_sessions")
+            .select("id,topic,status,ai_summary,created_at")
+            .eq("user_id", uid)
+            .order("created_at", desc=True)
+            .limit(2)
+            .execute()
+        )
+        sessions = sessions_res.data or []
+        for s in sessions:
+            summary_text = s.get("ai_summary") or f"Session completed for {s['topic']}."
+            notifications.append({
+                "id": f"sess-{s['id']}",
+                "type": "session",
+                "title": f"Lesson Completed: {s['topic']}",
+                "desc": summary_text,
+                "created_at": s.get("created_at") or now_iso,
+                "topic": s.get("topic", ""),
+                "action_url": f"/classroom?topic={s.get('topic', '')}",
+            })
+
+        # 5. Diagnostic Assessments
+        diag_res = (
+            client.table("diagnostic_assessments")
+            .select("id,subject,target_topic,overall_score,detected_gaps,created_at")
+            .eq("user_id", uid)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        diagnostics = diag_res.data or []
+        for d in diagnostics:
+            gaps_count = len(d.get("detected_gaps") or [])
+            score_pct = int(float(d.get("overall_score", 0)) * 100)
+            gap_msg = f"{gaps_count} focus area(s) identified." if gaps_count > 0 else "All prerequisites verified!"
+            notifications.append({
+                "id": f"diag-{d['id']}",
+                "type": "diagnostic",
+                "title": "AI Diagnostic Summary",
+                "desc": f"Readiness Score: {score_pct}%. {gap_msg}",
+                "created_at": d.get("created_at") or now_iso,
+                "topic": d.get("target_topic", "Mathematics"),
+                "action_url": "/classroom",
+            })
+    except Exception as e:
+        # Graceful fallback if tables are empty
+        pass
+
+    # 6. Fallback if brand new user
+    if not notifications:
+        notifications.append({
+            "id": "welcome-tutorflow",
+            "type": "welcome",
+            "title": "Welcome to TutorFlow 2.0!",
+            "desc": "Take an AI Diagnostic or start your first lesson to begin building your knowledge graph.",
+            "created_at": now_iso,
+            "topic": "Getting Started",
+            "action_url": "/classroom",
+        })
+
+    return {"notifications": notifications}
+

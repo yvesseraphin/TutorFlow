@@ -115,18 +115,18 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
     missing_prereqs = learner_context.get("missing_prerequisites", [])
     past_mistakes = learner_context.get("unresolved_mistakes", [])
 
-    system_instruction_text = f"""You are TutorFlow AI, an elite, highly conversational, and warm 1-on-1 private teacher teaching the student: {profile.get('name', 'Student')}.
+    system_instruction_text = f"""You are TutorFlow AI, an elite, warm, and highly conversational 1-on-1 private teacher teaching the student: {profile.get('name', 'Student')}.
 Grade Level: {profile.get('grade', 'Senior 2')}.
 Topic: {topic}.
 Teaching Style: {profile.get('teaching_style', 'step_by_step')}.
 Missing Foundation / Prerequisites: {json.dumps(missing_prereqs)}.
 Past Misconceptions to watch: {[m.get('misconception_type') for m in past_mistakes]}.
 
-TEACHING PRINCIPLES:
-1. Speak aloud using short, natural, encouraging spoken sentences (1-3 sentences per turn).
-2. Use your tools (`write_math_equation`, `highlight_board`, `show_socratic_hint`) concurrently to write and draw on the whiteboard while explaining.
-3. If the student speaks or writes an answer, evaluate it instantly. If correct, praise and advance. If wrong, provide warm Socratic hints without giving the final answer immediately.
-4. If missing prerequisites exist, do a 1-minute foundation review first.
+STRICT TEACHING RULES:
+1. NEVER output internal thoughts, planning text, thought headers, or meta-commentary. Speak exclusively and directly to the student in natural spoken dialogue.
+2. Keep spoken replies short, natural, and encouraging (1-3 sentences per turn).
+3. Use your tools (`write_math_equation`, `highlight_board`, `show_socratic_hint`) concurrently to write and draw on the whiteboard while explaining.
+4. When the student speaks or writes an answer, evaluate it immediately. If correct, praise and advance. If wrong, give warm Socratic guidance without giving the final answer right away.
 """
 
     client = genai.Client(
@@ -147,136 +147,234 @@ TEACHING PRINCIPLES:
         tools=get_live_tools(),
     )
 
-    try:
-        async with client.aio.live.connect(
-            model="gemini-2.5-flash-native-audio-latest",
-            config=config,
-        ) as session:
-            logger.info("Connected to Gemini Multimodal Live API session")
-            await websocket.send_json({
-                "type": "ready",
-                "model": "gemini-2.5-flash-native-audio-latest",
-                "topic": topic,
-                "missing_prerequisites": missing_prereqs,
-            })
+    _state = {"client_disconnected": False}
 
-            async def client_to_gemini():
-                """Reads audio PCM, canvas frames, and student messages from browser and forwards to Gemini."""
-                try:
-                    while True:
-                        raw_data = await websocket.receive_text()
-                        msg = json.loads(raw_data)
-                        msg_type = msg.get("type")
+    MAX_GEMINI_RECONNECTS = 3
+    for _attempt in range(1, MAX_GEMINI_RECONNECTS + 1):
+        if _state["client_disconnected"]:
+            logger.info("Client disconnected. Stopping Gemini reconnect loop.")
+            break
 
-                        if msg_type == "audio":
-                            audio_b64 = msg.get("data")
-                            if audio_b64:
-                                audio_bytes = base64.b64decode(audio_b64)
-                                await session.send(
-                                    input=types.LiveClientRealtimeInput(
-                                        media_chunks=[types.Blob(data=audio_bytes, mime_type="audio/pcm;rate=16000")]
-                                    )
-                                )
-                        elif msg_type == "image":
-                            img_b64 = msg.get("data", "")
-                            if "," in img_b64:
-                                img_b64 = img_b64.split(",", 1)[1]
-                            if img_b64:
-                                img_bytes = base64.b64decode(img_b64)
-                                await session.send(
-                                    input=types.LiveClientRealtimeInput(
-                                        media_chunks=[types.Blob(data=img_bytes, mime_type="image/jpeg")]
-                                    )
-                                )
-                        elif msg_type == "text":
-                            text_content = msg.get("text", "")
-                            if text_content:
-                                await session.send(
-                                    input=types.Content(
-                                        role="user",
-                                        parts=[types.Part.from_text(text=text_content)]
-                                    ),
-                                    end_of_turn=True
-                                )
-                except WebSocketDisconnect:
-                    logger.info("Client disconnected from WebSocket (client_to_gemini)")
-                except Exception as e:
-                    logger.error(f"Error in client_to_gemini: {e}")
+        if _attempt > 1:
+            logger.info(f"Reconnecting to Gemini Live (attempt {_attempt}/{MAX_GEMINI_RECONNECTS})...")
+            try:
+                await websocket.send_json({"type": "reconnecting"})
+            except Exception:
+                break
+            await asyncio.sleep(2)
 
-            async def gemini_to_client():
-                """Reads audio chunks and tool calls from Gemini and streams them back to the student's browser."""
-                try:
-                    async for response in session.receive():
-                        server_content = response.server_content
-                        if server_content is not None:
-                            model_turn = server_content.model_turn
-                            if model_turn is not None:
-                                for part in model_turn.parts:
-                                    if part.inline_data:
-                                        audio_b64 = base64.b64encode(part.inline_data.data).decode("utf-8")
-                                        await websocket.send_json({
-                                            "type": "audio",
-                                            "data": audio_b64,
-                                            "mimeType": part.inline_data.mime_type
-                                        })
-                                    if part.text:
-                                        await websocket.send_json({
-                                            "type": "text",
-                                            "text": part.text
-                                        })
-
-                            if server_content.turn_complete:
-                                await websocket.send_json({"type": "turn_complete"})
-
-                        tool_call = response.tool_call
-                        if tool_call is not None:
-                            function_responses = []
-                            for fc in tool_call.function_calls:
-                                name = fc.name
-                                args = fc.args or {}
-                                call_id = fc.id
-
-                                logger.info(f"AI Teacher invoked tool: {name}({args})")
-
-                                # Send whiteboard action to browser UI
-                                await websocket.send_json({
-                                    "type": "whiteboard_action",
-                                    "tool": name,
-                                    "args": args,
-                                })
-
-                                function_responses.append(
-                                    types.FunctionResponse(
-                                        name=name,
-                                        id=call_id,
-                                        response={"status": "displayed_on_board"}
-                                    )
-                                )
-
-                            await session.send(
-                                input=types.LiveClientToolResponse(
-                                    function_responses=function_responses
-                                )
-                            )
-                except WebSocketDisconnect:
-                    logger.info("Client disconnected from WebSocket (gemini_to_client)")
-                except Exception as e:
-                    logger.error(f"Error in gemini_to_client: {e}")
-
-            done, pending = await asyncio.wait(
-                [
-                    asyncio.create_task(client_to_gemini()),
-                    asyncio.create_task(gemini_to_client()),
-                ],
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            for task in pending:
-                task.cancel()
-
-    except Exception as e:
-        logger.error(f"Gemini Live session failed: {e}")
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
-            await websocket.close()
-        except Exception:
-            pass
+            logger.info(f"Connecting to Gemini Live (attempt {_attempt}) model=gemini-2.0-flash-live-001 topic={topic}")
+            async with client.aio.live.connect(
+                model="gemini-2.0-flash-live-001",
+                config=config,
+            ) as session:
+                logger.info(f"Connected to Gemini Live (attempt {_attempt})")
+
+                await websocket.send_json({
+                    "type": "ready",
+                    "model": "gemini-2.0-flash-live-001",
+                    "topic": topic,
+                    "missing_prerequisites": missing_prereqs,
+                })
+
+                if _attempt == 1:
+                    kickoff_prompt = (
+                        f"You are the AI Teacher. The 1-on-1 tutoring session on '{topic}' is starting right now. "
+                        f"Greet the student warmly aloud in 1-2 spoken sentences, state today's goal, "
+                        f"and ask them a friendly starter question to invite them to speak. Do not output any thought headers."
+                    )
+                    try:
+                        logger.info("Sending kickoff turn to Gemini Live...")
+                        await session.send_client_content(
+                            turns=[types.Content(role="user", parts=[types.Part.from_text(text=kickoff_prompt)])],
+                            turn_complete=True,
+                        )
+                        logger.info("Kickoff turn sent successfully")
+                    except Exception as e:
+                        logger.error(f"Could not send kickoff: {type(e).__name__}: {e!r}", exc_info=True)
+
+                async def client_to_gemini():
+                    _background_tasks: set = set()
+                    try:
+                        while True:
+                            raw_data = await websocket.receive_text()
+                            msg = json.loads(raw_data)
+                            msg_type = msg.get("type")
+
+                            if msg_type == "audio":
+                                audio_b64 = msg.get("data")
+                                if audio_b64:
+                                    audio_bytes = base64.b64decode(audio_b64)
+                                    logger.debug(f"[AUDIO IN] {len(audio_bytes)} bytes PCM -> Gemini")
+                                    await session.send_realtime_input(
+                                        audio=types.Blob(data=audio_bytes, mime_type="audio/pcm;rate=16000")
+                                    )
+                            elif msg_type == "image" or msg_type == "canvas_frame":
+                                img_b64 = msg.get("data", "")
+                                if "," in img_b64:
+                                    img_b64 = img_b64.split(",", 1)[1]
+                                if img_b64:
+                                    img_bytes = base64.b64decode(img_b64)
+                                    logger.info(f"[CANVAS IN] {len(img_bytes)} bytes -> Gemini")
+                                    await session.send_realtime_input(
+                                        media=types.Blob(data=img_bytes, mime_type="image/jpeg")
+                                    )
+                            elif msg_type == "text":
+                                text_content = msg.get("text", "")
+                                if text_content:
+                                    logger.info(f"[CHAT IN] Student typed: '{text_content}'")
+                                    try:
+                                        await session.send_client_content(
+                                            turns=[types.Content(role="user", parts=[types.Part.from_text(text=text_content)])],
+                                            turn_complete=True,
+                                        )
+                                        logger.info("Sent chat turn to Live Audio session")
+                                    except Exception as e:
+                                        logger.error(f"Error sending text to Gemini: {type(e).__name__}: {e!r}", exc_info=True)
+
+                                    async def stream_chat_reply(prompt_text):
+                                        try:
+                                            chat_prompt = (
+                                                f"You are TutorFlow AI, an elite and friendly 1-on-1 tutor for {profile.get('name', 'the student')} "
+                                                f"in the subject: '{topic}'. "
+                                                f"The student says: '{prompt_text}'. "
+                                                f"Give a clear, warm, step-by-step 1-3 sentence response directly to the student. "
+                                                f"Do NOT include any internal thoughts, reasoning headers, or meta text."
+                                            )
+                                            logger.info("Generating text chat stream via gemini-2.5-flash...")
+                                            chat_stream = await client.aio.models.generate_content_stream(
+                                                model="gemini-2.5-flash",
+                                                contents=chat_prompt,
+                                            )
+                                            async for chunk in chat_stream:
+                                                if chunk.text:
+                                                    await websocket.send_json({"type": "text", "text": chunk.text})
+                                            await websocket.send_json({"type": "turn_complete"})
+                                            logger.info("Chat text stream completed")
+                                        except Exception as err:
+                                            logger.error(f"Chat reply error: {type(err).__name__}: {err!r}", exc_info=True)
+
+                                    task = asyncio.create_task(stream_chat_reply(text_content))
+                                    _background_tasks.add(task)
+                                    task.add_done_callback(_background_tasks.discard)
+                            elif msg_type == "tool_response":
+                                tool_name = msg.get("name")
+                                call_id = msg.get("call_id")
+                                tool_res = msg.get("result", {"status": "ok"})
+                                logger.info(f"[TOOL RES] tool={tool_name}, call_id={call_id}")
+                                if tool_name and call_id:
+                                    await session.send_tool_response(
+                                        function_responses=[
+                                            types.FunctionResponse(
+                                                name=tool_name,
+                                                id=call_id,
+                                                response=tool_res,
+                                            )
+                                        ]
+                                    )
+                    except WebSocketDisconnect:
+                        _state["client_disconnected"] = True
+                        logger.info("Client disconnected (client_to_gemini)")
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as e:
+                        logger.error(f"client_to_gemini error: {type(e).__name__}: {e!r}", exc_info=True)
+
+                async def gemini_to_client():
+                    try:
+                        audio_chunk_count = 0
+                        async for response in session.receive():
+                            server_content = response.server_content
+                            if server_content is not None:
+                                model_turn = server_content.model_turn
+                                if model_turn is not None:
+                                    for part in model_turn.parts:
+                                        if part.inline_data:
+                                            audio_chunk_count += 1
+                                            audio_b64 = base64.b64encode(part.inline_data.data).decode("utf-8")
+                                            await websocket.send_json({
+                                                "type": "audio",
+                                                "data": audio_b64,
+                                                "mimeType": part.inline_data.mime_type,
+                                            })
+                                            if audio_chunk_count % 20 == 0:
+                                                logger.info(f"[AUDIO OUT] {audio_chunk_count} chunks sent")
+
+                                if server_content.turn_complete:
+                                    logger.info(f"[TURN COMPLETE] {audio_chunk_count} audio chunks total")
+                                    await websocket.send_json({"type": "audio_turn_complete"})
+
+                            tool_call = response.tool_call
+                            if tool_call is not None:
+                                function_responses = []
+                                for fc in tool_call.function_calls:
+                                    name = fc.name
+                                    args = fc.args or {}
+                                    call_id = fc.id
+                                    logger.info(f"AI Teacher tool: {name}({args})")
+                                    await websocket.send_json({
+                                        "type": "whiteboard_action",
+                                        "tool": name,
+                                        "args": args,
+                                    })
+                                    function_responses.append(
+                                        types.FunctionResponse(
+                                            name=name,
+                                            id=call_id,
+                                            response={"status": "displayed_on_board"},
+                                        )
+                                    )
+                                await session.send_tool_response(function_responses=function_responses)
+                        logger.warning("Gemini session.receive() ended")
+                    except WebSocketDisconnect:
+                        _state["client_disconnected"] = True
+                        logger.info("Client disconnected (gemini_to_client)")
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as e:
+                        logger.error(f"gemini_to_client error: {type(e).__name__}: {e!r}", exc_info=True)
+                        try:
+                            await websocket.send_json({
+                                "type": "error",
+                                "message": f"AI stream error: {type(e).__name__}: {str(e) or 'unknown'}",
+                            })
+                        except Exception:
+                            pass
+
+                client_task = asyncio.create_task(client_to_gemini())
+                gemini_task = asyncio.create_task(gemini_to_client())
+
+                done, pending = await asyncio.wait(
+                    [client_task, gemini_task],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+
+                if gemini_task in done and not _state["client_disconnected"]:
+                    logger.info(f"Gemini session ended (attempt {_attempt}) - will reconnect if attempts remain.")
+
+        except Exception as e:
+            err_str = f"{type(e).__name__}: {str(e) or repr(e)}"
+            logger.error(f"Gemini session error (attempt {_attempt}): {err_str}", exc_info=True)
+            if not _state["client_disconnected"]:
+                if _attempt < MAX_GEMINI_RECONNECTS:
+                    try:
+                        await websocket.send_json({"type": "reconnecting"})
+                    except Exception:
+                        break
+                else:
+                    try:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": f"Could not maintain AI connection after {MAX_GEMINI_RECONNECTS} attempts. {err_str}",
+                        })
+                    except Exception:
+                        pass
+
