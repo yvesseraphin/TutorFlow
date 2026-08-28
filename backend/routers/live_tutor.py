@@ -164,16 +164,16 @@ STRICT TEACHING RULES:
             await asyncio.sleep(2)
 
         try:
-            logger.info(f"Connecting to Gemini Live (attempt {_attempt}) model=gemini-2.0-flash-live-001 topic={topic}")
+            logger.info(f"Connecting to Gemini Live (attempt {_attempt}) model=gemini-3.1-flash-live-preview topic={topic}")
             async with client.aio.live.connect(
-                model="gemini-2.0-flash-live-001",
+                model="gemini-3.1-flash-live-preview",
                 config=config,
             ) as session:
                 logger.info(f"Connected to Gemini Live (attempt {_attempt})")
 
                 await websocket.send_json({
                     "type": "ready",
-                    "model": "gemini-2.0-flash-live-001",
+                    "model": "gemini-3.1-flash-live-preview",
                     "topic": topic,
                     "missing_prerequisites": missing_prereqs,
                 })
