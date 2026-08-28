@@ -9,9 +9,13 @@ import {
   Play,
   Target,
   TrendingUp,
+  Brain,
+  Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { api } from "../lib/api";
 import NotificationDropdown from "../components/NotificationDropdown";
+import DiagnosticModal from "../components/DiagnosticModal";
 
 const styles = `
   .tf-dashboard-wrapper {
@@ -429,8 +433,8 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [analytics, setAnalytics] = useState(null);
-  const [nextLesson, setNextLesson] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
 
   useEffect(() => {
     // Load cached user immediately
@@ -441,12 +445,10 @@ const StudentDashboard = () => {
 
     Promise.all([
       api("/analytics/dashboard"),
-      api("/curriculum/next-lesson?topic=Algebra"),
       api("/auth/me"),
     ])
-      .then(([analyticsData, lessonData, meData]) => {
+      .then(([analyticsData, meData]) => {
         setAnalytics(analyticsData);
-        setNextLesson(lessonData);
         if (meData) {
           setUser(meData);
           localStorage.setItem("user", JSON.stringify(meData));
@@ -462,15 +464,18 @@ const StudentDashboard = () => {
 
   const overallMastery = analytics ? Math.round((analytics.overall_mastery || 0) * 100) : 0;
   const accuracy = analytics ? Math.round((analytics.accuracy || 0) * 100) : 0;
-  const streak = analytics?.current_streak ?? 0;
-  const sessionsCompleted = analytics?.sessions_completed ?? 0;
+  const streak = analytics?.streak_days ?? analytics?.current_streak ?? 0;
+  const sessionsCompleted = analytics?.completed_sessions ?? analytics?.sessions_completed ?? 0;
+  const nextLessonTitle = analytics?.next_recommended_lesson || "Linear Equations (One-Step)";
+  const teacherGreeting = analytics?.ai_teacher_greeting || "I'm your AI Teacher, ready to guide you step-by-step through your mathematics journey.";
+  const retentionRisks = analytics?.retention_risk_topics || [];
 
   const quickCards = [
     {
       icon: Target,
-      value: nextLesson ? "1" : "0",
-      title: "Today's Focus",
-      desc: "Start a lesson",
+      value: `${analytics?.mastered_count || 0}/${analytics?.total_topics || 10}`,
+      title: "Topics Mastered",
+      desc: "Knowledge graph status",
     },
     {
       icon: TrendingUp,
@@ -482,13 +487,13 @@ const StudentDashboard = () => {
       icon: CheckCircle2,
       value: `${accuracy}%`,
       title: "Accuracy",
-      desc: "Correct answers",
+      desc: "Problem solving accuracy",
     },
     {
       icon: Flame,
       value: `${streak}`,
       title: "Daily Streak",
-      desc: "Consecutive days",
+      desc: "Consecutive days active",
     },
     {
       icon: Calendar,
@@ -509,10 +514,30 @@ const StudentDashboard = () => {
         <header className="tf-header">
           <div>
             <h1 className="tf-welcome-title">Hello{firstName ? `, ${firstName}` : ""}!</h1>
-            <p className="tf-welcome-subtitle">Tutor AI is here to help you learn and grow.</p>
+            <p className="tf-welcome-subtitle">Your AI Personal Teacher is active and tracking your progress.</p>
           </div>
 
           <div className="tf-header-actions">
+            <button
+              onClick={() => setShowDiagnosticModal(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 18px",
+                borderRadius: "12px",
+                background: "#f0f7ff",
+                border: "1px solid #cce3ff",
+                color: "#0066FF",
+                fontWeight: "700",
+                fontSize: "14px",
+                cursor: "pointer"
+              }}
+            >
+              <Brain size={18} />
+              AI Diagnostic
+            </button>
+
             <NotificationDropdown>
               <button type="button" className="tf-bell-btn" aria-label="Notifications">
                 <Bell size={22} strokeWidth={2} />
@@ -528,22 +553,67 @@ const StudentDashboard = () => {
           </div>
         </header>
 
+        {/* ── Spaced Repetition Retention Warning Banner ── */}
+        {retentionRisks.length > 0 && (
+          <div style={{
+            background: "#fffbeb",
+            border: "1px solid #fef3c7",
+            borderRadius: "16px",
+            padding: "16px 24px",
+            marginBottom: "24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "16px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <AlertTriangle size={22} color="#d97706" />
+              <div>
+                <strong style={{ color: "#92400e", fontSize: "14px" }}>Spaced Repetition Review Due:</strong>
+                <span style={{ color: "#b45309", fontSize: "14px", marginLeft: "6px" }}>
+                  {retentionRisks.map(r => r.topic).join(", ")}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate(`/classroom?topic=${encodeURIComponent(retentionRisks[0].topic)}`)}
+              style={{
+                padding: "8px 16px",
+                background: "#d97706",
+                color: "#ffffff",
+                borderRadius: "10px",
+                border: "none",
+                fontSize: "13px",
+                fontWeight: "700",
+                cursor: "pointer"
+              }}
+            >
+              Quick 2-Min Review
+            </button>
+          </div>
+        )}
+
         {/* ── Tutor AI Hero Card ── */}
         <section className="tf-hero-card" aria-label="Tutor AI">
           <div className="tf-hero-copy">
-            <p className="tf-hero-kicker">Tutor AI</p>
-            <h2 className="tf-hero-heading">Ready to learn something new?</h2>
-            <p className="tf-hero-desc">Let's continue your learning journey.</p>
-            <button
-              className="tf-primary-btn"
-              type="button"
-              onClick={() => navigate("/classroom")}
-            >
-              <span className="tf-play-pill-icon">
-                <Play size={10} fill="currentColor" strokeWidth={0} />
-              </span>
-              Start Learning
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+              <Sparkles size={16} color="#0066FF" />
+              <p className="tf-hero-kicker" style={{ margin: 0 }}>AI Teacher Insights</p>
+            </div>
+            <h2 className="tf-hero-heading">{nextLessonTitle}</h2>
+            <p className="tf-hero-desc">{teacherGreeting}</p>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <button
+                className="tf-primary-btn"
+                type="button"
+                onClick={() => navigate(`/classroom?topic=${encodeURIComponent(nextLessonTitle)}`)}
+              >
+                <span className="tf-play-pill-icon">
+                  <Play size={10} fill="currentColor" strokeWidth={0} />
+                </span>
+                Start Lesson with AI Teacher
+              </button>
+            </div>
           </div>
 
           <div className="tf-whiteboard-card" aria-hidden="true">
@@ -631,6 +701,15 @@ const StudentDashboard = () => {
           )}
         </section>
       </div>
+
+      <DiagnosticModal
+        isOpen={showDiagnosticModal}
+        onClose={() => setShowDiagnosticModal(false)}
+        onComplete={() => {
+          // Refresh analytics after completing diagnostic
+          api("/analytics/dashboard").then(data => setAnalytics(data)).catch(() => {});
+        }}
+      />
     </main>
   );
 };

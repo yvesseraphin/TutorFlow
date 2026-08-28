@@ -3529,8 +3529,11 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             playerRef.current.interrupt();
           }
           setIsSpeaking(false);
-        } else if (msg.type === "tool_call") {
-          const { call_id, name, args } = msg;
+        } else if (msg.type === "whiteboard_action" || msg.type === "tool_call") {
+          const name = msg.tool || msg.name;
+          const args = msg.args || {};
+          const call_id = msg.call_id;
+
           if (name === "highlight_board") {
             const newHl = {
               id: Date.now(),
@@ -3541,20 +3544,27 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               label: args.label || "Check this",
             };
             setAiHighlights((prev) => [...prev, newHl]);
-          } else if (name === "write_board_hint") {
+          } else if (name === "write_board_hint" || name === "write_math_equation") {
             const newHint = {
               id: Date.now(),
-              text: args.text,
-              x: args.x || 15,
-              y: args.y || 15,
+              text: args.latex || args.text,
+              x: args.x || 20,
+              y: args.y || 20,
+              explanation: args.explanation,
             };
             setAiHints((prev) => [...prev, newHint]);
+          } else if (name === "show_socratic_hint") {
+            const hintMsg = args.hint_text || args.hint;
+            if (hintMsg) {
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setChatMessages((prev) => [...prev, { sender: "ai", text: `💡 Hint: ${hintMsg}`, time: now }]);
+            }
           } else if (name === "clear_board_annotations") {
             setAiHighlights([]);
             setAiHints([]);
           }
 
-          if (ws.readyState === WebSocket.OPEN) {
+          if (call_id && ws.readyState === WebSocket.OPEN) {
             ws.send(
               JSON.stringify({
                 type: "tool_response",

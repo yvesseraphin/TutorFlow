@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
-from backend.routers import analytics, auth_supabase, curriculum, live_tutor, profile
+from backend.routers import analytics, auth_supabase, curriculum, diagnostics, flashcards, live_tutor, profile
 
 app = FastAPI(
     title=settings.project_name,
@@ -29,6 +29,8 @@ app.include_router(auth_supabase.router, prefix=settings.api_v1_str)
 app.include_router(live_tutor.router, prefix=settings.api_v1_str)
 app.include_router(analytics.router, prefix=settings.api_v1_str)
 app.include_router(curriculum.router, prefix=settings.api_v1_str)
+app.include_router(diagnostics.router, prefix=settings.api_v1_str)
+app.include_router(flashcards.router, prefix=settings.api_v1_str)
 app.include_router(profile.router, prefix=settings.api_v1_str)
 
 
