@@ -10,6 +10,11 @@ class ProfileUpdate(BaseModel):
     full_name: str | None = Field(default=None, max_length=120)
     grade: str | None = None
     school: str | None = None
+    curriculum: str | None = None
+    preferred_teaching_style: str | None = None
+    learning_pace: str | None = None
+    voice_preference: str | None = None
+    language_preference: str | None = None
     bio: str | None = Field(default=None, max_length=500)
     learning_goals: list[str] | None = None
     avatar_url: str | None = None

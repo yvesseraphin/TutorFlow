@@ -6,6 +6,7 @@ import { supabase } from './lib/supabase';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
+import AuthCallback from './pages/AuthCallback';
 import StudentDashboard from './pages/StudentDashboard';
 import AIClassroom from './pages/AIClassroom';
 import Profile from './pages/Profile';
@@ -105,6 +106,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<StudentDashboard />} />
