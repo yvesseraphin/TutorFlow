@@ -3600,7 +3600,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             ]);
             setChatMessages((prev) => [
               ...prev,
-              { sender: "ai", text: `💡 **AI Teaching Strategy Switched**: *${nextStrategy}* (${reason})`, time: now },
+              { sender: "ai", text: `[Strategy Adaptation] **AI Teaching Strategy Switched**: *${nextStrategy}* (${reason})`, time: now },
             ]);
           } else if (name === "report_misconception") {
             const misc = {
@@ -3634,7 +3634,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             ]);
             setChatMessages((prev) => [
               ...prev,
-              { sender: "ai", text: `🎓 **Teach-Back Challenge**: ${args.prompt}`, time: now },
+              { sender: "ai", text: `[Teach-Back Challenge] ${args.prompt}`, time: now },
             ]);
           } else if (name === "highlight_board") {
             const newHl = {
