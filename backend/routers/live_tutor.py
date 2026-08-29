@@ -428,6 +428,16 @@ NATURAL HUMAN TEACHER GUIDELINES:
                                         logger.info("Sent text turn directly into Gemini Live session")
                                     except Exception as e:
                                         logger.error(f"Error sending text turn to live session: {e}")
+                            elif msg_type == "interrupt":
+                                logger.info("[CHAT IN] Student triggered interrupt")
+                                try:
+                                    # Send an empty user turn to interrupt the model's generation
+                                    await session.send_client_content(
+                                        turns=[],
+                                        turn_complete=True,
+                                    )
+                                except Exception as e:
+                                    logger.error(f"Error sending interrupt to live session: {e}")
                             elif msg_type == "tool_response":
                                 tool_name = msg.get("name")
                                 call_id = msg.get("call_id")

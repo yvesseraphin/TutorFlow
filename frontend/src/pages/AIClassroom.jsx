@@ -4013,18 +4013,18 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             { sender: "ai", text: `Session error: ${errMsg}`, time: errTime },
           ]);
         } else if (msg.type === "audio" && msg.data) {
-          setLoadingAI(false);
+          setLoadingAI((prev) => (prev ? false : prev));
           if (!isMutedRef.current && playerRef.current) {
             playerRef.current.playChunk(msg.data, 24000);
           }
         } else if ((msg.type === "text_delta" || msg.type === "text") && msg.text) {
-          setLoadingAI(false);
+          setLoadingAI((prev) => (prev ? false : prev));
           const raw = msg.text;
           if (!raw.includes("**Acknowledge") && !raw.includes("**Plan") && !raw.includes("**Thought") && !raw.includes("**Reasoning")) {
             setLiveTranscript((prev) => prev + raw);
           }
         } else if (msg.type === "turn_complete" || msg.type === "audio_turn_complete") {
-          setLoadingAI(false);
+          setLoadingAI((prev) => (prev ? false : prev));
           setLiveTranscript((current) => {
             const cleaned = current
               .replace(/\*\*[^*]+\*\*/g, "")
