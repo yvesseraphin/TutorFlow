@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Stage, Layer, Line } from "react-konva";
 import { api } from "../lib/api";
@@ -116,29 +116,7 @@ const sortOptions = [
   { value: "level", label: "Level" },
 ];
 
-const sortSubjects = (sortBy) => {
-  const availableSubjects = subjects.filter((subject) => !subject.comingSoon);
-  const comingSoonSubjects = subjects.filter((subject) => subject.comingSoon);
 
-  const sorted = [...availableSubjects].sort((a, b) => {
-    switch (sortBy) {
-      case "progress-desc":
-        return b.progress - a.progress;
-      case "progress-asc":
-        return a.progress - b.progress;
-      case "lessons-desc":
-        return b.lessons - a.lessons;
-      case "name":
-        return a.name.localeCompare(b.name);
-      case "level":
-        return a.level.localeCompare(b.level);
-      default:
-        return subjects.indexOf(a) - subjects.indexOf(b);
-    }
-  });
-
-  return [...sorted, ...comingSoonSubjects];
-};
 
 const styles = `
   .lessons-page {
@@ -4139,45 +4117,60 @@ const AIClassroom = () => {
   const [nextLessonData, setNextLessonData] = useState(null);
   const [liveLesson, setLiveLesson] = useState(false);
   const [sortBy, setSortBy] = useState("recent");
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
+  const fetchSubjects = useCallback(() => {
     setLoadingSubjects(true);
+    setLoadError(false);
+
     Promise.all([
       api("/curriculum").catch(() => null),
       api("/analytics/dashboard").catch(() => null),
     ]).then(([currData, analyticsData]) => {
-      if (currData?.courses) {
+      if (currData?.courses && Object.keys(currData.courses).length > 0) {
         const masteryMap = {};
         if (analyticsData?.skill_mastery) {
-          analyticsData.skill_mastery.forEach(sm => {
+          analyticsData.skill_mastery.forEach((sm) => {
             masteryMap[sm.skill] = sm.mastery;
           });
         }
 
-        const dynamicSubjects = Object.keys(currData.courses).map(courseName => {
+        const dynamicSubjects = Object.keys(currData.courses).map((courseName) => {
           const lessonsList = currData.courses[courseName] || [];
           let totalMastery = 0;
           let countedSkills = 0;
 
-          lessonsList.forEach(les => {
-            (les.skills || []).forEach(sk => {
+          lessonsList.forEach((les) => {
+            (les.skills || []).forEach((sk) => {
               if (sk in masteryMap) {
                 totalMastery += masteryMap[sk];
                 countedSkills++;
+              } else {
+                const matchingKey = Object.keys(masteryMap).find(
+                  (k) =>
+                    k.toLowerCase() === sk.toLowerCase() ||
+                    sk.toLowerCase().includes(k.toLowerCase()) ||
+                    k.toLowerCase().includes(sk.toLowerCase())
+                );
+                if (matchingKey) {
+                  totalMastery += masteryMap[matchingKey];
+                  countedSkills++;
+                }
               }
             });
           });
 
           const realProgress = countedSkills > 0 ? Math.round((totalMastery / countedSkills) * 100) : 0;
-          const matchingIcon = (courseName.includes("Algebra") && !courseName.includes("Pre"))
-            ? Calculator
-            : courseName.includes("Functions")
+          const matchingIcon =
+            courseName.includes("Algebra") && !courseName.includes("Pre")
+              ? Calculator
+              : courseName.includes("Functions")
               ? FunctionSquare
               : courseName.includes("Geometry")
-                ? Shapes
-                : courseName.includes("Statistics")
-                  ? BarChart3
-                  : Divide;
+              ? Shapes
+              : courseName.includes("Statistics")
+              ? BarChart3
+              : Divide;
 
           const details = getSubjectDetails(courseName);
 
@@ -4186,36 +4179,16 @@ const AIClassroom = () => {
             description: details.cardDescription,
             detailDescription: details.detailDescription,
             progress: realProgress,
-            lessons: lessonsList.length * 3,
+            lessons: lessonsList.length,
             level: "Intermediate",
             icon: matchingIcon,
             lessonsList,
           };
         });
 
-        const mockSubject = {
-          name: "Algebra",
-          description: "Build strong foundations in algebra.",
-          detailDescription: "Master variables, expressions, combining like terms, and solving linear equations step by step.",
-          progress: 68,
-          lessons: 12,
-          level: "Intermediate",
-          icon: Calculator,
-          lessonsList: [
-            { title: "Solving Multi-Step Linear Equations", duration: "15 min", completed: true },
-            { title: "Graphing Lines & Slope-Intercept Form", duration: "20 min", completed: true },
-            { title: "Systems of Linear Equations", duration: "25 min", completed: false },
-            { title: "Inequalities & Absolute Values", duration: "20 min", completed: false },
-          ],
-        };
-
-        if (dynamicSubjects.length === 0) {
-          dynamicSubjects.push(mockSubject);
-        }
-
         dynamicSubjects.push({
           name: "More Subjects",
-          description: "Coming soon.",
+          description: "Stay tuned for more subjects.",
           progress: null,
           lessons: null,
           level: null,
@@ -4225,36 +4198,40 @@ const AIClassroom = () => {
 
         setSubjectsList(dynamicSubjects);
       } else {
-        setSubjectsList([
-          {
-            name: "Algebra",
-            description: "Build strong foundations in algebra.",
-            detailDescription: "Master variables, expressions, combining like terms, and solving linear equations step by step.",
-            progress: 68,
-            lessons: 12,
-            level: "Intermediate",
-            icon: Calculator,
-            lessonsList: [
-              { title: "Solving Multi-Step Linear Equations", duration: "15 min", completed: true },
-              { title: "Graphing Lines & Slope-Intercept Form", duration: "20 min", completed: true },
-              { title: "Systems of Linear Equations", duration: "25 min", completed: false },
-              { title: "Inequalities & Absolute Values", duration: "20 min", completed: false },
-            ],
-          },
-          {
-            name: "More Subjects",
-            description: "Coming soon.",
-            progress: null,
-            lessons: null,
-            level: null,
-            icon: MoreHorizontal,
-            comingSoon: true,
-          },
-        ]);
+        setSubjectsList([]);
+        setLoadError(true);
       }
       setLoadingSubjects(false);
     });
   }, []);
+
+  useEffect(() => {
+    fetchSubjects();
+  }, [fetchSubjects]);
+
+  const sortedSubjects = useMemo(() => {
+    const available = subjectsList.filter((s) => !s.comingSoon);
+    const comingSoon = subjectsList.filter((s) => s.comingSoon);
+
+    const sorted = [...available].sort((a, b) => {
+      switch (sortBy) {
+        case "progress-desc":
+          return (b.progress || 0) - (a.progress || 0);
+        case "progress-asc":
+          return (a.progress || 0) - (b.progress || 0);
+        case "lessons-desc":
+          return (b.lessons || 0) - (a.lessons || 0);
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "level":
+          return (a.level || "").localeCompare(b.level || "");
+        default:
+          return 0;
+      }
+    });
+
+    return [...sorted, ...comingSoon];
+  }, [subjectsList, sortBy]);
 
   useEffect(() => {
     if (selectedSubject && !selectedSubject.comingSoon) {
@@ -4372,10 +4349,21 @@ const AIClassroom = () => {
                   Objectives
                 </h3>
                 <ul className="objectives-list">
-                  <li>Understand foundational algebraic terminology and operations.</li>
-                  <li>Solve multi-step linear equations and inequalities with confidence.</li>
-                  <li>Analyze graphs, slope, and linear relations on a Cartesian plane.</li>
-                  <li>Apply mathematical problem-solving strategies in guided interactive exercises.</li>
+                  {(() => {
+                    const allOutcomes = selectedSubject.lessonsList?.flatMap((les) => les.outcomes || []) || [];
+                    if (allOutcomes.length > 0) {
+                      return allOutcomes.slice(0, 5).map((outcome, idx) => (
+                        <li key={idx}>{outcome}</li>
+                      ));
+                    }
+                    return (
+                      <>
+                        <li>Master foundational concepts and operations in {selectedSubject.name}.</li>
+                        <li>Solve multi-step problems with AI Socratic guidance.</li>
+                        <li>Apply mathematical problem-solving strategies in guided interactive exercises.</li>
+                      </>
+                    );
+                  })()}
                 </ul>
               </div>
 
@@ -4386,11 +4374,84 @@ const AIClassroom = () => {
                   Skills You’ll Learn
                 </h3>
                 <div className="skills-tags-wrap">
-                  {["Linear Equations", "Graphing & Slope", "Combining Like Terms", "Inequalities", "Systems of Equations", "Algebraic Modeling"].map((skill) => (
-                    <span key={skill} className="skill-badge">{skill}</span>
-                  ))}
+                  {(() => {
+                    const allSkills = Array.from(
+                      new Set(
+                        selectedSubject.lessonsList?.flatMap((les) =>
+                          (les.skills || []).map((s) => s.replace(/^[^:]+:\s*/, ""))
+                        ) || []
+                      )
+                    );
+                    if (allSkills.length > 0) {
+                      return allSkills.map((skill) => (
+                        <span key={skill} className="skill-badge">
+                          {skill}
+                        </span>
+                      ));
+                    }
+                    return [selectedSubject.name, "Problem Solving", "Mathematical Reasoning", "Step-by-Step Proofs"].map(
+                      (skill) => (
+                        <span key={skill} className="skill-badge">
+                          {skill}
+                        </span>
+                      )
+                    );
+                  })()}
                 </div>
               </div>
+
+              {/* Course Modules */}
+              {selectedSubject.lessonsList && selectedSubject.lessonsList.length > 0 && (
+                <div className="detail-section-block">
+                  <h3 className="detail-section-title">
+                    <BookOpen size={18} />
+                    Course Modules ({selectedSubject.lessonsList.length})
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {selectedSubject.lessonsList.map((les, lIdx) => (
+                      <div
+                        key={lIdx}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "12px 16px",
+                          background: "#fafafa",
+                          borderRadius: "12px",
+                          border: "1px solid #ebebeb",
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: "14.5px", color: "#111111" }}>
+                            {lIdx + 1}. {les.title}
+                          </div>
+                          {les.outcomes && les.outcomes.length > 0 && (
+                            <div style={{ fontSize: "13px", color: "#666666", marginTop: "2px" }}>
+                              {les.outcomes[0]}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setLiveLesson(true)}
+                          style={{
+                            padding: "6px 14px",
+                            background: "#111111",
+                            color: "#ffffff",
+                            borderRadius: "8px",
+                            border: 0,
+                            fontSize: "12.5px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Start
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Resources */}
               <div className="detail-section-block">
@@ -4576,8 +4637,61 @@ const AIClassroom = () => {
                 Loading subjects…
               </p>
             </div>
+          ) : sortedSubjects.length === 0 ? (
+            <div
+              className="tf-empty-wrap"
+              style={{
+                gridColumn: "1 / -1",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "260px",
+                padding: "48px 16px",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "#f5f5f5",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "16px",
+                }}
+              >
+                <BookOpen size={28} color="#111111" />
+              </div>
+              <h3 style={{ margin: "0 0 6px", fontSize: "18px", fontWeight: 700, color: "#111111" }}>
+                {loadError ? "Could not load subjects" : "No subjects available"}
+              </h3>
+              <p style={{ margin: "0 0 16px", fontSize: "14px", color: "#666666", maxWidth: "340px" }}>
+                {loadError
+                  ? "We could not connect to the curriculum service. Please check your connection and try again."
+                  : "Curriculum courses will appear here once configured."}
+              </p>
+              <button
+                type="button"
+                onClick={fetchSubjects}
+                style={{
+                  padding: "10px 22px",
+                  background: "#111111",
+                  color: "#ffffff",
+                  borderRadius: "12px",
+                  border: 0,
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Retry
+              </button>
+            </div>
           ) : (
-            subjectsList.map((subject) => (
+            sortedSubjects.map((subject) => (
               <SubjectCard subject={subject} key={subject.name} onOpen={setSelectedSubject} />
             ))
           )}

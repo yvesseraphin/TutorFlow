@@ -519,8 +519,9 @@ const StudentDashboard = () => {
           </div>
 
           <div className="tf-header-actions">
-            {!analytics?.has_completed_diagnostic && (
+            {!loading && analytics && !analytics.has_completed_diagnostic && (
               <button
+                type="button"
                 onClick={() => setShowDiagnosticModal(true)}
                 style={{
                   display: "flex",

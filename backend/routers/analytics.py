@@ -139,18 +139,18 @@ def dashboard(user: dict = Depends(current_user)) -> dict:
             check_date -= timedelta(days=1)
 
     # AI Personalized Greeting & Context
-    recent_topic = sessions[0]["topic"] if sessions else "Linear Equations"
+    recent_topic = sessions[0]["topic"] if sessions else None
     if mistakes:
         latest_mistake = mistakes[0]
         greeting_text = (
-            f"Welcome back, {first_name}! Last time we worked on {recent_topic}. "
-            f"I noticed a small stumbling block with {latest_mistake.get('misconception_type', 'sign rules')}. "
+            f"Welcome back, {first_name}! Last time we worked on {recent_topic or 'mathematics'}. "
+            f"I noticed a small stumbling block with {latest_mistake.get('misconception_type', 'key concepts')}. "
             f"Let's do a quick 2-minute warmup to master it!"
         )
     elif memories:
         greeting_text = (
-            f"Great to see you again, {first_name}! {memories[0].get('summary', 'Ready for your next learning milestone?')} "
-            f"Let's jump straight into {recent_topic}."
+            f"Great to see you again, {first_name}! {memories[0].get('summary', 'Ready for your next learning milestone?')}"
+            + (f" Let's jump straight into {recent_topic}." if recent_topic else " Let's continue your learning path.")
         )
     else:
         greeting_text = (
@@ -201,7 +201,7 @@ def dashboard(user: dict = Depends(current_user)) -> dict:
         for r in mastery_rows
     ]
 
-    # Check if user completed a diagnostic assessment
+    # Check if user completed a diagnostic assessment or has existing mastery records
     try:
         diag_check = (
             client.table("diagnostic_assessments")
@@ -211,9 +211,9 @@ def dashboard(user: dict = Depends(current_user)) -> dict:
             .limit(1)
             .execute()
         )
-        has_completed_diagnostic = bool(diag_check.data)
+        has_completed_diagnostic = bool(diag_check.data) or any(float(r.get("mastery_score", 0)) > 0 for r in mastery_rows)
     except Exception:
-        has_completed_diagnostic = False
+        has_completed_diagnostic = bool(mastery_rows)
 
     return {
         "overall_mastery": overall_mastery,
