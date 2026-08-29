@@ -16,7 +16,6 @@ from backend.services.ai_learner import (
     record_mastery_attempt,
     save_learner_memory,
 )
-from backend.services.lesson_planner import generate_personalized_lesson_plan
 from backend.services.supabase import admin_client
 
 logger = logging.getLogger("tutorflow.live_tutor")
@@ -29,11 +28,11 @@ def get_live_tools():
             function_declarations=[
                 types.FunctionDeclaration(
                     name="write_math_equation",
-                    description="Write a formatted LaTeX mathematical equation or step onto the whiteboard in real time.",
+                    description="Write a formatted LaTeX mathematical equation or step onto the whiteboard in handwriting style.",
                     parameters=types.Schema(
                         type=types.Type.OBJECT,
                         properties={
-                            "latex": types.Schema(type=types.Type.STRING, description="The LaTeX string, e.g. '2x + 4 = 10' or 'x = 3'"),
+                            "latex": types.Schema(type=types.Type.STRING, description="The LaTeX or equation string, e.g. '2x + 4 = 10' or 'x = 3'"),
                             "x": types.Schema(type=types.Type.NUMBER, description="X coordinate percentage (0-100)"),
                             "y": types.Schema(type=types.Type.NUMBER, description="Y coordinate percentage (0-100)"),
                             "explanation": types.Schema(type=types.Type.STRING, description="Brief note explaining this step"),
@@ -109,7 +108,7 @@ def get_live_tools():
                                 type=types.Type.STRING,
                                 description="'high_energy_socratic', 'normal_guided', 'fatigued_visual_microsteps'"
                             ),
-                            "reason": types.Schema(type=types.Type.STRING, description="Observed signal (e.g. 'Student hesitated on multi-step arithmetic, switching to micro-steps')"),
+                            "reason": types.Schema(type=types.Type.STRING, description="Observed signal"),
                         },
                         required=["energy_mode", "reason"],
                     ),
@@ -190,7 +189,7 @@ def get_live_tools():
                                 description="State: 'Mastered', 'Understands', 'Partially understands', 'Needs reinforcement', 'Misconception detected', 'Prerequisite gap detected', 'Uncertain'"
                             ),
                             "concept": types.Schema(type=types.Type.STRING, description="Concept assessed"),
-                            "confidence_delta": types.Schema(type=types.Type.NUMBER, description="Mastery delta (e.g. 0.15 for mastery, -0.1 for struggle)"),
+                            "confidence_delta": types.Schema(type=types.Type.NUMBER, description="Mastery delta"),
                         },
                         required=["state", "concept"],
                     ),
@@ -247,54 +246,47 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
         await websocket.close()
         return
 
-    # Parse initial handshake / initialization message
+    # Parse initial handshake
     try:
         init_raw = await websocket.receive_text()
         init_data = json.loads(init_raw)
-        topic = init_data.get("topic", "Linear Equations")
+        topic = init_data.get("topic", "Algebra")
         user_id = init_data.get("user_id", "")
         cognitive_mode = init_data.get("cognitive_mode", "normal")
     except Exception:
-        topic = "Linear Equations"
+        topic = "Algebra"
         user_id = ""
         cognitive_mode = "normal"
 
-    # Load student's AI Learner profile and dynamic lesson plan
+    # Load student's AI Learner profile
     learner_context = get_student_learner_context(user_id=user_id, topic=topic, cognitive_mode=cognitive_mode) if user_id else {}
     profile = learner_context.get("profile", {})
     missing_prereqs = learner_context.get("missing_prerequisites", [])
     past_mistakes = learner_context.get("unresolved_mistakes", [])
     effective_strategies = learner_context.get("effective_strategies", [])
-    student_name = profile.get("name") or "Student"
+    student_full_name = profile.get("name") or "there"
+    first_name = student_full_name.split()[0] if student_full_name and student_full_name != "Student" else ""
     canonical_topic = learner_context.get("topic", topic)
 
-    system_instruction_text = f"""You are TutorFlow AI, an elite, warm, highly adaptive 1-on-1 private teacher teaching the student: {student_name}.
-Grade Level: {profile.get('grade', '9th Grade')}.
+    system_instruction_text = f"""You are TutorFlow AI, a warm, patient, and highly adaptive 1-on-1 private teacher.
 Topic: {canonical_topic}.
-Active Cognitive Energy Mode: {cognitive_mode}.
-Known Missing Prerequisites: {json.dumps(missing_prereqs)}.
-Past Misconceptions to watch for: {[m.get('misconception_type') for m in past_mistakes]}.
-Proven Past Effective Strategies: {effective_strategies[:2]}.
+Grade Level: {profile.get('grade', '9th Grade')}.
+Cognitive Mode: {cognitive_mode}.
+Missing Prerequisites: {json.dumps(missing_prereqs)}.
+Past Misconceptions: {[m.get('misconception_type') for m in past_mistakes]}.
 
-TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
-1. START WARMLY: Greet {student_name} with excitement. Introduce {canonical_topic} with an intuitive 1-sentence real-world analogy.
-2. GENERATIVE UI & WHITEBOARD:
-   - Use `display_interactive_balance_scale` to display visual balance scales when explaining equations.
-   - Use `animate_step_transformation` when moving terms or inverting signs.
-   - Use `write_math_equation` and `highlight_board` proactively so the board stays synchronized with your voice in real time.
-3. MULTI-AGENT PROTÉGÉ EFFECT (TEACHING THE PEER):
-   - At appropriate milestones, use `trigger_ai_peer_challenge` to introduce virtual peer student 'Alex' who makes a common mistake.
-   - Invite {student_name} to teach and correct Alex. When {student_name} explains it, praise them for mastering the concept!
-4. COGNITIVE ENERGY & BURNOUT ADAPTATION:
-   - If {student_name} appears fatigued, struggles repeatedly, or asks for simple explanations, call `adapt_cognitive_load` ('fatigued_visual_microsteps'), slow down, and switch to lightweight visual analogies.
-5. REAL-TIME STRATEGY SHIFT:
-   - Call `switch_teaching_strategy` whenever shifting between Visual Intuition, Concrete Analogy, Step-by-Step Decomposition, Socratic Guided Discovery, Protégé Peer Teaching, and Teach-Back Verification.
-6. MISCONCEPTION DIAGNOSIS:
-   - When the student makes an error, NEVER simply say "wrong". Call `report_misconception` to diagnose the exact reasoning break, explain WHY it happened, and switch strategy immediately.
-7. UNDERSTANDING & REFLECTION:
-   - Call `record_understanding_state` when mastery changes.
-   - Call `save_teacher_reflection` when an effective teaching strategy breakthrough occurs.
-8. CONCISE & SPOKEN: Keep spoken turns short (1-3 sentences per turn). No markdown headers or thoughts in speech.
+NATURAL HUMAN TEACHER GUIDELINES:
+1. TALK LIKE A REAL HUMAN TEACHER: Be warm, encouraging, conversational, and direct. Keep spoken turns concise (1-3 sentences).
+2. DO NOT SPAM THE STUDENT'S NAME: Greet them naturally at the start (e.g. 'Hey {first_name or "there"}'), but DO NOT repeat their name in every response. Address them naturally as 'you'. Never start sentences with their full name.
+3. NEVER EXPOSE INTERNAL TAGS: Never speak or output internal labels like 'Thought:', '[Strategy Adaptation]', 'Reasoning:', or raw JSON.
+4. WHITEBOARD INTEGRATION:
+   - When explaining an equation or when the student asks you to write, ALWAYS call `write_math_equation` or `display_interactive_balance_scale` so your handwriting appears on the board.
+   - If the student draws or writes on their board, reference what you see on their board directly.
+5. PEDAGOGICAL STRATEGY SHIFT:
+   - Call `switch_teaching_strategy` when shifting between Visual Intuition, Concrete Analogy, Step-by-Step, Socratic, Protégé, or Teach-Back.
+   - Call `report_misconception` when diagnosing a root error.
+   - Call `trigger_ai_peer_challenge` to have the student teach peer 'Alex'.
+   - Call `adapt_cognitive_load` if the student is tired or overwhelmed.
 """
 
     client = genai.Client(
@@ -320,11 +312,9 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
     MAX_GEMINI_RECONNECTS = 3
     for _attempt in range(1, MAX_GEMINI_RECONNECTS + 1):
         if _state["client_disconnected"]:
-            logger.info("Client disconnected. Stopping Gemini reconnect loop.")
             break
 
         if _attempt > 1:
-            logger.info(f"Reconnecting to Gemini Live (attempt {_attempt}/{MAX_GEMINI_RECONNECTS})...")
             try:
                 await websocket.send_json({"type": "reconnecting"})
             except Exception:
@@ -332,7 +322,6 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
             await asyncio.sleep(2)
 
         try:
-            logger.info(f"Connecting to Gemini Live (attempt {_attempt}) model=gemini-3.1-flash-live-preview topic={canonical_topic}")
             async with client.aio.live.connect(
                 model="gemini-3.1-flash-live-preview",
                 config=config,
@@ -348,20 +337,19 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                 })
 
                 if _attempt == 1:
+                    greeting_target = first_name if first_name else "there"
                     kickoff_prompt = (
-                        f"You are the AI Teacher. The 1-on-1 session on '{canonical_topic}' is starting right now. "
-                        f"Greet {student_name} warmly in 1-2 spoken sentences, give a simple intuitive 1-sentence hook for {canonical_topic}, "
-                        f"and warmly invite them to say 'Ready' or 'Let's go' to begin."
+                        f"You are the AI Teacher starting a live 1-on-1 session on '{canonical_topic}'. "
+                        f"Greet the student ({greeting_target}) warmly in 1-2 spoken sentences, give a simple intuitive 1-sentence hook for {canonical_topic}, "
+                        f"and warmly ask if they are ready to jump in. Keep it natural."
                     )
                     try:
-                        logger.info("Sending kickoff turn to Gemini Live...")
                         await session.send_client_content(
                             turns=[types.Content(role="user", parts=[types.Part.from_text(text=kickoff_prompt)])],
                             turn_complete=True,
                         )
-                        logger.info("Kickoff turn sent successfully")
                     except Exception as e:
-                        logger.error(f"Could not send kickoff: {type(e).__name__}: {e!r}", exc_info=True)
+                        logger.error(f"Could not send kickoff: {e}")
 
                 async def client_to_gemini():
                     _background_tasks: set = set()
@@ -375,7 +363,6 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                                 audio_b64 = msg.get("data")
                                 if audio_b64:
                                     audio_bytes = base64.b64decode(audio_b64)
-                                    logger.debug(f"[AUDIO IN] {len(audio_bytes)} bytes PCM -> Gemini")
                                     await session.send_realtime_input(
                                         audio=types.Blob(data=audio_bytes, mime_type="audio/pcm;rate=16000")
                                     )
@@ -385,42 +372,43 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                                     img_b64 = img_b64.split(",", 1)[1]
                                 if img_b64:
                                     img_bytes = base64.b64decode(img_b64)
-                                    logger.info(f"[CANVAS IN] {len(img_bytes)} bytes -> Gemini")
                                     await session.send_realtime_input(
                                         media=types.Blob(data=img_bytes, mime_type="image/jpeg")
                                     )
                             elif msg_type == "text":
                                 text_content = msg.get("text", "")
                                 if text_content:
-                                    logger.info(f"[CHAT IN] Student typed: '{text_content}'")
                                     try:
                                         await session.send_client_content(
                                             turns=[types.Content(role="user", parts=[types.Part.from_text(text=text_content)])],
                                             turn_complete=True,
                                         )
-                                        logger.info("Sent chat turn to Live Audio session")
                                     except Exception as e:
-                                        logger.error(f"Error sending text to Gemini: {type(e).__name__}: {e!r}", exc_info=True)
+                                        logger.error(f"Error sending text turn to live session: {e}")
 
                                     async def stream_chat_reply(prompt_text):
+                                        if _state["client_disconnected"]:
+                                            return
                                         try:
                                             chat_prompt = (
-                                                f"You are TutorFlow AI, an elite adaptive 1-on-1 teacher for {student_name} "
-                                                f"in the topic: '{canonical_topic}'. "
-                                                f"The student says or asks: '{prompt_text}'. "
-                                                f"Give a clear, warm, step-by-step 1-3 sentence response directly to the student. "
-                                                f"Do NOT include internal thoughts or headers."
+                                                f"You are TutorFlow AI, a warm 1-on-1 private teacher teaching topic: '{canonical_topic}'. "
+                                                f"The student says: '{prompt_text}'. "
+                                                f"Give a clear, natural, helpful 1-3 sentence response directly to the student. "
+                                                f"Do NOT include internal thoughts, labels, or repeated name greetings."
                                             )
                                             chat_stream = await client.aio.models.generate_content_stream(
                                                 model=settings.gemini_model,
                                                 contents=chat_prompt,
                                             )
                                             async for chunk in chat_stream:
+                                                if _state["client_disconnected"]:
+                                                    break
                                                 if chunk.text:
                                                     await websocket.send_json({"type": "text", "text": chunk.text})
-                                            await websocket.send_json({"type": "turn_complete"})
+                                            if not _state["client_disconnected"]:
+                                                await websocket.send_json({"type": "turn_complete"})
                                         except Exception as err:
-                                            logger.error(f"Chat reply error: {type(err).__name__}: {err!r}", exc_info=True)
+                                            logger.debug(f"Chat reply stream finished/handled: {err}")
 
                                     task = asyncio.create_task(stream_chat_reply(text_content))
                                     _background_tasks.add(task)
@@ -441,15 +429,13 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                                     )
                     except WebSocketDisconnect:
                         _state["client_disconnected"] = True
-                        logger.info("Client disconnected (client_to_gemini)")
                     except asyncio.CancelledError:
                         raise
                     except Exception as e:
-                        logger.error(f"client_to_gemini error: {type(e).__name__}: {e!r}", exc_info=True)
+                        logger.error(f"client_to_gemini error: {e}")
 
                 async def gemini_to_client():
                     try:
-                        audio_chunk_count = 0
                         async for response in session.receive():
                             server_content = response.server_content
                             if server_content is not None:
@@ -457,18 +443,14 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                                 if model_turn is not None:
                                     for part in model_turn.parts:
                                         if part.inline_data:
-                                            audio_chunk_count += 1
                                             audio_b64 = base64.b64encode(part.inline_data.data).decode("utf-8")
                                             await websocket.send_json({
                                                 "type": "audio",
                                                 "data": audio_b64,
                                                 "mimeType": part.inline_data.mime_type,
                                             })
-                                            if audio_chunk_count % 20 == 0:
-                                                logger.info(f"[AUDIO OUT] {audio_chunk_count} chunks sent")
 
                                 if server_content.turn_complete:
-                                    logger.info(f"[TURN COMPLETE] {audio_chunk_count} audio chunks total")
                                     await websocket.send_json({"type": "audio_turn_complete"})
 
                             tool_call = response.tool_call
@@ -478,16 +460,13 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                                     name = fc.name
                                     args = fc.args or {}
                                     call_id = fc.id
-                                    logger.info(f"AI Teacher tool: {name}({args})")
 
-                                    # Notify UI via whiteboard action
                                     await websocket.send_json({
                                         "type": "whiteboard_action",
                                         "tool": name,
                                         "args": args,
                                     })
 
-                                    # Execute background persistence based on pedagogical tool
                                     if user_id:
                                         try:
                                             if name == "report_misconception":
@@ -495,7 +474,7 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                                                     user_id=user_id,
                                                     topic=canonical_topic,
                                                     problem_context=args.get("explanation", ""),
-                                                    student_response="Spoken/drawn attempt in live lesson",
+                                                    student_response="Live lesson interaction",
                                                     correct_response="",
                                                     misconception_type=args.get("misconception_type", "Conceptual Gap"),
                                                     root_cause=args.get("root_cause", args.get("explanation", "")),
@@ -521,26 +500,8 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                                                     summary=f"Effective Strategy: {eff_strat}. Notes: {notes}",
                                                     confidence=0.95,
                                                 )
-                                            elif name == "trigger_ai_peer_challenge":
-                                                save_learner_memory(
-                                                    user_id=user_id,
-                                                    memory_type="preference",
-                                                    topic=canonical_topic,
-                                                    summary=f"Protégé Challenge initiated with peer {args.get('peer_name')}: {args.get('misconception_targeted')}",
-                                                    confidence=0.9,
-                                                )
-                                            elif name == "switch_teaching_strategy":
-                                                strat = args.get("strategy", "Visual Intuition")
-                                                reason = args.get("reason", "Adapting to learner progress")
-                                                save_learner_memory(
-                                                    user_id=user_id,
-                                                    memory_type="preference",
-                                                    topic=canonical_topic,
-                                                    summary=f"Strategy switched to {strat}: {reason}",
-                                                    confidence=0.85,
-                                                )
                                         except Exception as db_err:
-                                            logger.warning(f"Background persistence error for tool {name}: {db_err}")
+                                            logger.warning(f"DB persistence error for tool {name}: {db_err}")
 
                                     function_responses.append(
                                         types.FunctionResponse(
@@ -550,21 +511,12 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                                         )
                                     )
                                 await session.send_tool_response(function_responses=function_responses)
-                        logger.warning("Gemini session.receive() ended")
                     except WebSocketDisconnect:
                         _state["client_disconnected"] = True
-                        logger.info("Client disconnected (gemini_to_client)")
                     except asyncio.CancelledError:
                         raise
                     except Exception as e:
-                        logger.error(f"gemini_to_client error: {type(e).__name__}: {e!r}", exc_info=True)
-                        try:
-                            await websocket.send_json({
-                                "type": "error",
-                                "message": f"AI stream error: {type(e).__name__}: {str(e) or 'unknown'}",
-                            })
-                        except Exception:
-                            pass
+                        logger.error(f"gemini_to_client error: {e}")
 
                 client_task = asyncio.create_task(client_to_gemini())
                 gemini_task = asyncio.create_task(gemini_to_client())
@@ -581,23 +533,5 @@ TUTORFLOW ADVANCED PEDAGOGICAL AI LOOP:
                     except (asyncio.CancelledError, Exception):
                         pass
 
-                if gemini_task in done and not _state["client_disconnected"]:
-                    logger.info(f"Gemini session ended (attempt {_attempt}) - will reconnect if attempts remain.")
-
         except Exception as e:
-            err_str = f"{type(e).__name__}: {str(e) or repr(e)}"
-            logger.error(f"Gemini session error (attempt {_attempt}): {err_str}", exc_info=True)
-            if not _state["client_disconnected"]:
-                if _attempt < MAX_GEMINI_RECONNECTS:
-                    try:
-                        await websocket.send_json({"type": "reconnecting"})
-                    except Exception:
-                        break
-                else:
-                    try:
-                        await websocket.send_json({
-                            "type": "error",
-                            "message": f"Could not maintain AI connection after {MAX_GEMINI_RECONNECTS} attempts. {err_str}",
-                        })
-                    except Exception:
-                        pass
+            logger.error(f"Gemini session error: {e}")

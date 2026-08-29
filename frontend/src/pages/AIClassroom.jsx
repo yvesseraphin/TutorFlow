@@ -3266,31 +3266,49 @@ const InteractiveWhiteboard = ({
           </div>
         ))}
 
-        {/* AI Live Teacher Hint Tooltip */}
+        {/* AI Live Teacher Handwriting on Whiteboard */}
         {aiHints.map((hint, idx) => (
           <div
             key={hint.id || idx}
             style={{
               position: "absolute",
-              left: `${hint.x || 10}%`,
-              top: `${hint.y || 10}%`,
-              background: "#111111",
-              color: "#ffffff",
-              padding: "8px 14px",
-              borderRadius: 10,
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
-              fontSize: 14,
-              fontWeight: 600,
+              left: `${Math.min(hint.x || 15, 75)}%`,
+              top: `${Math.min(hint.y || 20, 75)}%`,
+              color: "#1e3a8a",
+              fontFamily: '"Caveat", "Kalam", cursive, sans-serif',
+              fontSize: "clamp(24px, 3.2vw, 38px)",
+              fontWeight: 700,
+              lineHeight: 1.2,
+              letterSpacing: "0.02em",
               zIndex: 7,
               pointerEvents: "none",
               display: "flex",
-              alignItems: "center",
-              gap: 8,
-              border: "1px solid rgba(255,255,255,0.15)",
+              flexDirection: "column",
+              gap: 4,
+              textShadow: "0 0 1px rgba(30, 58, 138, 0.4)",
             }}
           >
-            <Sparkles size={16} />
-            <span>{hint.text}</span>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ borderBottom: "2.5px solid rgba(37, 99, 235, 0.4)", paddingBottom: 2 }}>
+                {hint.text}
+              </span>
+            </div>
+            {hint.explanation && (
+              <span
+                style={{
+                  fontFamily: "Outfit, sans-serif",
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  color: "#475569",
+                  background: "rgba(241, 245, 249, 0.9)",
+                  padding: "2px 8px",
+                  borderRadius: 6,
+                  width: "fit-content",
+                }}
+              >
+                {hint.explanation}
+              </span>
+            )}
           </div>
         ))}
 
@@ -3597,10 +3615,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             setAdaptiveTimeline((prev) => [
               ...prev,
               { time: now, strategy: nextStrategy, description: reason, type: "strategy" },
-            ]);
-            setChatMessages((prev) => [
-              ...prev,
-              { sender: "ai", text: `[Strategy Adaptation] **AI Teaching Strategy Switched**: *${nextStrategy}* (${reason})`, time: now },
             ]);
           } else if (name === "report_misconception") {
             const misc = {

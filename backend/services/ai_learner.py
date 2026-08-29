@@ -402,7 +402,7 @@ def save_learner_memory(
 
     payload = {
         "user_id": user_id,
-        "session_id": session_id,
+        "source_session_id": session_id,
         "memory_type": memory_type,
         "topic": canonical_topic,
         "summary": summary,
