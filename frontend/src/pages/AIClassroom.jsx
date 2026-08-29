@@ -4100,6 +4100,77 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   );
 };
 
+const buildSubjectsList = (courses, skillMastery = []) => {
+  if (!courses || Object.keys(courses).length === 0) return [];
+  const masteryMap = {};
+  skillMastery.forEach((sm) => {
+    masteryMap[sm.skill] = sm.mastery;
+  });
+
+  const dynamicSubjects = Object.keys(courses).map((courseName) => {
+    const lessonsList = courses[courseName] || [];
+    let totalMastery = 0;
+    let countedSkills = 0;
+
+    lessonsList.forEach((les) => {
+      (les.skills || []).forEach((sk) => {
+        if (sk in masteryMap) {
+          totalMastery += masteryMap[sk];
+          countedSkills++;
+        } else {
+          const matchingKey = Object.keys(masteryMap).find(
+            (k) =>
+              k.toLowerCase() === sk.toLowerCase() ||
+              sk.toLowerCase().includes(k.toLowerCase()) ||
+              k.toLowerCase().includes(sk.toLowerCase())
+          );
+          if (matchingKey) {
+            totalMastery += masteryMap[matchingKey];
+            countedSkills++;
+          }
+        }
+      });
+    });
+
+    const realProgress = countedSkills > 0 ? Math.round((totalMastery / countedSkills) * 100) : 0;
+    const matchingIcon =
+      courseName.includes("Algebra") && !courseName.includes("Pre")
+        ? Calculator
+        : courseName.includes("Functions")
+        ? FunctionSquare
+        : courseName.includes("Geometry")
+        ? Shapes
+        : courseName.includes("Statistics")
+        ? BarChart3
+        : Divide;
+
+    const details = getSubjectDetails(courseName);
+
+    return {
+      name: courseName,
+      description: details.cardDescription,
+      detailDescription: details.detailDescription,
+      progress: realProgress,
+      lessons: lessonsList.length,
+      level: "Intermediate",
+      icon: matchingIcon,
+      lessonsList,
+    };
+  });
+
+  dynamicSubjects.push({
+    name: "More Subjects",
+    description: "Stay tuned for more subjects.",
+    progress: null,
+    lessons: null,
+    level: null,
+    icon: MoreHorizontal,
+    comingSoon: true,
+  });
+
+  return dynamicSubjects;
+};
+
 const AIClassroom = () => {
   const navigate = useNavigate();
   const [user] = useState(() => {
@@ -4111,8 +4182,21 @@ const AIClassroom = () => {
     }
   });
   const firstName = user?.full_name?.split(" ")[0] || "Student";
-  const [subjectsList, setSubjectsList] = useState([]);
-  const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [subjectsList, setSubjectsList] = useState(() => {
+    try {
+      const cachedCurr = JSON.parse(localStorage.getItem("tutorflow_cached_curriculum") || "null");
+      const cachedAnalytics = JSON.parse(localStorage.getItem("tutorflow_cached_analytics") || "null");
+      if (cachedCurr?.courses) {
+        return buildSubjectsList(cachedCurr.courses, cachedAnalytics?.skill_mastery || []);
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+  const [loadingSubjects, setLoadingSubjects] = useState(() => {
+    return !localStorage.getItem("tutorflow_cached_curriculum");
+  });
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [nextLessonData, setNextLessonData] = useState(null);
   const [liveLesson, setLiveLesson] = useState(false);
@@ -4120,7 +4204,9 @@ const AIClassroom = () => {
   const [loadError, setLoadError] = useState(false);
 
   const fetchSubjects = useCallback(() => {
-    setLoadingSubjects(true);
+    if (!localStorage.getItem("tutorflow_cached_curriculum")) {
+      setLoadingSubjects(true);
+    }
     setLoadError(false);
 
     Promise.all([
@@ -4128,78 +4214,17 @@ const AIClassroom = () => {
       api("/analytics/dashboard").catch(() => null),
     ]).then(([currData, analyticsData]) => {
       if (currData?.courses && Object.keys(currData.courses).length > 0) {
-        const masteryMap = {};
-        if (analyticsData?.skill_mastery) {
-          analyticsData.skill_mastery.forEach((sm) => {
-            masteryMap[sm.skill] = sm.mastery;
-          });
+        localStorage.setItem("tutorflow_cached_curriculum", JSON.stringify(currData));
+        if (analyticsData) {
+          localStorage.setItem("tutorflow_cached_analytics", JSON.stringify(analyticsData));
         }
-
-        const dynamicSubjects = Object.keys(currData.courses).map((courseName) => {
-          const lessonsList = currData.courses[courseName] || [];
-          let totalMastery = 0;
-          let countedSkills = 0;
-
-          lessonsList.forEach((les) => {
-            (les.skills || []).forEach((sk) => {
-              if (sk in masteryMap) {
-                totalMastery += masteryMap[sk];
-                countedSkills++;
-              } else {
-                const matchingKey = Object.keys(masteryMap).find(
-                  (k) =>
-                    k.toLowerCase() === sk.toLowerCase() ||
-                    sk.toLowerCase().includes(k.toLowerCase()) ||
-                    k.toLowerCase().includes(sk.toLowerCase())
-                );
-                if (matchingKey) {
-                  totalMastery += masteryMap[matchingKey];
-                  countedSkills++;
-                }
-              }
-            });
-          });
-
-          const realProgress = countedSkills > 0 ? Math.round((totalMastery / countedSkills) * 100) : 0;
-          const matchingIcon =
-            courseName.includes("Algebra") && !courseName.includes("Pre")
-              ? Calculator
-              : courseName.includes("Functions")
-              ? FunctionSquare
-              : courseName.includes("Geometry")
-              ? Shapes
-              : courseName.includes("Statistics")
-              ? BarChart3
-              : Divide;
-
-          const details = getSubjectDetails(courseName);
-
-          return {
-            name: courseName,
-            description: details.cardDescription,
-            detailDescription: details.detailDescription,
-            progress: realProgress,
-            lessons: lessonsList.length,
-            level: "Intermediate",
-            icon: matchingIcon,
-            lessonsList,
-          };
-        });
-
-        dynamicSubjects.push({
-          name: "More Subjects",
-          description: "Stay tuned for more subjects.",
-          progress: null,
-          lessons: null,
-          level: null,
-          icon: MoreHorizontal,
-          comingSoon: true,
-        });
-
-        setSubjectsList(dynamicSubjects);
+        const subjects = buildSubjectsList(currData.courses, analyticsData?.skill_mastery || []);
+        setSubjectsList(subjects);
       } else {
-        setSubjectsList([]);
-        setLoadError(true);
+        if (!localStorage.getItem("tutorflow_cached_curriculum")) {
+          setSubjectsList([]);
+          setLoadError(true);
+        }
       }
       setLoadingSubjects(false);
     });

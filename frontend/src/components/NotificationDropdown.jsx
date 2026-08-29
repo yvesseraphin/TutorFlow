@@ -240,7 +240,14 @@ function getIconForType(type) {
 export const NotificationDropdown = ({ children }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const cached = localStorage.getItem("tutorflow_cached_notifications");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [readIds, setReadIds] = useState(() => {
     try {
       const stored = localStorage.getItem("tutorflow_read_notifications");
@@ -258,6 +265,7 @@ export const NotificationDropdown = ({ children }) => {
         const res = await api("/analytics/notifications");
         if (res?.notifications) {
           setNotifications(res.notifications);
+          localStorage.setItem("tutorflow_cached_notifications", JSON.stringify(res.notifications));
         }
       } catch (err) {
         console.error("Failed to load notifications:", err);

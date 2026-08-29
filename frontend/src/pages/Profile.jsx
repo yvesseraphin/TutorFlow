@@ -422,17 +422,43 @@ const GRADE_OPTIONS = [
 
 const Profile = () => {
   const notif = useNotification();
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(() => {
+    try {
+      const cached = localStorage.getItem("tutorflow_cached_profile");
+      if (cached) return JSON.parse(cached);
+      const user = localStorage.getItem("user");
+      return user ? JSON.parse(user) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem("tutorflow_cached_profile");
+  });
   const [saving, setSaving] = useState(false);
 
-  // Form state
-  const [form, setForm] = useState({
-    full_name: "",
-    grade: "",
-    school: "",
-    bio: "",
-    learning_goals: [],
+  // Form state initialized immediately from cache if available
+  const [form, setForm] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem("tutorflow_cached_profile") || "null");
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const source = cached || user || {};
+      return {
+        full_name: source.full_name || source.profile?.full_name || "",
+        grade: source.grade || source.profile?.grade || "",
+        school: source.school || source.profile?.school || "",
+        bio: source.bio || source.profile?.bio || "",
+        learning_goals: source.learning_goals || source.profile?.learning_goals || [],
+      };
+    } catch {
+      return {
+        full_name: "",
+        grade: "",
+        school: "",
+        bio: "",
+        learning_goals: [],
+      };
+    }
   });
 
   const [newGoal, setNewGoal] = useState("");
@@ -446,6 +472,7 @@ const Profile = () => {
       .then(([profileData]) => {
         if (profileData) {
           setProfile(profileData);
+          localStorage.setItem("tutorflow_cached_profile", JSON.stringify(profileData));
           setForm({
             full_name: profileData.full_name || profileData.profile?.full_name || "",
             grade: profileData.grade || profileData.profile?.grade || "",
@@ -456,7 +483,9 @@ const Profile = () => {
         }
       })
       .catch(() => {
-        notif.error("Failed to load profile. Please try again.");
+        if (!localStorage.getItem("tutorflow_cached_profile")) {
+          notif.error("Failed to load profile. Please try again.");
+        }
       })
       .finally(() => setLoading(false));
   }, [notif]);

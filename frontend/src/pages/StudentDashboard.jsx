@@ -432,24 +432,37 @@ const styles = `
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [analytics, setAnalytics] = useState(() => {
+    try {
+      const cached = localStorage.getItem("tutorflow_cached_analytics");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    return !localStorage.getItem("tutorflow_cached_analytics");
+  });
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
 
   useEffect(() => {
-    // Load cached user immediately
-    try {
-      const stored = localStorage.getItem("user");
-      if (stored) setUser(JSON.parse(stored));
-    } catch { /* ignore */ }
-
     Promise.all([
       api("/analytics/dashboard"),
       api("/auth/me"),
     ])
       .then(([analyticsData, meData]) => {
-        setAnalytics(analyticsData);
+        if (analyticsData) {
+          setAnalytics(analyticsData);
+          localStorage.setItem("tutorflow_cached_analytics", JSON.stringify(analyticsData));
+        }
         if (meData) {
           setUser(meData);
           localStorage.setItem("user", JSON.stringify(meData));

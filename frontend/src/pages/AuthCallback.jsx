@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useNotification } from "../components/NotificationBanner";
+import { prefetchUserData } from "../lib/prefetch";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const AuthCallback = () => {
             "",
         })
       );
+      prefetchUserData();
       if (isMounted) {
         notif.success("Signed in successfully!");
         navigate("/dashboard", { replace: true });

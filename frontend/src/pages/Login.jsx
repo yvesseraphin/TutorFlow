@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ChevronRight, Book } from "lucide-react";
 import { signInWithGoogle } from "../lib/supabase";
 import { useNotification } from "../components/NotificationBanner";
+import { prefetchUserData } from "../lib/prefetch";
 
 /* ─── Inline styles object (light / white theme matching design) ─── */
 
@@ -329,6 +330,8 @@ const Login = () => {
         const data = await response.json();
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        // Prefetch dashboard, profile, curriculum & notifications so the dashboard and all pages are primed instantly
+        prefetchUserData();
         notif.success("Login successful! Welcome back.");
         navigate("/dashboard");
       } else {
