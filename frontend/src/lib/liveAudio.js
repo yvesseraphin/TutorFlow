@@ -197,7 +197,7 @@ export class AudioStreamRecorder {
       const targetSampleRate = 16000;
 
       this.source = this.audioCtx.createMediaStreamSource(this.stream);
-      this.processor = this.audioCtx.createScriptProcessor(4096, 1, 1);
+      this.processor = this.audioCtx.createScriptProcessor(1024, 1, 1);
 
       this.processor.onaudioprocess = (e) => {
         if (!this.isRecording) return;

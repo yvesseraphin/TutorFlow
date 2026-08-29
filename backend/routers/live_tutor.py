@@ -361,14 +361,14 @@ NATURAL HUMAN TEACHER GUIDELINES:
 
         try:
             async with client.aio.live.connect(
-                model="gemini-3.1-flash-live-preview",
+                model="gemini-2.0-flash-exp",
                 config=config,
             ) as session:
                 logger.info(f"Connected to Gemini Live (attempt {_attempt})")
 
                 await websocket.send_json({
                     "type": "ready",
-                    "model": "gemini-3.1-flash-live-preview",
+                    "model": "gemini-2.0-flash-exp",
                     "topic": canonical_topic,
                     "missing_prerequisites": missing_prereqs,
                     "cognitive_mode": cognitive_mode,
