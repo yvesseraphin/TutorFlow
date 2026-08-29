@@ -2690,6 +2690,7 @@ const SessionSummaryModal = ({
   pagesCount = 1,
   chatMessages = [],
   stageRef = null,
+  adaptiveTimeline = [],
 }) => {
   if (!isOpen) return null;
 
@@ -2733,9 +2734,14 @@ const SessionSummaryModal = ({
 
   return (
     <div className="summary-overlay" onClick={onClose}>
-      <div className="summary-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="summary-modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
         <div className="summary-modal-header">
-          <h2>Lesson Summary & Export</h2>
+          <div>
+            <h2>Lesson Summary & Adaptive Replay</h2>
+            <p style={{ margin: "2px 0 0", fontSize: 13, color: "#666666" }}>
+              Explainable AI Teaching Strategy & Export
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -2761,6 +2767,50 @@ const SessionSummaryModal = ({
             </div>
           </div>
 
+          {/* TeachFlow Explainable Teaching Timeline */}
+          {adaptiveTimeline && adaptiveTimeline.length > 0 && (
+            <div style={{ marginTop: 18, marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Sparkles size={16} color="#111111" />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#111111" }}>
+                  TeachFlow Adaptive Strategy Replay
+                </span>
+              </div>
+              <div style={{
+                background: "#f9fafb",
+                border: "1px solid #e5e7eb",
+                borderRadius: 12,
+                padding: "12px 14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                maxHeight: 180,
+                overflowY: "auto"
+              }}>
+                {adaptiveTimeline.map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13 }}>
+                    <span style={{
+                      background: item.type === "misconception" ? "#fee2e2" : "#f3f4f6",
+                      color: item.type === "misconception" ? "#b91c1c" : "#111111",
+                      padding: "2px 8px",
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      fontSize: 11,
+                      whiteSpace: "nowrap",
+                      marginTop: 1
+                    }}>
+                      {item.strategy || "Strategy"}
+                    </span>
+                    <div style={{ flex: 1, color: "#374151", lineHeight: "18px" }}>
+                      {item.description}
+                    </div>
+                    <span style={{ color: "#9ca3af", fontSize: 11, whiteSpace: "nowrap" }}>{item.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="summary-export-options">
             <button type="button" className="summary-export-btn" onClick={handleExportPNG}>
               <Download size={18} />
@@ -2778,7 +2828,7 @@ const SessionSummaryModal = ({
             Resume Lesson
           </button>
           <button type="button" className="summary-finish-btn" onClick={onFinish}>
-            End
+            Finish Lesson
           </button>
         </div>
       </div>
@@ -3374,6 +3424,21 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const [liveTranscript, setLiveTranscript] = useState("");
   const [showSummaryModal, setShowSummaryModal] = useState(false);
 
+  // AI Teaching Strategy Engine & Adaptive Timeline State
+  const [teachingStrategy, setTeachingStrategy] = useState("Visual Intuition");
+  const [strategyReason, setStrategyReason] = useState("Initial personalized concept introduction");
+  const [activeMisconception, setActiveMisconception] = useState(null);
+  const [adaptiveTimeline, setAdaptiveTimeline] = useState([
+    {
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      strategy: "Visual Intuition",
+      description: "Initialized 1-on-1 personalized visual concept introduction",
+      type: "strategy",
+    },
+  ]);
+  const [teachBackActive, setTeachBackActive] = useState(false);
+  const [teachBackPrompt, setTeachBackPrompt] = useState("");
+
   // Multi-page Whiteboard Support
   const [pages, setPages] = useState([
     { id: 1, title: lessonTitle || "Interactive Whiteboard", subtitle: lessonSubtitle || "Live Workspace", lines: [] },
@@ -3523,7 +3588,55 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           const args = msg.args || {};
           const call_id = msg.call_id;
 
-          if (name === "highlight_board") {
+          if (name === "switch_teaching_strategy") {
+            const nextStrategy = args.strategy || "Adaptive Explanation";
+            const reason = args.reason || "Adapting to learner progress";
+            setTeachingStrategy(nextStrategy);
+            setStrategyReason(reason);
+            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            setAdaptiveTimeline((prev) => [
+              ...prev,
+              { time: now, strategy: nextStrategy, description: reason, type: "strategy" },
+            ]);
+            setChatMessages((prev) => [
+              ...prev,
+              { sender: "ai", text: `💡 **AI Teaching Strategy Switched**: *${nextStrategy}* (${reason})`, time: now },
+            ]);
+          } else if (name === "report_misconception") {
+            const misc = {
+              type: args.misconception_type || "Conceptual Misunderstanding",
+              explanation: args.explanation || "Reasoning break identified",
+              intervention: args.intervention_strategy || "Targeted Intervention",
+            };
+            setActiveMisconception(misc);
+            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            setAdaptiveTimeline((prev) => [
+              ...prev,
+              {
+                time: now,
+                strategy: misc.intervention,
+                description: `Misconception Diagnosed: ${misc.type} — ${misc.explanation}`,
+                type: "misconception",
+              },
+            ]);
+          } else if (name === "trigger_teach_back") {
+            setTeachBackActive(true);
+            setTeachBackPrompt(args.prompt || "Explain the core concept back in your own words!");
+            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            setAdaptiveTimeline((prev) => [
+              ...prev,
+              {
+                time: now,
+                strategy: "Teach-Back Verification",
+                description: `Teach-Back Challenge: ${args.prompt}`,
+                type: "teach_back",
+              },
+            ]);
+            setChatMessages((prev) => [
+              ...prev,
+              { sender: "ai", text: `🎓 **Teach-Back Challenge**: ${args.prompt}`, time: now },
+            ]);
+          } else if (name === "highlight_board") {
             const newHl = {
               id: Date.now(),
               x: args.x || 10,
@@ -3721,6 +3834,28 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             >
               <Radio size={14} className={isLiveConnected ? "pulse-icon" : ""} />
               {isLiveConnected ? "Real-Time AI Teacher Live" : "Connecting..."}
+            </span>
+
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "#ffffff",
+                color: "#111111",
+                padding: "4px 10px",
+                borderRadius: 6,
+                fontSize: 12.5,
+                fontWeight: 600,
+                border: "1px solid #e5e5e5",
+              }}
+              title={`Adaptive Strategy: ${strategyReason}`}
+            >
+              <Sparkles size={14} color="#111111" />
+              <span>Strategy:</span>
+              <strong style={{ background: "#f3f4f6", padding: "2px 6px", borderRadius: 4, color: "#111111" }}>
+                {teachingStrategy}
+              </strong>
             </span>
           </div>
           {lessonSubtitle && <p>{lessonSubtitle}</p>}
@@ -3931,6 +4066,40 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               Tutor AI
             </span>
           </div>
+
+          {activeMisconception && (
+            <div style={{
+              background: "#fffbeb",
+              border: "1px solid #fde68a",
+              borderRadius: 10,
+              padding: "10px 12px",
+              margin: "8px 12px 0",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              fontSize: 12.5,
+              animation: "fadeIn 0.2s ease"
+            }}>
+              <AlertTriangle size={16} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: "#92400e" }}>
+                  Misconception: {activeMisconception.type}
+                </div>
+                <div style={{ color: "#b45309", marginTop: 2, lineHeight: "17px" }}>
+                  {activeMisconception.explanation}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveMisconception(null)}
+                style={{ border: 0, background: "transparent", cursor: "pointer", color: "#92400e", padding: 0 }}
+                title="Dismiss"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           <div className="chat-scroll" ref={chatScrollRef}>
             {chatMessages.length === 0 && !liveTranscript && (
               <div className="chat-empty-state">
@@ -3938,7 +4107,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                   <Sparkles size={24} color="#111111" />
                 </div>
                 <h4>Start a Conversation</h4>
-                <p>Ask a question, upload a worksheet, or ask Tutor AI to inspect your whiteboard.</p>
+                <p>Click "Ready! Let's start", ask a question, or speak aloud to Tutor AI.</p>
               </div>
             )}
             {chatMessages.map((msg, idx) =>
@@ -3977,10 +4146,12 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             )}
 
             <div className="quick-replies">
-              <button type="button" onClick={() => handleSendMessage("Explain this step by step")}>Explain step by step</button>
-              <button type="button" onClick={() => handleSendMessage("Can you give me a hint for this problem?")}>Give me a hint</button>
+              <button type="button" onClick={() => handleSendMessage("Ready! Let's start")}>Ready! Let's start</button>
+              <button type="button" onClick={() => handleSendMessage("Show me a visual example on the board")}>Explain visually</button>
+              <button type="button" onClick={() => handleSendMessage("Can you give me a simple analogy?")}>Give an analogy</button>
+              <button type="button" onClick={() => handleSendMessage("Break down step 1 for me")}>Break down step 1</button>
               <button type="button" onClick={() => handleSendMessage("Is my calculation on the board correct?")}>Check my board</button>
-              <button type="button" onClick={() => handleSendMessage("I solved it! What is next?")}>I solved it!</button>
+              <button type="button" onClick={() => handleSendMessage("I'm ready for the teach-back challenge!")}>Teach it back</button>
             </div>
           </div>
           <div className="chat-input-wrap">
@@ -4095,6 +4266,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
         pagesCount={pages.length}
         chatMessages={chatMessages}
         stageRef={stageRef}
+        adaptiveTimeline={adaptiveTimeline}
       />
     </main>
   );

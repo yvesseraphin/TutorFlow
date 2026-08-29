@@ -51,6 +51,47 @@ def get_live_tools():
                     ),
                 ),
                 types.FunctionDeclaration(
+                    name="switch_teaching_strategy",
+                    description="Dynamically switch the active AI teaching strategy in real time based on student understanding.",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "strategy": types.Schema(
+                                type=types.Type.STRING,
+                                description="Strategy name: 'Visual Intuition', 'Concrete Analogy', 'Step-by-Step Decomposition', 'Socratic Guided Discovery', 'Teach-Back Verification'"
+                            ),
+                            "reason": types.Schema(type=types.Type.STRING, description="Why this strategy is being applied now"),
+                            "target_concept": types.Schema(type=types.Type.STRING, description="The concept being targeted"),
+                        },
+                        required=["strategy", "reason"],
+                    ),
+                ),
+                types.FunctionDeclaration(
+                    name="report_misconception",
+                    description="Diagnose and report the exact conceptual misconception or reasoning break when a student makes an error.",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "misconception_type": types.Schema(type=types.Type.STRING, description="Type of misconception (e.g. 'Sign Reversal on Transposition', 'Combining Unlike Terms', 'Distributive Property Negation')"),
+                            "explanation": types.Schema(type=types.Type.STRING, description="Clear, student-friendly explanation of the misconception"),
+                            "intervention_strategy": types.Schema(type=types.Type.STRING, description="Strategy to fix it (e.g. 'Balance Scale Model', 'Color-Coded Decomposition')"),
+                        },
+                        required=["misconception_type", "explanation"],
+                    ),
+                ),
+                types.FunctionDeclaration(
+                    name="trigger_teach_back",
+                    description="Prompt the student to explain the concept in their own words or solve a transfer problem to confirm genuine understanding.",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "prompt": types.Schema(type=types.Type.STRING, description="The teach-back question or transfer challenge"),
+                            "concept": types.Schema(type=types.Type.STRING, description="Concept being tested"),
+                        },
+                        required=["prompt"],
+                    ),
+                ),
+                types.FunctionDeclaration(
                     name="show_socratic_hint",
                     description="Display a subtle guided hint badge on the student's screen when they are stuck.",
                     parameters=types.Schema(
@@ -114,19 +155,25 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
     profile = learner_context.get("profile", {})
     missing_prereqs = learner_context.get("missing_prerequisites", [])
     past_mistakes = learner_context.get("unresolved_mistakes", [])
+    student_name = profile.get("name") or "Student"
 
-    system_instruction_text = f"""You are TutorFlow AI, an elite, warm, and highly conversational 1-on-1 private teacher teaching the student: {profile.get('name', 'Student')}.
+    system_instruction_text = f"""You are TutorFlow AI, an adaptive, warm, and highly conversational 1-on-1 private teacher teaching the student: {student_name}.
 Grade Level: {profile.get('grade', 'Senior 2')}.
 Topic: {topic}.
-Teaching Style: {profile.get('teaching_style', 'step_by_step')}.
-Missing Foundation / Prerequisites: {json.dumps(missing_prereqs)}.
-Past Misconceptions to watch: {[m.get('misconception_type') for m in past_mistakes]}.
+Known Missing Prerequisites: {json.dumps(missing_prereqs)}.
+Past Misconceptions to watch for: {[m.get('misconception_type') for m in past_mistakes]}.
 
-STRICT TEACHING RULES:
-1. NEVER output internal thoughts, planning text, thought headers, or meta-commentary. Speak exclusively and directly to the student in natural spoken dialogue.
-2. Keep spoken replies short, natural, and encouraging (1-3 sentences per turn).
-3. Use your tools (`write_math_equation`, `highlight_board`, `show_socratic_hint`) concurrently to write and draw on the whiteboard while explaining.
-4. When the student speaks or writes an answer, evaluate it immediately. If correct, praise and advance. If wrong, give warm Socratic guidance without giving the final answer right away.
+CORE TEACHING PHILOSOPHY & ADAPTIVE STRATEGY ENGINE:
+1. START GENTLY: Greet {student_name} with excitement. Introduce the topic with a quick, intuitive 1-sentence real-world analogy. DO NOT ask intimidating test questions right away. Ask an easy starter (e.g. "Ready to see how simple this is? Let's dive in!").
+2. ADAPT TEACHING IN REAL TIME: Use your `switch_teaching_strategy` tool whenever you shift strategies:
+   - 'Visual Intuition': Writing equations and drawings on the board.
+   - 'Concrete Analogy': Comparing equations to a balance scale or seesaw.
+   - 'Step-by-Step Decomposition': Breaking multi-step operations into bite-sized micro-steps.
+   - 'Socratic Guided Discovery': Asking leading questions to let the student discover the rule.
+   - 'Teach-Back Verification': Asking the student to explain the core concept back or solve a transfer problem.
+3. MISCONCEPTION DIAGNOSIS: When the student makes a mistake, DO NOT just say "incorrect". Use `report_misconception` to diagnose the exact reasoning break (e.g. forgetting to flip sign when moving across equals sign), explain WHY it happens, and switch teaching strategy immediately.
+4. WHITEBOARD SYNC: Use `write_math_equation` and `highlight_board` proactively so the whiteboard stays synced with your voice.
+5. CONCISE & SPOKEN: Keep spoken turns short (1-3 sentences per turn). No internal thoughts or markdown headers in speech.
 """
 
     client = genai.Client(
@@ -180,9 +227,9 @@ STRICT TEACHING RULES:
 
                 if _attempt == 1:
                     kickoff_prompt = (
-                        f"You are the AI Teacher. The 1-on-1 tutoring session on '{topic}' is starting right now. "
-                        f"Greet the student warmly aloud in 1-2 spoken sentences, state today's goal, "
-                        f"and ask them a friendly starter question to invite them to speak. Do not output any thought headers."
+                        f"You are the AI Teacher. The 1-on-1 session on '{topic}' is starting right now. "
+                        f"Greet {student_name} warmly in 1-2 spoken sentences, give a simple intuitive 1-sentence hook for {topic}, "
+                        f"and warmly invite them to say 'Ready' or 'Let's go' to begin. Do not quiz them with hard math yet."
                     )
                     try:
                         logger.info("Sending kickoff turn to Gemini Live...")
