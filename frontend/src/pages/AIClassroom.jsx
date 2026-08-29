@@ -4101,22 +4101,32 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             };
             setAiHighlights((prev) => [...prev, newHl]);
           } else if (name === "write_board_hint" || name === "write_math_equation") {
-            const newHint = {
-              id: Date.now(),
-              text: args.latex || args.text,
-              x: args.x,
-              y: args.y,
-              color: args.color || "blue",
-              explanation: args.explanation,
-            };
-            setAiHints((prev) => [...prev, newHint]);
+            const rawText = args.latex || args.text;
+            if (rawText) {
+              const newHint = {
+                id: Date.now(),
+                text: rawText,
+                x: args.x,
+                y: args.y,
+                color: args.color || "blue",
+                explanation: args.explanation,
+              };
+              setAiHints((prev) => {
+                const formattedNew = formatMathHandwriting(rawText);
+                if (prev.some((h) => formatMathHandwriting(h.text) === formattedNew)) {
+                  return prev;
+                }
+                const next = [...prev, newHint];
+                return next.length > 4 ? next.slice(next.length - 4) : next;
+              });
+            }
           } else if (name === "show_socratic_hint") {
             const hintMsg = args.hint_text || args.hint;
             if (hintMsg) {
               const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               setChatMessages((prev) => [...prev, { sender: "ai", text: `Hint: ${hintMsg}`, time: now }]);
             }
-          } else if (name === "clear_board_annotations") {
+          } else if (name === "clear_ai_writing" || name === "clear_board_annotations") {
             setAiHighlights([]);
             setAiHints([]);
           }

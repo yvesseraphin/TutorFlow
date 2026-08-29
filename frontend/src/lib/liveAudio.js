@@ -223,19 +223,9 @@ export class AudioStreamRecorder {
           }
         }
 
-        // Noise Gate & Voice Activity Check: Suppress continuous ambient room noise
-        if (rms >= 0.005) {
-          this.silenceCounter = 0;
-        } else {
-          this.silenceCounter = (this.silenceCounter || 0) + 1;
-        }
-
-        // Stream actively when speech is present or within short hangover window (~1.2s)
-        if (this.silenceCounter < 7) {
-          const base64PCM = float32ToInt16Base64(resampledData);
-          if (base64PCM) {
-            this.onChunk(base64PCM);
-          }
+        const base64PCM = float32ToInt16Base64(resampledData);
+        if (base64PCM) {
+          this.onChunk(base64PCM);
         }
       };
 

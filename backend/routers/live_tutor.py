@@ -222,6 +222,40 @@ def get_live_tools():
                     ),
                 ),
                 types.FunctionDeclaration(
+                    name="draw_number_line",
+                    description="Draw a clean visual number line on the whiteboard with custom range and highlighted numbers.",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "min_val": types.Schema(type=types.Type.INTEGER, description="Minimum integer on number line (e.g. -5)"),
+                            "max_val": types.Schema(type=types.Type.INTEGER, description="Maximum integer on number line (e.g. 5)"),
+                            "highlight_points": types.Schema(type=types.Type.STRING, description="Comma-separated points to circle, e.g. '-3, 2'"),
+                            "label": types.Schema(type=types.Type.STRING, description="Label note under the number line"),
+                        },
+                    ),
+                ),
+                types.FunctionDeclaration(
+                    name="draw_geometric_shape",
+                    description="Draw a geometric figure or graph model on the whiteboard (right_triangle, triangle, rectangle, circle, coordinate_grid).",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "shape_type": types.Schema(type=types.Type.STRING, description="'right_triangle', 'triangle', 'rectangle', 'circle', 'coordinate_grid'"),
+                            "label": types.Schema(type=types.Type.STRING, description="Annotation note for the shape"),
+                            "color": types.Schema(type=types.Type.STRING, description="Color of the shape: 'blue', 'green', 'red', 'purple', 'black'"),
+                        },
+                        required=["shape_type"],
+                    ),
+                ),
+                types.FunctionDeclaration(
+                    name="clear_ai_writing",
+                    description="Clear previous AI handwriting notes and equations from the whiteboard to avoid clutter before starting a new step or problem.",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={},
+                    ),
+                ),
+                types.FunctionDeclaration(
                     name="clear_board_annotations",
                     description="Clear temporary AI annotations, arrows, or highlights from the whiteboard.",
                     parameters=types.Schema(
