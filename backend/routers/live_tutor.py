@@ -416,6 +416,9 @@ NATURAL HUMAN TEACHER GUIDELINES:
                         async for response in session.receive():
                             server_content = response.server_content
                             if server_content is not None:
+                                if server_content.interrupted:
+                                    await websocket.send_json({"type": "interrupted"})
+
                                 model_turn = server_content.model_turn
                                 if model_turn is not None:
                                     for part in model_turn.parts:
