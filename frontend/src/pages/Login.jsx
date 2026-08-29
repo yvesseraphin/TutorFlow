@@ -330,8 +330,8 @@ const Login = () => {
         const data = await response.json();
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        // Prefetch dashboard, profile, curriculum & notifications so the dashboard and all pages are primed instantly
-        prefetchUserData();
+        // Await full prefetch so dashboard and all pages are already populated with real data before entering
+        await prefetchUserData();
         notif.success("Login successful! Welcome back.");
         navigate("/dashboard");
       } else {

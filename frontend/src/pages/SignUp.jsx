@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { User, Mail, Lock, Eye, EyeOff, BookOpen, ChevronDown } from "lucide-react";
 import { signInWithGoogle } from "../lib/supabase";
 import { useNotification } from "../components/NotificationBanner";
+import { prefetchUserData } from "../lib/prefetch";
 
 /* ─── Inline styles object (matching Login.jsx light design) ─── */
 
@@ -303,6 +304,7 @@ const SignUp = () => {
         }
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        await prefetchUserData();
         notif.success("Account created successfully!");
         navigate("/dashboard");
       } else {

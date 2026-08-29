@@ -12,7 +12,7 @@ const AuthCallback = () => {
   useEffect(() => {
     let isMounted = true;
 
-    const saveUserAndRedirect = (session) => {
+    const saveUserAndRedirect = async (session) => {
       if (!session || !session.access_token) return false;
       const user = session.user;
       localStorage.setItem("token", session.access_token);
@@ -28,7 +28,7 @@ const AuthCallback = () => {
             "",
         })
       );
-      prefetchUserData();
+      await prefetchUserData();
       if (isMounted) {
         notif.success("Signed in successfully!");
         navigate("/dashboard", { replace: true });
