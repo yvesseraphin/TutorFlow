@@ -371,10 +371,13 @@ NATURAL HUMAN TEACHER GUIDELINES:
                                 if "," in img_b64:
                                     img_b64 = img_b64.split(",", 1)[1]
                                 if img_b64:
-                                    img_bytes = base64.b64decode(img_b64)
-                                    await session.send_realtime_input(
-                                        media=types.Blob(data=img_bytes, mime_type="image/jpeg")
-                                    )
+                                    try:
+                                        img_bytes = base64.b64decode(img_b64)
+                                        await session.send_realtime_input(
+                                            video=types.Blob(data=img_bytes, mime_type="image/jpeg")
+                                        )
+                                    except Exception as img_err:
+                                        logger.warning(f"Canvas stream error: {img_err}")
                             elif msg_type == "text":
                                 text_content = msg.get("text", "")
                                 if text_content:
