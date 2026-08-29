@@ -15,6 +15,7 @@ import {
   Calculator,
   CheckCircle2,
   ChevronDown,
+  Circle,
   ClipboardList,
   Clock3,
   Divide,
@@ -25,6 +26,7 @@ import {
   FileText,
   Flame,
   GraduationCap,
+  Grid,
   FunctionSquare,
   Hand,
   Highlighter,
@@ -35,6 +37,7 @@ import {
   LogOut,
   Mic,
   MicOff,
+  Minus,
   MoreHorizontal,
   MousePointer2,
   Paperclip,
@@ -45,6 +48,7 @@ import {
   Plus,
   Radio,
   Redo2,
+  Scale,
   Search,
   Send,
   Settings,
@@ -52,6 +56,7 @@ import {
   Sparkles,
   Square,
   Trash2,
+  Triangle,
   Trophy,
   Type,
   Undo2,
@@ -2905,7 +2910,86 @@ const WhiteboardSidebar = ({
   );
 };
 
-const InteractiveWhiteboard = ({
+const AnimatedTeacherHandwriting = ({ text, explanation, x = 15, y = 20 }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isWriting, setIsWriting] = useState(true);
+
+  useEffect(() => {
+    setDisplayedText("");
+    setIsWriting(true);
+    if (!text) return;
+    let idx = 0;
+    const interval = setInterval(() => {
+      idx += 1;
+      setDisplayedText(text.slice(0, idx));
+      if (idx >= text.length) {
+        setIsWriting(false);
+        clearInterval(interval);
+      }
+    }, 32);
+    return () => clearInterval(interval);
+  }, [text]);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: `${Math.min(x || 15, 70)}%`,
+        top: `${Math.min(y || 20, 75)}%`,
+        color: "#1e3a8a",
+        fontFamily: '"Caveat", "Kalam", cursive, sans-serif',
+        fontSize: "clamp(26px, 3.4vw, 42px)",
+        fontWeight: 700,
+        lineHeight: 1.2,
+        letterSpacing: "0.02em",
+        zIndex: 7,
+        pointerEvents: "none",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        textShadow: "0 0 2px rgba(30, 58, 138, 0.35)",
+        filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.06))",
+      }}
+    >
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <span style={{ borderBottom: "2.5px solid rgba(37, 99, 235, 0.45)", paddingBottom: 3 }}>
+          {displayedText}
+        </span>
+        {isWriting && (
+          <span
+            style={{
+              fontSize: "0.85em",
+              display: "inline-block",
+              transform: "translateY(-4px) rotate(-15deg)",
+              animation: "bounce 0.4s infinite alternate",
+            }}
+          >
+            ✍️
+          </span>
+        )}
+      </div>
+      {explanation && !isWriting && (
+        <span
+          style={{
+            fontFamily: "Outfit, sans-serif",
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: "#334155",
+            background: "rgba(241, 245, 249, 0.95)",
+            border: "1px solid #cbd5e1",
+            padding: "2px 8px",
+            borderRadius: 6,
+            width: "fit-content",
+          }}
+        >
+          {explanation}
+        </span>
+      )}
+    </div>
+  );
+};
+
+const Whiteboard = ({
   stageRef,
   lines = [],
   setLines,
@@ -2934,6 +3018,8 @@ const InteractiveWhiteboard = ({
   const isDrawing = React.useRef(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const debounceTimerRef = React.useRef(null);
+  const [isGridVisible, setIsGridVisible] = useState(false);
+  const [showMathMenu, setShowMathMenu] = useState(false);
 
   // Sync with parent page lines
   React.useEffect(() => {
@@ -2978,6 +3064,209 @@ const InteractiveWhiteboard = ({
     nextHistory.push(newLines);
     setHistory(nextHistory);
     setHistoryStep(nextHistory.length - 1);
+  };
+
+  const insertShapeStrokes = (strokes) => {
+    const next = [...linesRef.current, ...strokes];
+    linesRef.current = next;
+    setLocalLines(next);
+    saveHistory(next);
+    if (setLines) setLines(next);
+    scheduleEmitFrame();
+    setShowMathMenu(false);
+  };
+
+  const insertNumberLine = () => {
+    const w = dimensions.width || 800;
+    const h = dimensions.height || 500;
+    const centerY = h * 0.55;
+    const startX = w * 0.12;
+    const endX = w * 0.88;
+    const step = (endX - startX) / 10;
+    const strokes = [];
+
+    // Main axis line
+    strokes.push({
+      tool: "pen",
+      color: activeColor || "#111111",
+      strokeWidth: 3.5,
+      points: [startX, centerY, endX, centerY],
+    });
+
+    // Arrow heads
+    strokes.push({
+      tool: "pen",
+      color: activeColor || "#111111",
+      strokeWidth: 3.5,
+      points: [startX + 14, centerY - 8, startX, centerY, startX + 14, centerY + 8],
+    });
+    strokes.push({
+      tool: "pen",
+      color: activeColor || "#111111",
+      strokeWidth: 3.5,
+      points: [endX - 14, centerY - 8, endX, centerY, endX - 14, centerY + 8],
+    });
+
+    // Tick marks
+    for (let i = 0; i <= 10; i++) {
+      const tx = startX + i * step;
+      const tickH = i === 5 ? 16 : 10; // Zero tick is longer
+      strokes.push({
+        tool: "pen",
+        color: i === 5 ? "#ef4444" : activeColor || "#111111",
+        strokeWidth: i === 5 ? 4 : 2.5,
+        points: [tx, centerY - tickH, tx, centerY + tickH],
+      });
+    }
+
+    insertShapeStrokes(strokes);
+  };
+
+  const insertCoordinateAxes = () => {
+    const w = dimensions.width || 800;
+    const h = dimensions.height || 500;
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const strokes = [];
+
+    // X Axis
+    strokes.push({
+      tool: "pen",
+      color: "#2563eb",
+      strokeWidth: 3,
+      points: [cx - 200, cy, cx + 200, cy],
+    });
+    strokes.push({
+      tool: "pen",
+      color: "#2563eb",
+      strokeWidth: 3,
+      points: [cx + 190, cy - 6, cx + 200, cy, cx + 190, cy + 6],
+    });
+
+    // Y Axis
+    strokes.push({
+      tool: "pen",
+      color: "#2563eb",
+      strokeWidth: 3,
+      points: [cx, cy + 160, cx, cy - 160],
+    });
+    strokes.push({
+      tool: "pen",
+      color: "#2563eb",
+      strokeWidth: 3,
+      points: [cx - 6, cy - 150, cx, cy - 160, cx + 6, cy - 150],
+    });
+
+    insertShapeStrokes(strokes);
+  };
+
+  const insertRightTriangle = () => {
+    const w = dimensions.width || 800;
+    const h = dimensions.height || 500;
+    const ox = w * 0.35;
+    const oy = h * 0.65;
+    const legA = 140;
+    const legB = 180;
+    const strokes = [];
+
+    // Triangle lines
+    strokes.push({
+      tool: "pen",
+      color: activeColor || "#111111",
+      strokeWidth: 3.5,
+      points: [ox, oy, ox + legB, oy, ox, oy - legA, ox, oy],
+    });
+
+    // Right angle corner box
+    strokes.push({
+      tool: "pen",
+      color: "#ef4444",
+      strokeWidth: 2.5,
+      points: [ox + 16, oy, ox + 16, oy - 16, ox, oy - 16],
+    });
+
+    insertShapeStrokes(strokes);
+  };
+
+  const insertTriangle = () => {
+    const w = dimensions.width || 800;
+    const h = dimensions.height || 500;
+    const cx = w * 0.45;
+    const cy = h * 0.5;
+    const strokes = [
+      {
+        tool: "pen",
+        color: activeColor || "#111111",
+        strokeWidth: 3.5,
+        points: [cx, cy - 90, cx + 100, cy + 80, cx - 100, cy + 80, cx, cy - 90],
+      },
+    ];
+    insertShapeStrokes(strokes);
+  };
+
+  const insertRectangle = () => {
+    const w = dimensions.width || 800;
+    const h = dimensions.height || 500;
+    const cx = w * 0.4;
+    const cy = h * 0.45;
+    const rw = 200;
+    const rh = 120;
+    const strokes = [
+      {
+        tool: "shape-rect",
+        color: activeColor || "#111111",
+        strokeWidth: 3.5,
+        points: [cx, cy, cx + rw, cy, cx + rw, cy + rh, cx, cy + rh, cx, cy],
+      },
+    ];
+    insertShapeStrokes(strokes);
+  };
+
+  const insertCircle = () => {
+    const w = dimensions.width || 800;
+    const h = dimensions.height || 500;
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const r = 85;
+    const pts = [];
+    for (let i = 0; i <= 36; i++) {
+      const angle = (i / 36) * 2 * Math.PI;
+      pts.push(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+    }
+    const strokes = [
+      {
+        tool: "pen",
+        color: activeColor || "#111111",
+        strokeWidth: 3.5,
+        points: pts,
+      },
+      // Center to radius line
+      {
+        tool: "pen",
+        color: "#ef4444",
+        strokeWidth: 2.5,
+        points: [cx, cy, cx + r, cy],
+      },
+    ];
+    insertShapeStrokes(strokes);
+  };
+
+  const insertBalanceScale = () => {
+    const w = dimensions.width || 800;
+    const h = dimensions.height || 500;
+    const cx = w * 0.5;
+    const cy = h * 0.55;
+    const strokes = [
+      // Base & Fulcrum triangle
+      { tool: "pen", color: "#475569", strokeWidth: 4, points: [cx - 30, cy + 60, cx, cy, cx + 30, cy + 60, cx - 30, cy + 60] },
+      // Beam
+      { tool: "pen", color: "#1e293b", strokeWidth: 5, points: [cx - 130, cy - 10, cx + 130, cy - 10] },
+      // Left Pan
+      { tool: "pen", color: "#2563eb", strokeWidth: 3, points: [cx - 130, cy - 10, cx - 150, cy + 30, cx - 110, cy + 30, cx - 130, cy - 10] },
+      // Right Pan
+      { tool: "pen", color: "#2563eb", strokeWidth: 3, points: [cx + 130, cy - 10, cx + 110, cy + 30, cx + 150, cy + 30, cx + 130, cy - 10] },
+    ];
+    insertShapeStrokes(strokes);
   };
 
   React.useEffect(() => {
@@ -3125,6 +3414,7 @@ const InteractiveWhiteboard = ({
   const headerTools = [
     { id: "undo", icon: Undo2, label: "Undo", action: handleUndo },
     { id: "redo", icon: Redo2, label: "Redo", action: handleRedo },
+    { id: "grid", icon: Grid, label: isGridVisible ? "Hide Graph Grid" : "Show Graph Grid", action: () => setIsGridVisible((v) => !v) },
     { id: "clear", icon: Trash2, label: "Clear Board", action: handleClear },
     { id: "maximize", icon: isFullscreen ? Minimize2 : Expand, label: isFullscreen ? "Exit Fullscreen" : "Fullscreen", action: toggleFullscreen },
   ];
@@ -3133,14 +3423,15 @@ const InteractiveWhiteboard = ({
     { color: "#111111", gradient: "linear-gradient(#111111 0 28%, #d1d5db 28%)", label: "Black Marker" },
     { color: "#16a34a", gradient: "linear-gradient(#16a34a 0 28%, #bbf7d0 28%)", label: "Green Marker" },
     { color: "#ef4444", gradient: "linear-gradient(#ef4444 0 28%, #fecaca 28%)", label: "Red Marker" },
-    { color: "#6b7280", gradient: "linear-gradient(#6b7280 0 28%, #e5e7eb 28%)", label: "Gray Marker" },
+    { color: "#2563eb", gradient: "linear-gradient(#2563eb 0 28%, #bfdbfe 28%)", label: "Blue Marker" },
+    { color: "#8b5cf6", gradient: "linear-gradient(#8b5cf6 0 28%, #ddd6fe 28%)", label: "Purple Marker" },
   ];
 
   const colorDots = [
     { color: "#111111", label: "Black" },
     { color: "#16a34a", label: "Green" },
     { color: "#ef4444", label: "Red" },
-    { color: "#6b7280", label: "Gray" },
+    { color: "#2563eb", label: "Blue" },
     { color: "#8b5cf6", label: "Purple" },
   ];
 
@@ -3179,6 +3470,10 @@ const InteractiveWhiteboard = ({
                 key={item.id}
                 title={item.label}
                 onClick={item.action}
+                style={{
+                  background: item.id === "grid" && isGridVisible ? "#eff6ff" : "transparent",
+                  color: item.id === "grid" && isGridVisible ? "#2563eb" : "inherit",
+                }}
               >
                 <Icon size={20} />
               </button>
@@ -3186,7 +3481,18 @@ const InteractiveWhiteboard = ({
           })}
         </div>
       </div>
-      <div className="board-canvas" ref={containerRef} style={{ position: "relative" }}>
+      <div
+        className="board-canvas"
+        ref={containerRef}
+        style={{
+          position: "relative",
+          backgroundImage: isGridVisible
+            ? "radial-gradient(#cbd5e1 1.2px, transparent 1.2px), radial-gradient(#e2e8f0 1.2px, #ffffff 1.2px)"
+            : "none",
+          backgroundSize: "24px 24px",
+          backgroundPosition: "0 0, 12px 12px",
+        }}
+      >
         <div
           style={{
             position: "absolute",
@@ -3266,53 +3572,18 @@ const InteractiveWhiteboard = ({
           </div>
         ))}
 
-        {/* AI Live Teacher Handwriting on Whiteboard */}
+        {/* AI Live Teacher Handwriting Animated On Whiteboard */}
         {aiHints.map((hint, idx) => (
-          <div
+          <AnimatedTeacherHandwriting
             key={hint.id || idx}
-            style={{
-              position: "absolute",
-              left: `${Math.min(hint.x || 15, 75)}%`,
-              top: `${Math.min(hint.y || 20, 75)}%`,
-              color: "#1e3a8a",
-              fontFamily: '"Caveat", "Kalam", cursive, sans-serif',
-              fontSize: "clamp(24px, 3.2vw, 38px)",
-              fontWeight: 700,
-              lineHeight: 1.2,
-              letterSpacing: "0.02em",
-              zIndex: 7,
-              pointerEvents: "none",
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              textShadow: "0 0 1px rgba(30, 58, 138, 0.4)",
-            }}
-          >
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <span style={{ borderBottom: "2.5px solid rgba(37, 99, 235, 0.4)", paddingBottom: 2 }}>
-                {hint.text}
-              </span>
-            </div>
-            {hint.explanation && (
-              <span
-                style={{
-                  fontFamily: "Outfit, sans-serif",
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                  color: "#475569",
-                  background: "rgba(241, 245, 249, 0.9)",
-                  padding: "2px 8px",
-                  borderRadius: 6,
-                  width: "fit-content",
-                }}
-              >
-                {hint.explanation}
-              </span>
-            )}
-          </div>
+            text={hint.text}
+            explanation={hint.explanation}
+            x={hint.x}
+            y={hint.y}
+          />
         ))}
 
-        {/* Whiteboard Header: Only title, no hardcoded content */}
+        {/* Whiteboard Header */}
         {lessonTitle && (
           <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", userSelect: "none", padding: "28px 32px" }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 10, borderBottom: "2px solid #111111", paddingBottom: 6 }}>
@@ -3324,6 +3595,122 @@ const InteractiveWhiteboard = ({
         )}
 
         <div className="drawing-toolbar" style={{ zIndex: 10 }}>
+          {/* Math Tools Dropdown */}
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setShowMathMenu((v) => !v)}
+              style={{
+                height: 36,
+                padding: "0 12px",
+                borderRadius: 8,
+                background: showMathMenu ? "#eff6ff" : "#ffffff",
+                color: showMathMenu ? "#2563eb" : "#111111",
+                border: "1px solid #d1d5db",
+                fontFamily: "Outfit, sans-serif",
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+              title="Insert Math Shapes, Number Lines, and Coordinate Graphs"
+            >
+              <Shapes size={16} />
+              <span>Math Tools</span>
+            </button>
+
+            {showMathMenu && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "100%",
+                  left: 0,
+                  marginBottom: 8,
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                  padding: 8,
+                  width: 220,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  zIndex: 20,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", padding: "4px 8px", textTransform: "uppercase" }}>
+                  Math Shapes & Plots
+                </div>
+                <button
+                  type="button"
+                  onClick={insertNumberLine}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  className="dropdown-item-hover"
+                >
+                  <Minus size={16} />
+                  <span>Number Line (-5 to +5)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={insertCoordinateAxes}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  className="dropdown-item-hover"
+                >
+                  <Grid size={16} />
+                  <span>Coordinate Plane (X-Y)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={insertRightTriangle}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  className="dropdown-item-hover"
+                >
+                  <Triangle size={16} />
+                  <span>Right Triangle (a, b, c)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={insertTriangle}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  className="dropdown-item-hover"
+                >
+                  <Triangle size={16} />
+                  <span>Equilateral Triangle</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={insertRectangle}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  className="dropdown-item-hover"
+                >
+                  <Square size={16} />
+                  <span>Rectangle / Box</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={insertCircle}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  className="dropdown-item-hover"
+                >
+                  <Circle size={16} />
+                  <span>Circle & Radius</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={insertBalanceScale}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  className="dropdown-item-hover"
+                >
+                  <Scale size={16} />
+                  <span>Algebra Balance Scale</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Markers */}
           {markers.map((m) => (
             <button
               key={m.color}
