@@ -2989,7 +2989,7 @@ const AnimatedTeacherHandwriting = ({ text, explanation, x = 15, y = 20 }) => {
   );
 };
 
-const Whiteboard = ({
+const InteractiveWhiteboard = ({
   stageRef,
   lines = [],
   setLines,
