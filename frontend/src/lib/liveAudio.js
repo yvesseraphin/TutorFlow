@@ -109,7 +109,10 @@ export class AudioStreamPlayer {
       gainNode.connect(this.audioCtx.destination);
 
       const currentTime = this.audioCtx.currentTime;
-      const startTime = Math.max(currentTime + 0.005, this.nextStartTime);
+      if (this.nextStartTime < currentTime) {
+        this.nextStartTime = currentTime + 0.05;
+      }
+      const startTime = this.nextStartTime;
       source.start(startTime);
       this.nextStartTime = startTime + audioBuffer.duration;
 
@@ -164,15 +167,54 @@ export class AudioStreamPlayer {
  * AudioStreamRecorder
  * Captures microphone stream, resamples to 16kHz Int16 PCM, and streams chunks to onChunk callback.
  */
+// Inline AudioWorklet processor code for low latency audio capture
+const audioWorkletCode = `
+class RecorderWorkletProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.bufferSize = 2048;
+    this.buffer = new Float32Array(this.bufferSize);
+    this.bufferIndex = 0;
+  }
+
+  process(inputs, outputs, parameters) {
+    const input = inputs[0];
+    if (input && input.length > 0) {
+      const channelData = input[0];
+      for (let i = 0; i < channelData.length; i++) {
+        this.buffer[this.bufferIndex++] = channelData[i];
+        if (this.bufferIndex >= this.bufferSize) {
+          this.port.postMessage(this.buffer);
+          this.buffer = new Float32Array(this.bufferSize);
+          this.bufferIndex = 0;
+        }
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('recorder-worklet', RecorderWorkletProcessor);
+`;
+
 export class AudioStreamRecorder {
   constructor({ onChunk = () => {}, onLevel = () => {} } = {}) {
     this.onChunk = onChunk;
     this.onLevel = onLevel;
     this.stream = null;
     this.audioCtx = null;
-    this.processor = null;
+    this.workletNode = null;
     this.source = null;
     this.isRecording = false;
+    this.workletInitialized = false;
+  }
+
+  async _initWorklet(audioCtx) {
+    if (this.workletInitialized) return;
+    const blob = new Blob([audioWorkletCode], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    await audioCtx.audioWorklet.addModule(url);
+    this.workletInitialized = true;
+    URL.revokeObjectURL(url);
   }
 
   async start() {
@@ -193,15 +235,17 @@ export class AudioStreamRecorder {
         await this.audioCtx.resume().catch(() => {});
       }
 
+      await this._initWorklet(this.audioCtx);
+
       const inputSampleRate = this.audioCtx.sampleRate;
       const targetSampleRate = 16000;
 
       this.source = this.audioCtx.createMediaStreamSource(this.stream);
-      this.processor = this.audioCtx.createScriptProcessor(1024, 1, 1);
+      this.workletNode = new AudioWorkletNode(this.audioCtx, 'recorder-worklet');
 
-      this.processor.onaudioprocess = (e) => {
+      this.workletNode.port.onmessage = (e) => {
         if (!this.isRecording) return;
-        const inputData = e.inputBuffer.getChannelData(0);
+        const inputData = e.data;
 
         // Calculate RMS volume level for UI visualizer
         let sum = 0;
@@ -231,8 +275,8 @@ export class AudioStreamRecorder {
 
       this.muteGain = this.audioCtx.createGain();
       this.muteGain.gain.value = 0.0;
-      this.source.connect(this.processor);
-      this.processor.connect(this.muteGain);
+      this.source.connect(this.workletNode);
+      this.workletNode.connect(this.muteGain);
       this.muteGain.connect(this.audioCtx.destination);
       this.isRecording = true;
     } catch (err) {
@@ -244,9 +288,9 @@ export class AudioStreamRecorder {
 
   stop() {
     this.isRecording = false;
-    if (this.processor) {
-      this.processor.disconnect();
-      this.processor = null;
+    if (this.workletNode) {
+      this.workletNode.disconnect();
+      this.workletNode = null;
     }
     if (this.source) {
       this.source.disconnect();
