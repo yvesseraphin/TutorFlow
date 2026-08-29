@@ -22,26 +22,28 @@ class ProfileUpdate(BaseModel):
 
 @router.get("")
 def get_profile(user: dict = Depends(current_user)) -> dict:
-    profile = (
-        admin_client()
-        .table("profiles")
-        .select("*")
-        .eq("id", user["id"])
-        .maybe_single()
-        .execute()
-        .data
-    )
+    client = admin_client()
+    uid = user["id"]
+
+    res = client.table("profiles").select("*").eq("id", uid).execute()
+    profile = res.data[0] if (res and res.data) else None
+
     if not profile:
-        profile = (
-            admin_client()
-            .table("profiles")
+        full_name = (
+            user.get("metadata", {}).get("full_name")
+            or user.get("metadata", {}).get("name")
+            or user.get("email", "").split("@")[0]
+        )
+        upsert_res = (
+            client.table("profiles")
             .upsert({
-                "id": user["id"],
-                "full_name": user.get("metadata", {}).get("full_name", ""),
+                "id": uid,
+                "full_name": full_name,
             })
             .execute()
-            .data[0]
         )
+        profile = upsert_res.data[0] if (upsert_res and upsert_res.data) else {"id": uid, "full_name": full_name}
+
     return {**user, **profile}
 
 
@@ -50,14 +52,17 @@ def update_profile(payload: ProfileUpdate, user: dict = Depends(current_user)) -
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update.")
-    result = (
-        admin_client()
-        .table("profiles")
-        .update(updates)
-        .eq("id", user["id"])
-        .execute()
-    )
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Profile not found.")
+
+    client = admin_client()
+    uid = user["id"]
+
+    result = client.table("profiles").update(updates).eq("id", uid).execute()
+    if not result or not result.data:
+        upsert_payload = {"id": uid, **updates}
+        result = client.table("profiles").upsert(upsert_payload).execute()
+
+    if not result or not result.data:
+        raise HTTPException(status_code=500, detail="Failed to update profile.")
+
     return result.data[0]
 
