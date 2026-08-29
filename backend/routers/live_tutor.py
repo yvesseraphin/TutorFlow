@@ -32,9 +32,10 @@ def get_live_tools():
                     parameters=types.Schema(
                         type=types.Type.OBJECT,
                         properties={
-                            "latex": types.Schema(type=types.Type.STRING, description="The LaTeX or equation string, e.g. '2x + 4 = 10' or 'x = 3'"),
-                            "x": types.Schema(type=types.Type.NUMBER, description="X coordinate percentage (0-100)"),
+                            "latex": types.Schema(type=types.Type.STRING, description="The clean equation or mathematical step, e.g. '2x + 4 = 10' or '⟵ -3, -2, -1, 0, 1, 2, 3 ⟶'"),
+                            "x": types.Schema(type=types.Type.NUMBER, description="X coordinate percentage (e.g. 6 for left side)"),
                             "y": types.Schema(type=types.Type.NUMBER, description="Y coordinate percentage (0-100)"),
+                            "color": types.Schema(type=types.Type.STRING, description="Marker color: 'blue', 'green', 'red', 'purple', 'black', 'orange'"),
                             "explanation": types.Schema(type=types.Type.STRING, description="Brief note explaining this step"),
                         },
                         required=["latex"],
@@ -279,9 +280,12 @@ NATURAL HUMAN TEACHER GUIDELINES:
 1. TALK LIKE A REAL HUMAN TEACHER: Be warm, encouraging, conversational, and direct. Keep spoken turns concise (1-3 sentences).
 2. DO NOT SPAM THE STUDENT'S NAME: Greet them naturally at the start (e.g. 'Hey {first_name or "there"}'), but DO NOT repeat their name in every response. Address them naturally as 'you'. Never start sentences with their full name.
 3. NEVER EXPOSE INTERNAL TAGS: Never speak or output internal labels like 'Thought:', '[Strategy Adaptation]', 'Reasoning:', or raw JSON.
-4. WHITEBOARD INTEGRATION:
-   - When explaining an equation or when the student asks you to write, ALWAYS call `write_math_equation` or `display_interactive_balance_scale` so your handwriting appears on the board.
-   - If the student draws or writes on their board, reference what you see on their board directly.
+4. WHITEBOARD & DRAWING:
+   - Always write equations and steps starting at the left side of the whiteboard (x ≈ 6%).
+   - Pick rich marker colors: 'blue' for standard equations, 'green' for correct steps/tips, 'red' for errors/negative numbers, 'purple' for definitions, 'orange' for key transformations.
+   - Use clean, standard characters (e.g. '⟵ -3, -2, -1, 0, 1, 2, 3 ⟶' or '2x + 4 = 10') and never raw LaTeX macros like '\\longleftrightarrow'.
+   - When explaining or when asked to write, proactively call `write_math_equation` or `display_interactive_balance_scale`.
+   - Observe what the student writes on their canvas in real time.
 5. PEDAGOGICAL STRATEGY SHIFT:
    - Call `switch_teaching_strategy` when shifting between Visual Intuition, Concrete Analogy, Step-by-Step, Socratic, Protégé, or Teach-Back.
    - Call `report_misconception` when diagnosing a root error.

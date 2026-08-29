@@ -2910,49 +2910,99 @@ const WhiteboardSidebar = ({
   );
 };
 
-const AnimatedTeacherHandwriting = ({ text, explanation, x = 15, y = 20 }) => {
+const COLOR_MAP = {
+  blue: { ink: "#1d4ed8", border: "rgba(37, 99, 235, 0.45)", glow: "rgba(29, 78, 216, 0.35)" },
+  green: { ink: "#15803d", border: "rgba(22, 163, 74, 0.45)", glow: "rgba(21, 128, 61, 0.35)" },
+  red: { ink: "#dc2626", border: "rgba(239, 68, 68, 0.45)", glow: "rgba(220, 38, 38, 0.35)" },
+  purple: { ink: "#7e22ce", border: "rgba(147, 51, 234, 0.45)", glow: "rgba(126, 34, 206, 0.35)" },
+  orange: { ink: "#ea580c", border: "rgba(249, 115, 22, 0.45)", glow: "rgba(234, 88, 12, 0.35)" },
+  black: { ink: "#0f172a", border: "rgba(15, 23, 42, 0.45)", glow: "rgba(15, 23, 42, 0.3)" },
+};
+
+function formatMathHandwriting(text) {
+  if (!text) return "";
+  return text
+    .replace(/\\longleftrightarrow/g, "⟵—⟶")
+    .replace(/\\longrightarrow/g, "⟶")
+    .replace(/\\longleftarrow/g, "⟵")
+    .replace(/\\leftrightarrow/g, "⟷")
+    .replace(/\\leftarrow/g, "←")
+    .replace(/\\rightarrow/g, "→")
+    .replace(/\\le(q)?/g, "≤")
+    .replace(/\\ge(q)?/g, "≥")
+    .replace(/\\neq/g, "≠")
+    .replace(/\\approx/g, "≈")
+    .replace(/\\pm/g, "±")
+    .replace(/\\mp/g, "∓")
+    .replace(/\\times/g, "×")
+    .replace(/\\cdot/g, "·")
+    .replace(/\\div/g, "÷")
+    .replace(/\\pi/g, "π")
+    .replace(/\\theta/g, "θ")
+    .replace(/\\alpha/g, "α")
+    .replace(/\\beta/g, "β")
+    .replace(/\\infty/g, "∞")
+    .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1)/($2)")
+    .replace(/\\left/g, "")
+    .replace(/\\right/g, "")
+    .replace(/\\text\{([^}]+)\}/g, "$1")
+    .replace(/\\mathrm\{([^}]+)\}/g, "$1")
+    .replace(/\\mathbf\{([^}]+)\}/g, "$1")
+    .replace(/\\\\/g, "\n")
+    .trim();
+}
+
+const AnimatedTeacherHandwriting = ({ text, explanation, color = "blue", x, y, index = 0 }) => {
   const [displayedText, setDisplayedText] = useState("");
   const [isWriting, setIsWriting] = useState(true);
+
+  const cleanText = useMemo(() => formatMathHandwriting(text), [text]);
+  const colorTheme = COLOR_MAP[color?.toLowerCase()] || (color?.startsWith("#") ? { ink: color, border: color, glow: color } : COLOR_MAP.blue);
 
   useEffect(() => {
     setDisplayedText("");
     setIsWriting(true);
-    if (!text) return;
+    if (!cleanText) return;
     let idx = 0;
     const interval = setInterval(() => {
       idx += 1;
-      setDisplayedText(text.slice(0, idx));
-      if (idx >= text.length) {
+      setDisplayedText(cleanText.slice(0, idx));
+      if (idx >= cleanText.length) {
         setIsWriting(false);
         clearInterval(interval);
       }
-    }, 32);
+    }, 28);
     return () => clearInterval(interval);
-  }, [text]);
+  }, [cleanText]);
+
+  // Position cleanly starting from the left of the board (x = 5%) and sequential vertical top stacking
+  const leftPos = x !== undefined && x > 0 ? Math.min(x, 60) : 5;
+  const topPos = y !== undefined && y > 0 ? Math.min(y, 75) : 12 + index * 18;
 
   return (
     <div
       style={{
         position: "absolute",
-        left: `${Math.min(x || 15, 70)}%`,
-        top: `${Math.min(y || 20, 75)}%`,
-        color: "#1e3a8a",
+        left: `${leftPos}%`,
+        top: `${topPos}%`,
+        color: colorTheme.ink,
         fontFamily: '"Caveat", "Kalam", cursive, sans-serif',
         fontSize: "clamp(26px, 3.4vw, 42px)",
         fontWeight: 700,
         lineHeight: 1.2,
-        letterSpacing: "0.02em",
+        letterSpacing: "0.03em",
         zIndex: 7,
         pointerEvents: "none",
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        textShadow: "0 0 2px rgba(30, 58, 138, 0.35)",
+        textShadow: `0 0 2px ${colorTheme.glow}`,
         filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.06))",
       }}
     >
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-        <span style={{ borderBottom: "2.5px solid rgba(37, 99, 235, 0.45)", paddingBottom: 3 }}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <span style={{ borderBottom: `2.5px solid ${colorTheme.border}`, paddingBottom: 3 }}>
           {displayedText}
         </span>
         {isWriting && (
@@ -2980,6 +3030,7 @@ const AnimatedTeacherHandwriting = ({ text, explanation, x = 15, y = 20 }) => {
             padding: "2px 8px",
             borderRadius: 6,
             width: "fit-content",
+            animation: "fadeIn 0.2s ease-out",
           }}
         >
           {explanation}
@@ -3576,8 +3627,10 @@ const InteractiveWhiteboard = ({
         {aiHints.map((hint, idx) => (
           <AnimatedTeacherHandwriting
             key={hint.id || idx}
+            index={idx}
             text={hint.text}
             explanation={hint.explanation}
+            color={hint.color || "blue"}
             x={hint.x}
             y={hint.y}
           />
@@ -4051,8 +4104,9 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             const newHint = {
               id: Date.now(),
               text: args.latex || args.text,
-              x: args.x || 20,
-              y: args.y || 20,
+              x: args.x,
+              y: args.y,
+              color: args.color || "blue",
               explanation: args.explanation,
             };
             setAiHints((prev) => [...prev, newHint]);
