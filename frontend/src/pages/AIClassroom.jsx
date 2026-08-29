@@ -3970,7 +3970,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           if (!raw.includes("**Acknowledge") && !raw.includes("**Plan") && !raw.includes("**Thought") && !raw.includes("**Reasoning")) {
             setLiveTranscript((prev) => prev + raw);
           }
-        } else if (msg.type === "turn_complete") {
+        } else if (msg.type === "turn_complete" || msg.type === "audio_turn_complete") {
           setLoadingAI(false);
           setLiveTranscript((current) => {
             const cleaned = current

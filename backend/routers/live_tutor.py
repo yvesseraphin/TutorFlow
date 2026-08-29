@@ -378,41 +378,15 @@ NATURAL HUMAN TEACHER GUIDELINES:
                             elif msg_type == "text":
                                 text_content = msg.get("text", "")
                                 if text_content:
+                                    logger.info(f"[CHAT IN] Student typed: '{text_content}'")
                                     try:
                                         await session.send_client_content(
                                             turns=[types.Content(role="user", parts=[types.Part.from_text(text=text_content)])],
                                             turn_complete=True,
                                         )
+                                        logger.info("Sent text turn directly into Gemini Live session")
                                     except Exception as e:
                                         logger.error(f"Error sending text turn to live session: {e}")
-
-                                    async def stream_chat_reply(prompt_text):
-                                        if _state["client_disconnected"]:
-                                            return
-                                        try:
-                                            chat_prompt = (
-                                                f"You are TutorFlow AI, a warm 1-on-1 private teacher teaching topic: '{canonical_topic}'. "
-                                                f"The student says: '{prompt_text}'. "
-                                                f"Give a clear, natural, helpful 1-3 sentence response directly to the student. "
-                                                f"Do NOT include internal thoughts, labels, or repeated name greetings."
-                                            )
-                                            chat_stream = await client.aio.models.generate_content_stream(
-                                                model=settings.gemini_model,
-                                                contents=chat_prompt,
-                                            )
-                                            async for chunk in chat_stream:
-                                                if _state["client_disconnected"]:
-                                                    break
-                                                if chunk.text:
-                                                    await websocket.send_json({"type": "text", "text": chunk.text})
-                                            if not _state["client_disconnected"]:
-                                                await websocket.send_json({"type": "turn_complete"})
-                                        except Exception as err:
-                                            logger.debug(f"Chat reply stream finished/handled: {err}")
-
-                                    task = asyncio.create_task(stream_chat_reply(text_content))
-                                    _background_tasks.add(task)
-                                    task.add_done_callback(_background_tasks.discard)
                             elif msg_type == "tool_response":
                                 tool_name = msg.get("name")
                                 call_id = msg.get("call_id")
