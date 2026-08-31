@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Stage, Layer, Line } from "react-konva";
+import katex from "katex";
 import { api } from "../lib/api";
-import { AudioStreamPlayer, AudioStreamRecorder, unlockAudioContext } from "../lib/liveAudio";
+import { AudioStreamPlayer, AudioStreamRecorder, SpeechTranscriber, unlockAudioContext } from "../lib/liveAudio";
 import NotificationDropdown from "../components/NotificationDropdown";
 import {
   Activity,
@@ -2392,6 +2393,54 @@ const styles = `
       grid-template-columns: 1fr;
     }
   }
+
+  .typing-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .typing-dots .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #111111;
+    display: inline-block;
+    animation: typingBounce 1.4s infinite ease-in-out both;
+  }
+
+  .typing-dots .dot-1 {
+    animation-delay: -0.32s;
+  }
+
+  .typing-dots .dot-2 {
+    animation-delay: -0.16s;
+  }
+
+  @keyframes typingBounce {
+    0%, 80%, 100% {
+      transform: scale(0);
+      opacity: 0.3;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .katex-math-render {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .katex-math-render .katex {
+    font-size: 1.15em !important;
+    text-rendering: geometricPrecision;
+  }
+
+  .interim-bubble {
+    transition: all 0.2s ease;
+  }
 `;
 
 const SubjectCard = ({ subject, onOpen }) => {
@@ -2594,19 +2643,115 @@ const VoiceBars = ({ muted = false, active = false }) => (
 );
 
 
+const _FRONTEND_MATERIALS_CACHE = new Map();
+
+const MaterialViewerModal = ({ material, onClose }) => {
+  if (!material) return null;
+
+  const formulaHtml = material.formula_latex ? renderKaTeX(material.formula_latex) : null;
+
+  return (
+    <div className="summary-overlay" onClick={onClose} style={{ zIndex: 120 }}>
+      <div className="summary-modal" style={{ maxWidth: 620, background: "#ffffff", padding: "28px" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <span style={{ display: "inline-block", background: "#f5f5f5", color: "#111111", fontSize: 12, fontWeight: 700, padding: "3px 8px", borderRadius: 4, marginBottom: 8, border: "1px solid #e5e5e5" }}>
+              {material.badge || material.type || "Learning Material"}
+            </span>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>
+              {material.title}
+            </h2>
+            <p style={{ margin: "4px 0 0", fontSize: 13.5, color: "#666666" }}>
+              Topic: {material.topic || "Mathematics"} • {material.duration || "Self-Paced Practice"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ border: 0, background: "transparent", cursor: "pointer", color: "#666666", padding: 4 }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <p style={{ fontSize: 14.5, color: "#333333", lineHeight: "22px", margin: 0 }}>
+            {material.description}
+          </p>
+
+          {formulaHtml && (
+            <div style={{ background: "#f9fafb", padding: "16px 20px", borderRadius: 10, border: "1px solid #e5e7eb", textAlign: "center", margin: "8px 0" }}>
+              <div
+                className="katex-math-render"
+                style={{ fontSize: "22px", color: "#111111" }}
+                dangerouslySetInnerHTML={{ __html: formulaHtml }}
+              />
+            </div>
+          )}
+
+          {material.preview_steps && material.preview_steps.length > 0 && (
+            <div style={{ background: "#fafafa", border: "1px solid #ebebeb", borderRadius: 10, padding: "14px 18px" }}>
+              <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: "#111111" }}>
+                Key Steps & Concepts
+              </h4>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#444444", lineHeight: "22px" }}>
+                {material.preview_steps.map((step, sIdx) => (
+                  <li key={sIdx} style={{ marginBottom: 4 }}>
+                    {step}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: "9px 20px",
+              background: "#111111",
+              color: "#ffffff",
+              borderRadius: 8,
+              border: 0,
+              fontSize: 13.5,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ContentListView = ({ type, topic = "Algebra" }) => {
   const [activeTab, setActiveTab] = useState("All");
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
+    const cacheKey = `${topic}:${type}`;
 
+    if (_FRONTEND_MATERIALS_CACHE.has(cacheKey)) {
+      setMaterials(_FRONTEND_MATERIALS_CACHE.get(cacheKey));
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     api(`/tutor/materials?category=${encodeURIComponent(type)}&topic=${encodeURIComponent(topic)}`)
       .then((data) => {
         if (isMounted) {
-          setMaterials(Array.isArray(data) ? data : []);
+          const list = Array.isArray(data) ? data : [];
+          _FRONTEND_MATERIALS_CACHE.set(cacheKey, list);
+          setMaterials(list);
           setLoading(false);
         }
       })
@@ -2622,15 +2767,42 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
     };
   }, [type, topic]);
 
-  const tabs = ["All " + type, "Guides", "Worksheets", "Videos", "Examples", "Practice"];
+  const tabs = ["All", "Guides", "Worksheets", "Videos", "Examples", "Practice"];
+
+  const filteredMaterials = useMemo(() => {
+    return materials.filter((item) => {
+      const matchesTab =
+        activeTab === "All" ||
+        (item.category && item.category.toLowerCase().includes(activeTab.toLowerCase())) ||
+        (item.type && item.type.toLowerCase().includes(activeTab.toLowerCase()));
+
+      const matchesSearch =
+        !searchQuery ||
+        (item.title && item.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      return matchesTab && matchesSearch;
+    });
+  }, [materials, activeTab, searchQuery]);
 
   return (
     <div className="content-list-view">
+      {selectedMaterial && (
+        <MaterialViewerModal
+          material={selectedMaterial}
+          onClose={() => setSelectedMaterial(null)}
+        />
+      )}
+
       <div className="content-header">
         <h2>{type}</h2>
         <div className="content-search">
           <Search size={18} />
-          <input placeholder={`Search ${type.toLowerCase()}...`} />
+          <input
+            placeholder={`Search ${type.toLowerCase()}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </div>
 
@@ -2648,10 +2820,22 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
 
       <div className="content-cards-container">
         {loading ? (
-          <div style={{ padding: "64px 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-            <div className="tf-spinner" />
+          <div style={{ padding: "64px 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                border: "3px solid #f0f0f0",
+                borderTopColor: "#111111",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+            <p style={{ margin: 0, fontSize: 14, color: "#666666", fontWeight: 500 }}>
+              Loading {type.toLowerCase()} for {topic}...
+            </p>
           </div>
-        ) : materials.length === 0 ? (
+        ) : filteredMaterials.length === 0 ? (
           <div className="tf-empty-wrap" style={{ padding: "48px 0" }}>
             <div className="tf-empty-icon-circle">
               <img
@@ -2660,25 +2844,38 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
                 style={{ width: "96px", height: "96px", objectFit: "contain", transform: "scale(1.1)" }}
               />
             </div>
-            <h3 className="tf-empty-title">No {type.toLowerCase()} yet</h3>
-            <p className="tf-empty-desc">Materials for {topic} will appear here soon.</p>
+            <h3 className="tf-empty-title">No {type.toLowerCase()} found</h3>
+            <p className="tf-empty-desc">No materials matching your search or category.</p>
           </div>
         ) : (
-          materials.map(item => (
-            <div className="content-card" key={item.id}>
+          filteredMaterials.map((item) => (
+            <div className="content-card" key={item.id} onClick={() => setSelectedMaterial(item)}>
               <div className="content-card-icon">
-                {item.content_type === "video" ? <PlaySquare size={28} strokeWidth={1.5} /> : <File size={28} strokeWidth={1.5} />}
+                {item.content_type === "video" || item.type === "Videos" ? (
+                  <PlaySquare size={28} strokeWidth={1.5} />
+                ) : (
+                  <File size={28} strokeWidth={1.5} />
+                )}
               </div>
               <div className="content-card-info">
                 <h3 className="content-card-title">{item.title}</h3>
                 <p className="content-card-desc">{item.description}</p>
                 <p className="content-card-meta">
-                  <span>{item.content_type || "PDF"}</span>
+                  <span>{item.type || item.category || "Guide"}</span>
                   <span>•</span>
-                  <span>{item.file_size || "1.0 MB"}</span>
+                  <span>{item.duration || "5 min"}</span>
                 </p>
               </div>
-              <button className="content-card-btn">View</button>
+              <button
+                type="button"
+                className="content-card-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedMaterial(item);
+                }}
+              >
+                View
+              </button>
             </div>
           ))
         )}
@@ -2919,66 +3116,44 @@ const COLOR_MAP = {
   black: { ink: "#0f172a", border: "rgba(15, 23, 42, 0.45)", glow: "rgba(15, 23, 42, 0.3)" },
 };
 
-function formatMathHandwriting(text) {
-  if (!text) return "";
-  return text
-    .replace(/\\longleftrightarrow/g, "⟵—⟶")
-    .replace(/\\longrightarrow/g, "⟶")
-    .replace(/\\longleftarrow/g, "⟵")
-    .replace(/\\leftrightarrow/g, "⟷")
-    .replace(/\\leftarrow/g, "←")
-    .replace(/\\rightarrow/g, "→")
-    .replace(/\\le(q)?/g, "≤")
-    .replace(/\\ge(q)?/g, "≥")
-    .replace(/\\neq/g, "≠")
-    .replace(/\\approx/g, "≈")
-    .replace(/\\pm/g, "±")
-    .replace(/\\mp/g, "∓")
-    .replace(/\\times/g, "×")
-    .replace(/\\cdot/g, "·")
-    .replace(/\\div/g, "÷")
-    .replace(/\\pi/g, "π")
-    .replace(/\\theta/g, "θ")
-    .replace(/\\alpha/g, "α")
-    .replace(/\\beta/g, "β")
-    .replace(/\\infty/g, "∞")
-    .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1)/($2)")
-    .replace(/\\left/g, "")
-    .replace(/\\right/g, "")
-    .replace(/\\text\{([^}]+)\}/g, "$1")
-    .replace(/\\mathrm\{([^}]+)\}/g, "$1")
-    .replace(/\\mathbf\{([^}]+)\}/g, "$1")
-    .replace(/\\\\/g, "\n")
-    .trim();
+function cleanLatexString(raw) {
+  if (!raw) return "";
+  let s = String(raw).trim();
+  // Strip outer quotes and markdown math dollar signs
+  s = s.replace(/^["']+|["']+$/g, "");
+  s = s.replace(/^\$+|\$+$/g, "");
+  return s;
 }
 
-const AnimatedTeacherHandwriting = ({ text, explanation, color = "blue", x, y, index = 0 }) => {
-  const [displayedText, setDisplayedText] = useState("");
-  const [isWriting, setIsWriting] = useState(true);
+function renderKaTeX(latex) {
+  if (!latex) return null;
+  try {
+    return katex.renderToString(cleanLatexString(latex), {
+      displayMode: false,
+      throwOnError: false,
+    });
+  } catch (e) {
+    return null;
+  }
+}
 
-  const cleanText = useMemo(() => formatMathHandwriting(text), [text]);
-  const colorTheme = COLOR_MAP[color?.toLowerCase()] || (color?.startsWith("#") ? { ink: color, border: color, glow: color } : COLOR_MAP.blue);
+const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, index = 0 }) => {
+  const cleanText = useMemo(() => cleanLatexString(text), [text]);
 
-  useEffect(() => {
-    setDisplayedText("");
-    setIsWriting(true);
-    if (!cleanText) return;
-    let idx = 0;
-    const interval = setInterval(() => {
-      idx += 1;
-      setDisplayedText(cleanText.slice(0, idx));
-      if (idx >= cleanText.length) {
-        setIsWriting(false);
-        clearInterval(interval);
-      }
-    }, 28);
-    return () => clearInterval(interval);
+  // Check if text is LaTeX math formula
+  const isLatex = useMemo(() => {
+    return /[\\[\]{}^_=+*/<>~]|\b(lim|inf|sup|frac|dots|sqrt|times|approx|leq|geq|neq|pm)\b/i.test(cleanText) ||
+      cleanText.includes("=") || cleanText.includes("+") || cleanText.includes("-");
   }, [cleanText]);
 
-  // Position cleanly starting from the left of the board (x = 5%) and sequential vertical top stacking
-  const leftPos = x !== undefined && x > 0 ? Math.min(x, 60) : 5;
+  const katexHtml = useMemo(() => {
+    if (!isLatex) return null;
+    return renderKaTeX(cleanText);
+  }, [isLatex, cleanText]);
+
+  // Position cleanly: top-left corner stacked neatly down the board
   const topPos = y !== undefined && y > 0 ? Math.min(y, 75) : 12 + index * 18;
+  const leftPos = x !== undefined && x > 0 ? Math.min(x, 60) : 6;
 
   return (
     <div
@@ -2986,56 +3161,68 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "blue", x, y, i
         position: "absolute",
         left: `${leftPos}%`,
         top: `${topPos}%`,
-        color: colorTheme.ink,
-        fontFamily: '"Caveat", "Kalam", cursive, sans-serif',
-        fontSize: "clamp(26px, 3.4vw, 42px)",
-        fontWeight: 700,
-        lineHeight: 1.2,
-        letterSpacing: "0.03em",
-        zIndex: 7,
+        zIndex: 8,
         pointerEvents: "none",
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        textShadow: `0 0 2px ${colorTheme.glow}`,
-        filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.06))",
+        maxWidth: "480px",
+        animation: "fadeIn 0.2s ease-out",
       }}
     >
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-        <span style={{ borderBottom: `2.5px solid ${colorTheme.border}`, paddingBottom: 3 }}>
-          {displayedText}
-        </span>
-        {isWriting && (
+      <div
+        style={{
+          background: "#ffffff",
+          border: "1px solid #e5e5e5",
+          borderRadius: 10,
+          padding: "10px 18px",
+          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
+        {katexHtml ? (
+          <div
+            className="katex-math-render"
+            style={{
+              fontSize: "clamp(20px, 2.4vw, 28px)",
+              color: "#111111",
+              fontWeight: 600,
+              letterSpacing: "0.01em",
+            }}
+            dangerouslySetInnerHTML={{ __html: katexHtml }}
+          />
+        ) : (
           <span
             style={{
-              fontSize: "0.85em",
-              display: "inline-block",
-              transform: "translateY(-4px) rotate(-15deg)",
-              animation: "bounce 0.4s infinite alternate",
+              fontFamily: "Outfit, -apple-system, sans-serif",
+              fontSize: "clamp(16px, 1.8vw, 22px)",
+              fontWeight: 600,
+              color: "#111111",
+              lineHeight: "26px",
             }}
           >
-            ✍️
+            {cleanText}
+          </span>
+        )}
+
+        {explanation && (
+          <span
+            style={{
+              fontFamily: "Outfit, sans-serif",
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: "#555555",
+              borderTop: "1px solid #f0f0f0",
+              paddingTop: 4,
+              marginTop: 2,
+            }}
+          >
+            {explanation}
           </span>
         )}
       </div>
-      {explanation && !isWriting && (
-        <span
-          style={{
-            fontFamily: "Outfit, sans-serif",
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: "#334155",
-            background: "rgba(241, 245, 249, 0.95)",
-            border: "1px solid #cbd5e1",
-            padding: "2px 8px",
-            borderRadius: 6,
-            width: "fit-content",
-            animation: "fadeIn 0.2s ease-out",
-          }}
-        >
-          {explanation}
-        </span>
-      )}
     </div>
   );
 };
@@ -3877,6 +4064,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const [isMicStreaming, setIsMicStreaming] = useState(false);
   const [studentVolume, setStudentVolume] = useState(0);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [interimSpeech, setInterimSpeech] = useState("");
   const [aiHighlights, setAiHighlights] = useState([]);
   const [aiHints, setAiHints] = useState([]);
   const [liveTranscript, setLiveTranscript] = useState("");
@@ -3905,7 +4094,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
   const wsRef = useRef(null);
   const playerRef = useRef(null);
-  const recorderRef = useRef(null);
+  const transcriberRef = useRef(null);
   const chatScrollRef = useRef(null);
   const stageRef = useRef(null);
 
@@ -3941,10 +4130,13 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [chatMessages, liveTranscript, loadingAI]);
+  }, [chatMessages, liveTranscript, loadingAI, interimSpeech]);
 
   useEffect(() => {
     let isMounted = true;
+    let reconnectTimeout = null;
+    let pingTimer = null;
+
     const player = new AudioStreamPlayer({
       onPlayStateChange: (playing) => {
         if (isMounted) setIsSpeaking(playing);
@@ -3952,213 +4144,502 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     });
     playerRef.current = player;
 
-    const recorder = new AudioStreamRecorder({
-      onChunk: (base64Pcm) => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ type: "audio", data: base64Pcm }));
+    const transcriber = new SpeechTranscriber({
+      onInterim: (text) => {
+        if (isMounted) setInterimSpeech(text);
+      },
+      onFinal: (finalText) => {
+        if (isMounted && finalText.trim()) {
+          setInterimSpeech("");
+          handleSendVoiceTranscript(finalText.trim());
         }
       },
       onLevel: (vol) => {
         if (isMounted) setStudentVolume(vol);
       },
+      onStateChange: (active) => {
+        if (isMounted) setIsMicStreaming(active);
+      },
+      onSpeechStart: () => {
+        // Instant hardware-level barge-in: stop AI audio the moment student begins talking
+        if (playerRef.current) {
+          playerRef.current.interrupt();
+        }
+        if (isMounted) setIsSpeaking(false);
+      },
     });
-    recorderRef.current = recorder;
+    transcriberRef.current = transcriber;
 
-    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
-    const wsUrl = apiBase.replace(/^http/, "ws") + "/live-tutor";
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = async () => {
+    const connectWebSocket = () => {
       if (!isMounted) return;
-      setLoadingAI(true);
-      const initTopic = lessonTitle || "Algebra";
-      ws.send(
-        JSON.stringify({
-          topic: initTopic,
-          user_id: userId,
-          type: "handshake",
-        })
-      );
-      try {
-        await unlockAudioContext();
-        await recorder.start();
-        if (isMounted) setIsMicStreaming(true);
-      } catch (err) {
-        console.log("Microphone ready upon user interaction:", err);
-      }
-    };
+      const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
+      const wsUrl = apiBase.replace(/^http/, "ws") + "/live-tutor";
+      console.log("[LIVE WS CLIENT] Connecting to Live Tutor WebSocket:", wsUrl);
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "ready") {
-          setIsLiveConnected(true);
-          setLoadingAI(false);
-        } else if (msg.type === "reconnecting") {
-          setIsLiveConnected(false);
-          setLoadingAI(true);
-          const t = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          setChatMessages((prev) => [
-            ...prev,
-            { sender: "ai", text: "Reconnecting to AI tutor... please wait.", time: t },
-          ]);
-        } else if (msg.type === "error") {
-          setIsLiveConnected(false);
-          setLoadingAI(false);
-          const errTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          const errMsg = msg.message || "The AI tutor session could not start. Please try again.";
-          setChatMessages((prev) => [
-            ...prev,
-            { sender: "ai", text: `Session error: ${errMsg}`, time: errTime },
-          ]);
-        } else if (msg.type === "audio" && msg.data) {
-          setLoadingAI((prev) => (prev ? false : prev));
-          if (!isMutedRef.current && playerRef.current) {
-            playerRef.current.playChunk(msg.data, 24000);
-          }
-        } else if ((msg.type === "text_delta" || msg.type === "text") && msg.text) {
-          setLoadingAI((prev) => (prev ? false : prev));
-          const raw = msg.text;
-          if (!raw.includes("**Acknowledge") && !raw.includes("**Plan") && !raw.includes("**Thought") && !raw.includes("**Reasoning")) {
-            setLiveTranscript((prev) => prev + raw);
-          }
-        } else if (msg.type === "turn_complete" || msg.type === "audio_turn_complete") {
-          setLoadingAI((prev) => (prev ? false : prev));
-          setLiveTranscript((current) => {
-            const cleaned = current
-              .replace(/\*\*[^*]+\*\*/g, "")
-              .replace(/^(Thought|Thinking|Plan|Acknowledge|Reasoning):.*/gim, "")
-              .trim();
-            if (cleaned) {
-              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-              setChatMessages((prev) => [...prev, { sender: "ai", text: cleaned, time: now }]);
-            }
-            return "";
-          });
-        } else if (msg.type === "interrupted") {
-          if (playerRef.current) {
-            playerRef.current.interrupt();
-          }
-          setIsSpeaking(false);
-        } else if (msg.type === "whiteboard_action" || msg.type === "tool_call") {
-          const name = msg.tool || msg.name;
-          const args = msg.args || {};
-          const call_id = msg.call_id;
+      ws.onopen = async () => {
+        if (!isMounted) return;
+        setLoadingAI(true);
+        const initTopic = lessonTitle || "Algebra";
+        ws.send(
+          JSON.stringify({
+            topic: initTopic,
+            user_id: userId,
+            type: "handshake",
+          })
+        );
+        try {
+          await unlockAudioContext();
+          await transcriber.start();
+          if (isMounted) setIsMicStreaming(true);
+        } catch (err) {
+          console.log("Microphone ready upon user interaction:", err);
+        }
+      };
 
-          if (name === "switch_teaching_strategy") {
-            const nextStrategy = args.strategy || "Adaptive Explanation";
-            const reason = args.reason || "Adapting to learner progress";
-            setTeachingStrategy(nextStrategy);
-            setStrategyReason(reason);
-            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            setAdaptiveTimeline((prev) => [
-              ...prev,
-              { time: now, strategy: nextStrategy, description: reason, type: "strategy" },
-            ]);
-          } else if (name === "report_misconception") {
-            const misc = {
-              type: args.misconception_type || "Conceptual Misunderstanding",
-              explanation: args.explanation || "Reasoning break identified",
-              intervention: args.intervention_strategy || "Targeted Intervention",
-            };
-            setActiveMisconception(misc);
-            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            setAdaptiveTimeline((prev) => [
-              ...prev,
-              {
-                time: now,
-                strategy: misc.intervention,
-                description: `Misconception Diagnosed: ${misc.type} — ${misc.explanation}`,
-                type: "misconception",
-              },
-            ]);
-          } else if (name === "trigger_teach_back") {
-            setTeachBackActive(true);
-            setTeachBackPrompt(args.prompt || "Explain the core concept back in your own words!");
-            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            setAdaptiveTimeline((prev) => [
-              ...prev,
-              {
-                time: now,
-                strategy: "Teach-Back Verification",
-                description: `Teach-Back Challenge: ${args.prompt}`,
-                type: "teach_back",
-              },
-            ]);
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "pong" || msg.type === "keepalive") {
+            // Heartbeat response - connection is 100% active and healthy
+            setIsLiveConnected(true);
+            return;
+          }
+          if (msg.type === "session_renewing") {
+            // Seamless background virtual session hot-swap
+            console.log("[LIVE WS CLIENT] Seamless Gemini session renewal #", msg.attempt);
+            setIsLiveConnected(true);
+            return;
+          }
+          if (msg.type === "ready") {
+            setIsLiveConnected(true);
+            setIsInitialLoading(false);
+            setLoadingAI(false);
+          } else if (msg.type === "error") {
+            setIsLiveConnected(false);
+            setIsInitialLoading(false);
+            setLoadingAI(false);
+            const errTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const errMsg = msg.message || "The AI tutor session could not start. Please try again.";
             setChatMessages((prev) => [
               ...prev,
-              { sender: "ai", text: `[Teach-Back Challenge] ${args.prompt}`, time: now },
+              { sender: "ai", text: `Session notice: ${errMsg}`, time: errTime },
             ]);
-          } else if (name === "highlight_board") {
-            const newHl = {
-              id: Date.now(),
-              x: args.x || 10,
-              y: args.y || 10,
-              width: args.width || 25,
-              height: args.height || 18,
-              label: args.label || "Check this",
-            };
-            setAiHighlights((prev) => [...prev, newHl]);
-          } else if (name === "write_board_hint" || name === "write_math_equation") {
-            const rawText = args.latex || args.text;
-            if (rawText) {
-              const newHint = {
-                id: Date.now(),
-                text: rawText,
-                x: args.x,
-                y: args.y,
-                color: args.color || "blue",
-                explanation: args.explanation,
-              };
-              setAiHints((prev) => {
-                const formattedNew = formatMathHandwriting(rawText);
-                if (prev.some((h) => formatMathHandwriting(h.text) === formattedNew)) {
-                  return prev;
-                }
-                const next = [...prev, newHint];
-                return next.length > 4 ? next.slice(next.length - 4) : next;
-              });
+          } else if (msg.type === "audio" && msg.data) {
+            setIsLiveConnected(true);
+            setIsInitialLoading(false);
+            setLoadingAI(false);
+            if (!isMutedRef.current && playerRef.current) {
+              playerRef.current.playChunk(msg.data, 24000);
             }
-          } else if (name === "show_socratic_hint") {
-            const hintMsg = args.hint_text || args.hint;
-            if (hintMsg) {
-              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-              setChatMessages((prev) => [...prev, { sender: "ai", text: `Hint: ${hintMsg}`, time: now }]);
+          } else if ((msg.type === "text_delta" || msg.type === "text") && msg.text) {
+            setLoadingAI(false);
+            const raw = msg.text;
+            if (!raw.includes("**Acknowledge") && !raw.includes("**Plan") && !raw.includes("**Thought") && !raw.includes("**Reasoning")) {
+              setLiveTranscript((prev) => prev + raw);
             }
-          } else if (name === "clear_ai_writing" || name === "clear_board_annotations") {
-            setAiHighlights([]);
-            setAiHints([]);
-          }
+          } else if (msg.type === "turn_complete" || msg.type === "audio_turn_complete") {
+            setLoadingAI(false);
+            setLiveTranscript((current) => {
+              const cleaned = current
+                .replace(/\*\*[^*]+\*\*/g, "")
+                .replace(/^(Thought|Thinking|Plan|Acknowledge|Reasoning):.*/gim, "")
+                .trim();
+              if (cleaned) {
+                const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                setChatMessages((prev) => [...prev, { sender: "ai", text: cleaned, time: now }]);
+              }
+              return "";
+            });
+          } else if (msg.type === "interrupted") {
+            if (playerRef.current) {
+              playerRef.current.interrupt();
+            }
+            setIsSpeaking(false);
+          } else if (msg.type === "whiteboard_action" || msg.type === "tool_call") {
+            const name = msg.tool || msg.name;
+            const args = msg.args || {};
+            const call_id = msg.call_id;
 
-          if (call_id && ws.readyState === WebSocket.OPEN) {
-            ws.send(
-              JSON.stringify({
-                type: "tool_response",
-                call_id,
-                name,
-                result: { status: "ok" },
-              })
-            );
+            if (name === "switch_teaching_strategy") {
+              const nextStrategy = args.strategy || "Adaptive Explanation";
+              const reason = args.reason || "Adapting to learner progress";
+              setTeachingStrategy(nextStrategy);
+              setStrategyReason(reason);
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setAdaptiveTimeline((prev) => [
+                ...prev,
+                { time: now, strategy: nextStrategy, description: reason, type: "strategy" },
+              ]);
+            } else if (name === "report_misconception") {
+              const misc = {
+                type: args.misconception_type || "Conceptual Misunderstanding",
+                explanation: args.explanation || "Reasoning break identified",
+                intervention: args.intervention_strategy || "Targeted Intervention",
+              };
+              setActiveMisconception(misc);
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setAdaptiveTimeline((prev) => [
+                ...prev,
+                {
+                  time: now,
+                  strategy: misc.intervention,
+                  description: `Misconception Diagnosed: ${misc.type} — ${misc.explanation}`,
+                  type: "misconception",
+                },
+              ]);
+            } else if (name === "trigger_teach_back") {
+              setTeachBackActive(true);
+              setTeachBackPrompt(args.prompt || "Explain the core concept back in your own words!");
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setAdaptiveTimeline((prev) => [
+                ...prev,
+                {
+                  time: now,
+                  strategy: "Teach-Back Verification",
+                  description: `Teach-Back Challenge: ${args.prompt}`,
+                  type: "teach_back",
+                },
+              ]);
+              setChatMessages((prev) => [
+                ...prev,
+                { sender: "ai", text: `[Teach-Back Challenge] ${args.prompt}`, time: now },
+              ]);
+            } else if (name === "highlight_board") {
+              const newHl = {
+                id: Date.now(),
+                x: args.x || 10,
+                y: args.y || 10,
+                width: args.width || 25,
+                height: args.height || 18,
+                label: args.label || "Check this",
+              };
+              setAiHighlights((prev) => [...prev, newHl]);
+            } else if (name === "write_board_hint" || name === "write_math_equation") {
+              const rawText = args.latex || args.text;
+              if (rawText) {
+                const newHint = {
+                  id: Date.now(),
+                  text: rawText,
+                  x: args.x,
+                  y: args.y,
+                  color: args.color || "blue",
+                  explanation: args.explanation,
+                };
+                setAiHints((prev) => {
+                  const formattedNew = formatMathHandwriting(rawText);
+                  if (prev.some((h) => formatMathHandwriting(h.text) === formattedNew)) {
+                    return prev;
+                  }
+                  const next = [...prev, newHint];
+                  return next.length > 4 ? next.slice(next.length - 4) : next;
+                });
+              }
+            } else if (name === "show_socratic_hint") {
+              const hintMsg = args.hint_text || args.hint;
+              if (hintMsg) {
+                const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                setChatMessages((prev) => [...prev, { sender: "ai", text: `Hint: ${hintMsg}`, time: now }]);
+              }
+            } else if (name === "draw_number_line") {
+              const minVal = args.min_val !== undefined ? args.min_val : (args.min_value !== undefined ? args.min_value : -5);
+              const maxVal = args.max_val !== undefined ? args.max_val : (args.max_value !== undefined ? args.max_value : 5);
+              const step = args.step || 1;
+              const range = maxVal - minVal || 10;
+              const startX = 120;
+              const endX = 720;
+              const centerY = 240;
+              const stepPx = (endX - startX) / (range / step);
+              const strokes = [];
+
+              // Main line
+              strokes.push({
+                tool: "pen",
+                color: "#2563eb",
+                strokeWidth: 4,
+                points: [startX, centerY, endX, centerY],
+              });
+              // Left arrow
+              strokes.push({
+                tool: "pen",
+                color: "#2563eb",
+                strokeWidth: 3.5,
+                points: [startX + 14, centerY - 8, startX, centerY, startX + 14, centerY + 8],
+              });
+              // Right arrow
+              strokes.push({
+                tool: "pen",
+                color: "#2563eb",
+                strokeWidth: 3.5,
+                points: [endX - 14, centerY - 8, endX, centerY, endX - 14, centerY + 8],
+              });
+
+              // Tick marks
+              const tickCount = Math.round(range / step);
+              for (let i = 0; i <= tickCount; i++) {
+                const val = minVal + i * step;
+                const tx = startX + i * stepPx;
+                const isZero = val === 0;
+                const tickH = isZero ? 18 : 10;
+                strokes.push({
+                  tool: "pen",
+                  color: isZero ? "#ef4444" : "#1e293b",
+                  strokeWidth: isZero ? 4 : 2.5,
+                  points: [tx, centerY - tickH, tx, centerY + tickH],
+                });
+              }
+
+              // Highlight points on number line
+              const rawHl = args.highlight_points;
+              let highlightPointsList = [];
+              if (typeof rawHl === "string") {
+                highlightPointsList = rawHl.split(",").map((s) => parseFloat(s.trim())).filter((n) => !isNaN(n));
+              } else if (Array.isArray(rawHl)) {
+                highlightPointsList = rawHl.map((n) => parseFloat(n)).filter((n) => !isNaN(n));
+              } else if (typeof rawHl === "number") {
+                highlightPointsList = [rawHl];
+              }
+
+              highlightPointsList.forEach((pt) => {
+                const clamped = Math.max(minVal, Math.min(maxVal, pt));
+                const ptx = startX + ((clamped - minVal) / range) * (endX - startX);
+                // Circular highlight marker
+                strokes.push({
+                  tool: "pen",
+                  color: "#ef4444",
+                  strokeWidth: 4,
+                  points: [ptx - 6, centerY - 6, ptx + 6, centerY - 6, ptx + 6, centerY + 6, ptx - 6, centerY + 6, ptx - 6, centerY - 6],
+                });
+              });
+
+              setPages((prev) =>
+                prev.map((p) => (p.id === activePageId ? { ...p, lines: [...(p.lines || []), ...strokes] } : p))
+              );
+
+              const expl = args.explanation || args.label || `Number Line [${minVal} to ${maxVal}]`;
+              setAiHints((prev) => [
+                ...prev,
+                {
+                  id: Date.now(),
+                  text: `Number Line: ${minVal} ... ${maxVal}`,
+                  explanation: expl,
+                  color: "blue",
+                  x: 10,
+                  y: 12,
+                },
+              ]);
+            } else if (name === "display_interactive_balance_scale") {
+              const cx = 400;
+              const cy = 250;
+              const strokes = [
+                // Fulcrum triangle
+                { tool: "pen", color: "#475569", strokeWidth: 4, points: [cx - 35, cy + 70, cx, cy, cx + 35, cy + 70, cx - 35, cy + 70] },
+                // Balance Beam
+                { tool: "pen", color: "#1e293b", strokeWidth: 5, points: [cx - 150, cy - 10, cx + 150, cy - 10] },
+                // Left pan hanger & dish
+                { tool: "pen", color: "#2563eb", strokeWidth: 3, points: [cx - 150, cy - 10, cx - 175, cy + 40, cx - 125, cy + 40, cx - 150, cy - 10] },
+                // Right pan hanger & dish
+                { tool: "pen", color: "#2563eb", strokeWidth: 3, points: [cx + 150, cy - 10, cx + 125, cy + 40, cx + 175, cy + 40, cx + 150, cy - 10] },
+              ];
+
+              setPages((prev) =>
+                prev.map((p) => (p.id === activePageId ? { ...p, lines: [...(p.lines || []), ...strokes] } : p))
+              );
+
+              const leftExp = args.left_expression || "";
+              const rightExp = args.right_expression || "";
+              if (leftExp || rightExp) {
+                setAiHints((prev) => [
+                  ...prev,
+                  {
+                    id: Date.now(),
+                    text: `${leftExp} = ${rightExp}`,
+                    explanation: args.operation_applied || "Balanced scale representing equation",
+                    color: "green",
+                    x: 35,
+                    y: 10,
+                  },
+                ]);
+              }
+            } else if (name === "draw_geometric_shape") {
+              const shapeType = args.shape_type || "triangle";
+              const cx = 400;
+              const cy = 240;
+              const strokes = [];
+
+              if (shapeType === "circle") {
+                const r = 80;
+                const pts = [];
+                for (let i = 0; i <= 36; i++) {
+                  const angle = (i / 36) * 2 * Math.PI;
+                  pts.push(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+                }
+                strokes.push({ tool: "pen", color: "#2563eb", strokeWidth: 3.5, points: pts });
+              } else if (shapeType === "rectangle" || shapeType === "square") {
+                const rw = shapeType === "square" ? 140 : 200;
+                const rh = shapeType === "square" ? 140 : 110;
+                strokes.push({
+                  tool: "shape-rect",
+                  color: "#2563eb",
+                  strokeWidth: 3.5,
+                  points: [cx - rw / 2, cy - rh / 2, cx + rw / 2, cy - rh / 2, cx + rw / 2, cy + rh / 2, cx - rw / 2, cy + rh / 2, cx - rw / 2, cy - rh / 2],
+                });
+              } else {
+                // Triangle
+                strokes.push({
+                  tool: "pen",
+                  color: "#2563eb",
+                  strokeWidth: 3.5,
+                  points: [cx, cy - 80, cx + 90, cy + 70, cx - 90, cy + 70, cx, cy - 80],
+                });
+              }
+
+              setPages((prev) =>
+                prev.map((p) => (p.id === activePageId ? { ...p, lines: [...(p.lines || []), ...strokes] } : p))
+              );
+
+              if (args.label) {
+                setAiHints((prev) => [
+                  ...prev,
+                  {
+                    id: Date.now(),
+                    text: args.label,
+                    explanation: `Geometric shape: ${shapeType}`,
+                    color: "blue",
+                    x: 35,
+                    y: 12,
+                  },
+                ]);
+              }
+            } else if (name === "update_lesson_step") {
+              const stepIdx = args.step_index || 1;
+              const stepTitle = args.step_title || "";
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setAdaptiveTimeline((prev) => [
+                ...prev,
+                {
+                  time: now,
+                  strategy: `Step ${stepIdx}: ${stepTitle}`,
+                  description: `Lesson progressed to step ${stepIdx}`,
+                  type: "step",
+                },
+              ]);
+            } else if (name === "trigger_ai_peer_challenge") {
+              const peerName = args.peer_name || "Alex";
+              const problem = args.problem || "";
+              const mistake = args.peer_flawed_step || args.peer_mistake || args.flawed_step || "";
+              const promptToStudent = args.prompt_to_student || "Can you spot what went wrong?";
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setChatMessages((prev) => [
+                ...prev,
+                {
+                  sender: "ai",
+                  text: `[Peer Challenge from ${peerName}] "${problem}" — ${peerName} thinks: "${mistake}". ${promptToStudent}`,
+                  time: now,
+                },
+              ]);
+            } else if (name === "conclude_lesson") {
+              const summary = args.mastery_summary || "Lesson successfully completed!";
+              const celeb = args.celebration_message || "Congratulations on mastering today's topic!";
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setChatMessages((prev) => [
+                ...prev,
+                {
+                  sender: "ai",
+                  text: `🎉 Lesson Concluded! ${summary} ${celeb}`,
+                  time: now,
+                },
+              ]);
+              setAiHints((prev) => [
+                ...prev,
+                {
+                  id: Date.now(),
+                  text: "🏆 Lesson Mastered!",
+                  explanation: summary,
+                  color: "green",
+                  x: 10,
+                  y: 10,
+                },
+              ]);
+            } else if (name === "generate_transfer_challenge") {
+              const challengeQ = args.problem_latex || args.challenge_problem || args.problem || "";
+              const concept = args.concept || "";
+              const guidance = args.guidance || "";
+              const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setChatMessages((prev) => [
+                ...prev,
+                {
+                  sender: "ai",
+                  text: `[Mastery Challenge${concept ? ` on ${concept}` : ""}] ${challengeQ} ${guidance ? `— Hint: ${guidance}` : ""}`,
+                  time: now,
+                },
+              ]);
+            } else if (name === "animate_step_transformation") {
+              const fromEq = args.from_latex || args.from_equation || "";
+              const toEq = args.to_latex || args.to_equation || "";
+              const desc = args.operation_label || args.description || "";
+              const highlightSign = args.highlight_sign || "";
+              if (toEq) {
+                setAiHints((prev) => [
+                  ...prev,
+                  {
+                    id: Date.now(),
+                    text: toEq,
+                    explanation: desc ? `${desc}${highlightSign ? ` (${highlightSign})` : ""}` : `Transformed from ${fromEq}`,
+                    color: "green",
+                    x: 10,
+                    y: 35,
+                  },
+                ]);
+              }
+            } else if (name === "clear_ai_writing" || name === "clear_board_annotations") {
+              setAiHighlights([]);
+              setAiHints([]);
+            }
+          }
+        } catch (err) {
+          console.warn("Error processing live WebSocket message:", err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.warn("[LIVE WS CLIENT] Live WebSocket connection closed.");
+        if (isMounted) {
+          setIsLiveConnected(false);
+          // Automatic resilient reconnection with backoff
+          if (!reconnectTimeout) {
+            reconnectTimeout = setTimeout(() => {
+              reconnectTimeout = null;
+              if (isMounted) {
+                console.log("[LIVE WS CLIENT] Auto-reconnecting to Live Tutor...");
+                connectWebSocket();
+              }
+            }, 2000);
           }
         }
-      } catch (err) {
-        console.warn("Error processing live WebSocket message:", err);
+      };
+
+      ws.onerror = (err) => {
+        console.error("[LIVE WS CLIENT] Live WebSocket error:", err);
+        if (isMounted) setIsLiveConnected(false);
+      };
+    };
+
+    connectWebSocket();
+
+    // Application-level Heartbeat Ping every 10 seconds to prevent any NAT / Proxy timeouts
+    pingTimer = setInterval(() => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "ping", timestamp: Date.now() }));
       }
-    };
-
-    ws.onclose = () => {
-      if (isMounted) setIsLiveConnected(false);
-    };
-
-    ws.onerror = (err) => {
-      console.error("Live WebSocket error:", err);
-      if (isMounted) setIsLiveConnected(false);
-    };
+    }, 10000);
 
     return () => {
       isMounted = false;
-      if (recorderRef.current) recorderRef.current.stop();
+      if (pingTimer) clearInterval(pingTimer);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (transcriberRef.current) transcriberRef.current.stop();
       if (playerRef.current) playerRef.current.destroy();
       if (wsRef.current) wsRef.current.close();
     };
@@ -4168,14 +4649,15 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     if (!isMicStreaming) {
       try {
         await unlockAudioContext();
-        await recorderRef.current?.start();
+        await transcriberRef.current?.start();
         setIsMicStreaming(true);
       } catch (err) {
         console.error("Microphone access denied or error:", err);
       }
     } else {
-      recorderRef.current?.stop();
+      transcriberRef.current?.stop();
       setIsMicStreaming(false);
+      setInterimSpeech("");
       setStudentVolume(0);
     }
   };
@@ -4203,6 +4685,19 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     const file = e.target.files?.[0];
     if (file) {
       setAttachedFile(file);
+    }
+  };
+
+  const handleSendVoiceTranscript = async (spokenText) => {
+    if (!spokenText || !spokenText.trim()) return;
+    const trimmed = spokenText.trim();
+    try {
+      await unlockAudioContext();
+    } catch (e) {}
+
+    setLoadingAI(true);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "text", text: trimmed }));
     }
   };
 
@@ -4266,6 +4761,60 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
   const isWhiteboard = activeRailTab === "Whiteboard";
 
+  if (isInitialLoading) {
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#ffffff",
+          fontFamily: "Outfit, sans-serif",
+          padding: 24,
+          textAlign: "center",
+        }}
+      >
+        <style>{styles}</style>
+        <div
+          style={{
+            width: 46,
+            height: 46,
+            border: "3.5px solid #f0f0f0",
+            borderTopColor: "#111111",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+            marginBottom: 20,
+          }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111111", margin: "0 0 8px" }}>
+          Starting Your 1-on-1 Lesson
+        </h2>
+        <p style={{ fontSize: 14.5, color: "#666666", maxWidth: 380, margin: "0 0 24px", lineHeight: "22px" }}>
+          Preparing your AI Teacher workspace on <strong style={{ color: "#111111" }}>{lessonTitle}</strong>...
+        </p>
+        <button
+          type="button"
+          onClick={() => onEnd()}
+          style={{
+            padding: "8px 18px",
+            background: "#ffffff",
+            color: "#666666",
+            border: "1px solid #e5e5e5",
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Cancel
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main
       className="live-lesson"
@@ -4283,24 +4832,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             <h1>
               {lessonTitle} <span className="live-dot">•</span>
             </h1>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                background: isLiveConnected ? "#f0fdf4" : "#f5f5f5",
-                color: isLiveConnected ? "#16a34a" : "#222222",
-                padding: "4px 12px",
-                borderRadius: 6,
-                fontSize: 13,
-                fontWeight: 700,
-                border: `1px solid ${isLiveConnected ? "#bbf7d0" : "#e5e5e5"}`,
-              }}
-            >
-              <Radio size={14} className={isLiveConnected ? "pulse-icon" : ""} />
-              {isLiveConnected ? "Real-Time AI Teacher Live" : "Connecting..."}
-            </span>
-
             <span
               style={{
                 display: "inline-flex",
@@ -4346,13 +4877,13 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             className="top-action"
             onClick={toggleLiveMic}
             style={{
-              background: isMicStreaming ? "#f0fdf4" : "#ffffff",
-              color: isMicStreaming ? "#16a34a" : "#111111",
-              borderColor: isMicStreaming ? "#bbf7d0" : "#e5e5e5",
+              background: isMicStreaming ? "#111111" : "#ffffff",
+              color: isMicStreaming ? "#ffffff" : "#111111",
+              borderColor: isMicStreaming ? "#111111" : "#e5e5e5",
               fontWeight: 600,
             }}
           >
-            {isMicStreaming ? <Mic size={18} color="#16a34a" /> : <MicOff size={18} color="#666666" />}
+            {isMicStreaming ? <Mic size={18} color="#ffffff" /> : <MicOff size={18} color="#111111" />}
             {isMicStreaming ? "Live Mic ON" : "Turn Mic ON"}
           </button>
           <button
@@ -4376,7 +4907,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <button
             type="button"
             className="end-lesson"
-            onClick={() => setShowSummaryModal(true)}
+            onClick={() => onEnd()}
+            title="End lesson and return to dashboard"
           >
             <Phone size={18} />
             End Lesson
@@ -4471,8 +5003,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 onClick={toggleLiveMic}
                 style={{
                   border: 0,
-                  background: isMicStreaming ? "#f0fdf4" : "#f5f5f5",
-                  color: isMicStreaming ? "#16a34a" : "#666666",
+                  background: isMicStreaming ? "#111111" : "#f5f5f5",
+                  color: isMicStreaming ? "#ffffff" : "#666666",
                   padding: 6,
                   borderRadius: 8,
                   cursor: "pointer",
@@ -4597,6 +5129,29 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 </div>
               )
             )}
+
+            {loadingAI && !liveTranscript && (
+              <div className="chat-message ai-thinking-bubble" style={{ animation: "fadeIn 0.2s ease" }}>
+                <div className="chat-avatar" />
+                <div>
+                  <div className="message-head">
+                    <span style={{ color: "#111111", fontWeight: 700 }}>Tutor AI</span>
+                    <span className="message-time">Processing...</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, background: "#ffffff", padding: "8px 12px", borderRadius: 8, border: "1px solid #e5e5e5" }}>
+                    <span style={{ fontSize: 13, color: "#444444", fontWeight: 500 }}>
+                      Processing input...
+                    </span>
+                    <span className="typing-dots">
+                      <span className="dot dot-1" />
+                      <span className="dot dot-2" />
+                      <span className="dot dot-3" />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {liveTranscript && (
               <div className="chat-message" style={{ borderLeft: "3px solid #111111", paddingLeft: 8 }}>
                 <div className="chat-avatar" />
@@ -4810,6 +5365,7 @@ const buildSubjectsList = (courses, skillMastery = []) => {
 
 const AIClassroom = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [user] = useState(() => {
     try {
       const stored = localStorage.getItem("user");
@@ -4839,6 +5395,24 @@ const AIClassroom = () => {
   const [liveLesson, setLiveLesson] = useState(false);
   const [sortBy, setSortBy] = useState("recent");
   const [loadError, setLoadError] = useState(false);
+
+  // Auto-launch live classroom when navigating directly with a topic query parameter
+  useEffect(() => {
+    const topicParam = searchParams.get("topic");
+    if (topicParam) {
+      const decodedTopic = decodeURIComponent(topicParam);
+      setSelectedSubject({
+        name: decodedTopic,
+        subject: "Mathematics",
+        description: `1-on-1 Interactive Lesson on ${decodedTopic}`,
+        detailDescription: `Explore and master key concepts in ${decodedTopic} with your AI Personal Teacher.`,
+        progress: 0,
+        lessons: 1,
+        level: "Beginner",
+      });
+      setLiveLesson(true);
+    }
+  }, [searchParams]);
 
   const fetchSubjects = useCallback(() => {
     if (!localStorage.getItem("tutorflow_cached_curriculum")) {

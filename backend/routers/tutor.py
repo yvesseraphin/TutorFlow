@@ -65,6 +65,8 @@ class EndSessionRequest(BaseModel):
     notes: Optional[str] = None
 
 
+_MATERIALS_CACHE: Dict[str, List[Dict[str, Any]]] = {}
+
 @router.get("/materials")
 async def get_materials(category: str = "All", topic: str = "Algebra", user: dict = Depends(current_user)) -> List[Dict[str, Any]]:
     """
@@ -74,6 +76,10 @@ async def get_materials(category: str = "All", topic: str = "Algebra", user: dic
     node = find_topic_node(topic)
     canonical_topic = node["name"] if node else topic
     grade = node.get("grade", "9th Grade") if node else "9th Grade"
+    cache_key = f"{canonical_topic}:{category}"
+
+    if cache_key in _MATERIALS_CACHE:
+        return _MATERIALS_CACHE[cache_key]
 
     if settings.gemini_api_key:
         try:
@@ -119,14 +125,16 @@ Return strict JSON:
             gen_materials = data.get("materials") or []
             if gen_materials:
                 clean_category = category.strip()
-                if clean_category in ("All", "All Lesson Notes", "All Resources", "All Guides", "All Worksheets", ""):
-                    return gen_materials
-                filtered = [
-                    m for m in gen_materials
-                    if clean_category.casefold() in m.get("category", "").casefold()
-                    or clean_category.casefold() in m.get("type", "").casefold()
-                ]
-                return filtered if filtered else gen_materials
+                res = gen_materials
+                if clean_category not in ("All", "All Lesson Notes", "All Resources", "All Guides", "All Worksheets", ""):
+                    filtered = [
+                        m for m in gen_materials
+                        if clean_category.casefold() in m.get("category", "").casefold()
+                        or clean_category.casefold() in m.get("type", "").casefold()
+                    ]
+                    res = filtered if filtered else gen_materials
+                _MATERIALS_CACHE[cache_key] = res
+                return res
         except Exception as e:
             logger.warning(f"Error generating dynamic materials with Gemini: {e}")
 
@@ -207,15 +215,17 @@ Return strict JSON:
     ]
 
     clean_category = category.strip()
-    if clean_category in ("All", "All Lesson Notes", "All Resources", "All Guides", "All Worksheets", ""):
-        return materials_bank
+    res = materials_bank
+    if clean_category not in ("All", "All Lesson Notes", "All Resources", "All Guides", "All Worksheets", ""):
+        filtered = [
+            m for m in materials_bank
+            if clean_category.casefold() in m["category"].casefold()
+            or clean_category.casefold() in m["type"].casefold()
+        ]
+        res = filtered if filtered else materials_bank
 
-    filtered = [
-        m for m in materials_bank
-        if clean_category.casefold() in m["category"].casefold()
-        or clean_category.casefold() in m["type"].casefold()
-    ]
-    return filtered if filtered else materials_bank
+    _MATERIALS_CACHE[cache_key] = res
+    return res
 
 
 @router.post("/peer-student/simulate")

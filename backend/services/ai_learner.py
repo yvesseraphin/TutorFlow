@@ -1,10 +1,20 @@
 import json
 import logging
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from backend.services.supabase import admin_client
 
 logger = logging.getLogger("tutorflow.ai_learner")
+
+def is_valid_uuid(val: Any) -> bool:
+    if not val or not isinstance(val, str):
+        return False
+    try:
+        uuid.UUID(str(val))
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
 
 # Comprehensive Knowledge Graph & Prerequisite Dependency Map
 KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
@@ -194,39 +204,48 @@ def get_student_learner_context(user_id: str, topic: Optional[str] = None, cogni
     - Dynamically computed prerequisite gaps
     - Active cognitive energy state
     """
-    client = admin_client()
+    profile = {}
+    mastery_records = []
+    mastery_map = {}
+    unresolved_mistakes = []
+    learner_memories = []
 
-    # 1. Fetch exact student profile from DB
-    profile_res = client.table("profiles").select("*").eq("id", user_id).execute()
-    profile = profile_res.data[0] if profile_res.data else {}
+    if is_valid_uuid(user_id):
+        try:
+            client = admin_client()
+            # 1. Fetch exact student profile from DB
+            profile_res = client.table("profiles").select("*").eq("id", user_id).execute()
+            profile = profile_res.data[0] if profile_res.data else {}
 
-    # 2. Fetch actual student mastery records from DB
-    mastery_res = client.table("student_learner_model").select("*").eq("user_id", user_id).execute()
-    mastery_records = mastery_res.data or []
-    mastery_map = {m["topic_id"]: m for m in mastery_records}
+            # 2. Fetch actual student mastery records from DB
+            mastery_res = client.table("student_learner_model").select("*").eq("user_id", user_id).execute()
+            mastery_records = mastery_res.data or []
+            mastery_map = {m["topic_id"]: m for m in mastery_records}
 
-    # 3. Fetch active unresolved mistakes & diagnosed misconceptions
-    mistakes_res = (
-        client.table("ai_mistake_logs")
-        .select("*")
-        .eq("user_id", user_id)
-        .eq("resolved", False)
-        .order("created_at", desc=True)
-        .limit(6)
-        .execute()
-    )
-    unresolved_mistakes = mistakes_res.data or []
+            # 3. Fetch active unresolved mistakes & diagnosed misconceptions
+            mistakes_res = (
+                client.table("ai_mistake_logs")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("resolved", False)
+                .order("created_at", desc=True)
+                .limit(6)
+                .execute()
+            )
+            unresolved_mistakes = mistakes_res.data or []
 
-    # 4. Fetch persistent long-term teacher reflection memories
-    memories_res = (
-        client.table("ai_learner_memories")
-        .select("*")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .limit(8)
-        .execute()
-    )
-    learner_memories = memories_res.data or []
+            # 4. Fetch persistent long-term teacher reflection memories
+            memories_res = (
+                client.table("ai_learner_memories")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .limit(8)
+                .execute()
+            )
+            learner_memories = memories_res.data or []
+        except Exception as e:
+            logger.warning(f"Error fetching learner context for user {user_id}: {e}")
 
     # 5. Dynamically calculate prerequisite gaps for the topic
     missing_prerequisites: List[str] = []
@@ -282,75 +301,80 @@ def record_mastery_attempt(user_id: str, topic_id: str, is_correct: bool, score_
     """
     Updates the student's mastery score and calculates SM-2 spaced repetition review date.
     """
-    client = admin_client()
     now = datetime.now(timezone.utc)
-
-    # Resolve normalized topic name
     node = find_topic_node(topic_id)
     canonical_topic = node["name"] if node else topic_id
 
-    existing = (
-        client.table("student_learner_model")
-        .select("*")
-        .eq("user_id", user_id)
-        .eq("topic_id", canonical_topic)
-        .execute()
-    )
-    row = existing.data[0] if existing.data else None
+    if not is_valid_uuid(user_id):
+        return {"status": "guest_mode", "topic_id": canonical_topic}
 
-    if row:
-        attempts = row.get("attempts_count", 0) + 1
-        corrects = row.get("correct_count", 0) + (1 if is_correct else 0)
-        curr_mastery = float(row.get("mastery_score", 0.0))
-        
-        # Calculate new mastery with retention weight
-        new_mastery = min(1.0, max(0.0, curr_mastery + (score_delta if is_correct else -score_delta * 0.7)))
-        
-        # SM-2 calculation
-        stability = float(row.get("retention_stability", 1.0))
-        if is_correct:
-            stability = stability * 1.5
-            days_to_add = max(1, int(stability * 2))
-        else:
-            stability = max(1.0, stability * 0.7)
-            days_to_add = 1
-
-        next_review = now + timedelta(days=days_to_add)
-        status = "mastered" if new_mastery >= 0.85 else ("needs_reinforcement" if not is_correct else "in_progress")
-
-        update_payload = {
-            "mastery_score": round(new_mastery, 3),
-            "attempts_count": attempts,
-            "correct_count": corrects,
-            "retention_stability": round(stability, 3),
-            "status": status,
-            "last_practiced_at": now.isoformat(),
-            "next_review_due_at": next_review.isoformat(),
-            "updated_at": now.isoformat(),
-        }
-        res = (
+    try:
+        client = admin_client()
+        existing = (
             client.table("student_learner_model")
-            .update(update_payload)
-            .eq("id", row["id"])
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("topic_id", canonical_topic)
             .execute()
         )
-        return res.data[0] if res.data else update_payload
-    else:
-        new_mastery = 0.25 if is_correct else 0.05
-        next_review = now + timedelta(days=1)
-        insert_payload = {
-            "user_id": user_id,
-            "topic_id": canonical_topic,
-            "mastery_score": new_mastery,
-            "attempts_count": 1,
-            "correct_count": 1 if is_correct else 0,
-            "retention_stability": 1.0,
-            "status": "in_progress",
-            "last_practiced_at": now.isoformat(),
-            "next_review_due_at": next_review.isoformat(),
-        }
-        res = client.table("student_learner_model").insert(insert_payload).execute()
-        return res.data[0] if res.data else insert_payload
+        row = existing.data[0] if existing.data else None
+
+        if row:
+            attempts = row.get("attempts_count", 0) + 1
+            corrects = row.get("correct_count", 0) + (1 if is_correct else 0)
+            curr_mastery = float(row.get("mastery_score", 0.0))
+            
+            # Calculate new mastery with retention weight
+            new_mastery = min(1.0, max(0.0, curr_mastery + (score_delta if is_correct else -score_delta * 0.7)))
+            
+            # SM-2 calculation
+            stability = float(row.get("retention_stability", 1.0))
+            if is_correct:
+                stability = stability * 1.5
+                days_to_add = max(1, int(stability * 2))
+            else:
+                stability = max(1.0, stability * 0.7)
+                days_to_add = 1
+
+            next_review = now + timedelta(days=days_to_add)
+            status = "mastered" if new_mastery >= 0.85 else ("needs_reinforcement" if not is_correct else "in_progress")
+
+            update_payload = {
+                "mastery_score": round(new_mastery, 3),
+                "attempts_count": attempts,
+                "correct_count": corrects,
+                "retention_stability": round(stability, 3),
+                "status": status,
+                "last_practiced_at": now.isoformat(),
+                "next_review_due_at": next_review.isoformat(),
+                "updated_at": now.isoformat(),
+            }
+            res = (
+                client.table("student_learner_model")
+                .update(update_payload)
+                .eq("id", row["id"])
+                .execute()
+            )
+            return res.data[0] if res.data else update_payload
+        else:
+            new_mastery = 0.25 if is_correct else 0.05
+            next_review = now + timedelta(days=1)
+            insert_payload = {
+                "user_id": user_id,
+                "topic_id": canonical_topic,
+                "mastery_score": new_mastery,
+                "attempts_count": 1,
+                "correct_count": 1 if is_correct else 0,
+                "retention_stability": 1.0,
+                "status": "in_progress",
+                "last_practiced_at": now.isoformat(),
+                "next_review_due_at": next_review.isoformat(),
+            }
+            res = client.table("student_learner_model").insert(insert_payload).execute()
+            return res.data[0] if res.data else insert_payload
+    except Exception as e:
+        logger.warning(f"Error updating mastery attempt: {e}")
+        return {"status": "error", "error": str(e)}
 
 
 def log_student_mistake(
@@ -365,7 +389,9 @@ def log_student_mistake(
     session_id: Optional[str] = None,
 ) -> None:
     """Logs a diagnosed misconception into the ai_mistake_logs table."""
-    client = admin_client()
+    if not is_valid_uuid(user_id):
+        return
+
     node = find_topic_node(topic)
     canonical_topic = node["name"] if node else topic
 
@@ -382,6 +408,7 @@ def log_student_mistake(
         "resolved": False,
     }
     try:
+        client = admin_client()
         client.table("ai_mistake_logs").insert(payload).execute()
     except Exception as e:
         logger.warning(f"Error logging mistake: {e}")
@@ -396,7 +423,9 @@ def save_learner_memory(
     session_id: Optional[str] = None,
 ) -> None:
     """Saves an AI teacher long-term memory snapshot for personalization."""
-    client = admin_client()
+    if not is_valid_uuid(user_id):
+        return
+
     node = find_topic_node(topic)
     canonical_topic = node["name"] if node else topic
 
@@ -409,6 +438,7 @@ def save_learner_memory(
         "confidence_rating": confidence,
     }
     try:
+        client = admin_client()
         client.table("ai_learner_memories").insert(payload).execute()
     except Exception as e:
         logger.warning(f"Error saving learner memory: {e}")

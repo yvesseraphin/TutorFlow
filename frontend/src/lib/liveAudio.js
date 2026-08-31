@@ -82,6 +82,7 @@ export class AudioStreamPlayer {
     this.isPlaying = false;
     this.onPlayStateChange = onPlayStateChange;
     this.onLevel = onLevel;
+    this.endTimeout = null;
   }
 
   _initContext() {
@@ -108,11 +109,14 @@ export class AudioStreamPlayer {
       source.connect(gainNode);
       gainNode.connect(this.audioCtx.destination);
 
-      const currentTime = this.audioCtx.currentTime;
-      if (this.nextStartTime < currentTime) {
-        this.nextStartTime = currentTime + 0.05;
+      if (this.endTimeout) {
+        clearTimeout(this.endTimeout);
+        this.endTimeout = null;
       }
-      const startTime = this.nextStartTime;
+
+      const currentTime = this.audioCtx.currentTime;
+      // Seamless contiguous scheduling without artificial gap penalties
+      const startTime = Math.max(currentTime, this.nextStartTime);
       source.start(startTime);
       this.nextStartTime = startTime + audioBuffer.duration;
 
@@ -121,8 +125,13 @@ export class AudioStreamPlayer {
 
       source.onended = () => {
         this.activeNodes = this.activeNodes.filter((n) => n.source !== source);
-        if (this.activeNodes.length === 0 || this.audioCtx.currentTime >= this.nextStartTime - 0.05) {
-          this._setPlaying(false);
+        if (this.activeNodes.length === 0) {
+          if (this.endTimeout) clearTimeout(this.endTimeout);
+          this.endTimeout = setTimeout(() => {
+            if (this.activeNodes.length === 0) {
+              this._setPlaying(false);
+            }
+          }, 100);
         }
       };
     } catch (err) {
@@ -142,6 +151,10 @@ export class AudioStreamPlayer {
    */
   interrupt() {
     try {
+      if (this.endTimeout) {
+        clearTimeout(this.endTimeout);
+        this.endTimeout = null;
+      }
       this.activeNodes.forEach(({ source }) => {
         try {
           source.stop();
@@ -255,15 +268,19 @@ export class AudioStreamRecorder {
         const rms = Math.sqrt(sum / inputData.length);
         this.onLevel(Math.min(1, rms * 5));
 
-        // Resample from browser inputSampleRate to 16000Hz
+        // Resample smoothly from browser inputSampleRate to 16000Hz via linear interpolation
         let resampledData = inputData;
         if (inputSampleRate !== targetSampleRate) {
           const ratio = inputSampleRate / targetSampleRate;
           const newLength = Math.round(inputData.length / ratio);
           resampledData = new Float32Array(newLength);
           for (let i = 0; i < newLength; i++) {
-            const originIndex = Math.floor(i * ratio);
-            resampledData[i] = inputData[originIndex] || 0;
+            const pos = i * ratio;
+            const index = Math.floor(pos);
+            const frac = pos - index;
+            const s1 = inputData[index] || 0;
+            const s2 = inputData[index + 1] !== undefined ? inputData[index + 1] : s1;
+            resampledData[i] = s1 + (s2 - s1) * frac;
           }
         }
 
@@ -303,3 +320,124 @@ export class AudioStreamRecorder {
     this.onLevel(0);
   }
 }
+
+/**
+ * Continuous Real-Time Speech Recognition Engine
+ * Converts spoken words to text instantly, streaming interim subtitles
+ * and sending finalized student turns directly to the AI tutor.
+ */
+export class SpeechTranscriber {
+  constructor({ onInterim = () => {}, onFinal = () => {}, onLevel = () => {}, onStateChange = () => {}, onSpeechStart = () => {} } = {}) {
+    this.onInterim = onInterim;
+    this.onFinal = onFinal;
+    this.onLevel = onLevel;
+    this.onStateChange = onStateChange;
+    this.onSpeechStart = onSpeechStart;
+    this.recognition = null;
+    this.isListening = false;
+    this.audioRecorder = new AudioStreamRecorder({
+      onLevel: (lvl) => {
+        this.onLevel(lvl);
+        if (lvl > 0.35 && this.onSpeechStart) {
+          this.onSpeechStart();
+        }
+      },
+    });
+    this._debounceTimer = null;
+    this._initRecognition();
+  }
+
+  _initRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("SpeechRecognition API is not supported in this browser.");
+      return;
+    }
+
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+    rec.maxAlternatives = 1;
+
+    rec.onresult = (event) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const item = event.results[i];
+        const text = item[0].transcript;
+        if (item.isFinal) {
+          const trimmed = text.trim();
+          // Filter out background noise artifacts (single consonants, stray clicks, non-alphanumeric noise)
+          if (trimmed.length >= 2 && /[a-zA-Z0-9]/.test(trimmed)) {
+            console.log(`[SPEECH RECOGNITION] Validated Speech: "${trimmed}"`);
+            clearTimeout(this._debounceTimer);
+            this._debounceTimer = setTimeout(() => {
+              this.onFinal(trimmed);
+              this.onInterim("");
+            }, 300);
+          }
+        } else {
+          interim += text;
+        }
+      }
+      if (interim && interim.trim().length >= 2) {
+        if (this.onSpeechStart) {
+          this.onSpeechStart();
+        }
+        this.onInterim(interim.trim());
+      }
+    };
+
+    rec.onerror = (event) => {
+      if (event.error !== "no-speech" && event.error !== "aborted") {
+        console.warn("[SPEECH RECOGNITION] Error:", event.error);
+      }
+    };
+
+    rec.onend = () => {
+      if (this.isListening) {
+        try {
+          rec.start();
+        } catch (e) {}
+      }
+    };
+
+    this.recognition = rec;
+  }
+
+  async start() {
+    if (this.isListening) return;
+    this.isListening = true;
+    this.onStateChange(true);
+
+    try {
+      await this.audioRecorder.start();
+    } catch (e) {
+      console.warn("Volume analyzer start error:", e);
+    }
+
+    if (this.recognition) {
+      try {
+        this.recognition.start();
+        console.log("[SPEECH RECOGNITION] Voice recognition started.");
+      } catch (err) {
+        console.warn("[SPEECH RECOGNITION] Start failed:", err);
+      }
+    }
+  }
+
+  stop() {
+    this.isListening = false;
+    this.onStateChange(false);
+    this.onInterim("");
+    this.audioRecorder.stop();
+    if (this.recognition) {
+      try {
+        this.recognition.stop();
+        console.log("[SPEECH RECOGNITION] Voice recognition stopped.");
+      } catch (err) {}
+    }
+  }
+}
+
+

@@ -1,5 +1,7 @@
 from functools import lru_cache
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,8 +15,13 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
+    gemini_live_model: str = "gemini-2.5-flash-native-audio-latest"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(Path(__file__).resolve().parent / ".env", ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
     def require_supabase(self) -> None:
         if not all((self.supabase_url, self.supabase_anon_key, self.supabase_service_role_key)):
