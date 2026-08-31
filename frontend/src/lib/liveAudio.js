@@ -327,20 +327,16 @@ export class AudioStreamRecorder {
  * and sending finalized student turns directly to the AI tutor.
  */
 export class SpeechTranscriber {
-  constructor({ onInterim = () => {}, onFinal = () => {}, onLevel = () => {}, onStateChange = () => {}, onSpeechStart = () => {} } = {}) {
+  constructor({ onInterim = () => {}, onFinal = () => {}, onLevel = () => {}, onStateChange = () => {} } = {}) {
     this.onInterim = onInterim;
     this.onFinal = onFinal;
     this.onLevel = onLevel;
     this.onStateChange = onStateChange;
-    this.onSpeechStart = onSpeechStart;
     this.recognition = null;
     this.isListening = false;
     this.audioRecorder = new AudioStreamRecorder({
       onLevel: (lvl) => {
         this.onLevel(lvl);
-        if (lvl > 0.35 && this.onSpeechStart) {
-          this.onSpeechStart();
-        }
       },
     });
     this._debounceTimer = null;
@@ -374,16 +370,13 @@ export class SpeechTranscriber {
             this._debounceTimer = setTimeout(() => {
               this.onFinal(trimmed);
               this.onInterim("");
-            }, 300);
+            }, 400);
           }
         } else {
           interim += text;
         }
       }
       if (interim && interim.trim().length >= 2) {
-        if (this.onSpeechStart) {
-          this.onSpeechStart();
-        }
         this.onInterim(interim.trim());
       }
     };

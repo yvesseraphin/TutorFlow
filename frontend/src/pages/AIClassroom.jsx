@@ -4097,6 +4097,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const transcriberRef = useRef(null);
   const chatScrollRef = useRef(null);
   const stageRef = useRef(null);
+  const isSpeakingRef = useRef(false);
+  const recentAiSpeechRef = useRef([]);
 
   const currentPage = pages.find((p) => p.id === activePageId) || pages[0] || { id: 1, lines: [] };
   const currentLines = currentPage?.lines || [];
@@ -4139,6 +4141,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
     const player = new AudioStreamPlayer({
       onPlayStateChange: (playing) => {
+        isSpeakingRef.current = playing;
         if (isMounted) setIsSpeaking(playing);
       },
     });
@@ -4146,6 +4149,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
     const transcriber = new SpeechTranscriber({
       onInterim: (text) => {
+        // If AI is actively speaking from the speakers, don't show echo in student interim
+        if (isSpeakingRef.current) return;
         if (isMounted) setInterimSpeech(text);
       },
       onFinal: (finalText) => {
@@ -4159,13 +4164,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
       },
       onStateChange: (active) => {
         if (isMounted) setIsMicStreaming(active);
-      },
-      onSpeechStart: () => {
-        // Instant hardware-level barge-in: stop AI audio the moment student begins talking
-        if (playerRef.current) {
-          playerRef.current.interrupt();
-        }
-        if (isMounted) setIsSpeaking(false);
       },
     });
     transcriberRef.current = transcriber;
@@ -4236,6 +4234,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           } else if ((msg.type === "text_delta" || msg.type === "text") && msg.text) {
             setLoadingAI(false);
             const raw = msg.text;
+            recentAiSpeechRef.current.push({ text: raw, time: Date.now() });
+            if (recentAiSpeechRef.current.length > 25) recentAiSpeechRef.current.shift();
             if (!raw.includes("**Acknowledge") && !raw.includes("**Plan") && !raw.includes("**Thought") && !raw.includes("**Reasoning")) {
               setLiveTranscript((prev) => prev + raw);
             }
@@ -4247,6 +4247,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 .replace(/^(Thought|Thinking|Plan|Acknowledge|Reasoning):.*/gim, "")
                 .trim();
               if (cleaned) {
+                recentAiSpeechRef.current.push({ text: cleaned, time: Date.now() });
+                if (recentAiSpeechRef.current.length > 25) recentAiSpeechRef.current.shift();
                 const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
                 setChatMessages((prev) => [...prev, { sender: "ai", text: cleaned, time: now }]);
               }
@@ -4257,6 +4259,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               playerRef.current.interrupt();
             }
             setIsSpeaking(false);
+            isSpeakingRef.current = false;
           } else if (msg.type === "whiteboard_action" || msg.type === "tool_call") {
             const name = msg.tool || msg.name;
             const args = msg.args || {};
@@ -4328,8 +4331,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                   explanation: args.explanation,
                 };
                 setAiHints((prev) => {
-                  const formattedNew = formatMathHandwriting(rawText);
-                  if (prev.some((h) => formatMathHandwriting(h.text) === formattedNew)) {
+                  const cleanNew = (rawText || "").trim().replace(/\s+/g, " ");
+                  if (prev.some((h) => (h.text || "").trim().replace(/\s+/g, " ") === cleanNew)) {
                     return prev;
                   }
                   const next = [...prev, newHint];
@@ -4676,6 +4679,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
       playerRef.current.interrupt();
     }
     setIsSpeaking(false);
+    isSpeakingRef.current = false;
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "interrupt" }));
     }
@@ -4691,10 +4695,39 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const handleSendVoiceTranscript = async (spokenText) => {
     if (!spokenText || !spokenText.trim()) return;
     const trimmed = spokenText.trim();
+
+    // 1. Acoustic Speaker Echo Filter: If AI is actively speaking from speakers, discard captured speech
+    if (isSpeakingRef.current) {
+      console.log("[ECHO CANCELLATION] Suppressed audio captured while AI is speaking:", trimmed);
+      return;
+    }
+
+    // 2. Filter out audio matching what the AI said in the last 8 seconds
+    const now = Date.now();
+    recentAiSpeechRef.current = recentAiSpeechRef.current.filter((item) => now - item.time < 8000);
+    const isEcho = recentAiSpeechRef.current.some((item) => {
+      const normStudent = trimmed.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const normAi = (item.text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return normStudent.length >= 4 && (normAi.includes(normStudent) || normStudent.includes(normAi));
+    });
+
+    if (isEcho) {
+      console.log("[ECHO CANCELLATION] Suppressed acoustic speaker echo:", trimmed);
+      return;
+    }
+
+    // 3. Noise Filter: Ignore short random background noise artifacts unless answering math or short affirmations
+    const isMathOrShortAnswer = /^([0-9\-+/*=x\s]+|yes|no|ok|sure|ready|yep|nope)$/i.test(trimmed);
+    if (trimmed.length < 3 && !isMathOrShortAnswer) {
+      console.log("[NOISE FILTER] Ignored stray noise utterance:", trimmed);
+      return;
+    }
+
     try {
       await unlockAudioContext();
     } catch (e) {}
 
+    console.log("[LIVE WS STUDENT SPEECH VALIDATED] 🎤 Sending:", trimmed);
     setLoadingAI(true);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "text", text: trimmed }));
