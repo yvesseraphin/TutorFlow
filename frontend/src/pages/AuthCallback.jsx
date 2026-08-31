@@ -32,10 +32,10 @@ const AuthCallback = () => {
           avatar_url: avatar,
         })
       );
-      await prefetchUserData();
       if (isMounted) {
         notif.success("Verification successful! Welcome to TutorFlow.");
         navigate("/dashboard", { replace: true });
+        prefetchUserData().catch(() => {});
       }
       return true;
     };

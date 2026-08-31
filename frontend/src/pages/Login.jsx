@@ -330,10 +330,10 @@ const Login = () => {
         const data = await response.json();
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        // Await full prefetch so dashboard and all pages are already populated with real data before entering
-        await prefetchUserData();
         notif.success("Login successful! Welcome back.");
         navigate("/dashboard");
+        // Prefetch in background without holding back navigation
+        prefetchUserData().catch(() => {});
       } else {
         const errData = await response.json().catch(() => ({}));
         const message = errData.detail || "Invalid email or password. Please try again.";

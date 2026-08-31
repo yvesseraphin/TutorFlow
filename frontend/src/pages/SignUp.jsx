@@ -304,9 +304,9 @@ const SignUp = () => {
         }
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        await prefetchUserData();
         notif.success("Account created successfully!");
         navigate("/dashboard");
+        prefetchUserData().catch(() => {});
       } else {
         const errData = await response.json().catch(() => ({}));
         const msg = errData.detail || "Sign up failed. Please check your information.";
