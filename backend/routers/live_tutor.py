@@ -332,6 +332,21 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
     first_name = student_full_name.split()[0] if student_full_name and student_full_name != "Student" else ""
     greeting_target = first_name if first_name else "there"
     canonical_topic = learner_context.get("topic", topic)
+    current_session_id = str(uuid.uuid4())
+    if user_id and is_valid_uuid(user_id):
+        try:
+            admin_client().table("tutoring_sessions").insert({
+                "id": current_session_id,
+                "user_id": user_id,
+                "topic": canonical_topic,
+                "subject": "Mathematics",
+                "status": "in_progress",
+                "teaching_strategy": cognitive_mode or "Visual Intuition",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+            logger.info(f"[LIVE WS DB] Created live tutoring session {current_session_id}")
+        except Exception as sess_err:
+            logger.warning(f"[LIVE WS DB] Could not create session row: {sess_err}")
 
     live_model_name = settings.gemini_live_model or "gemini-2.5-flash-native-audio-latest"
 
@@ -610,6 +625,63 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                                             summary=f"Effective Strategy: {eff_strat}. Notes: {notes}",
                                                             confidence=0.95,
                                                         )
+                                                    elif name == "conclude_lesson":
+                                                        summary_msg = args.get("mastery_summary", f"Successfully completed lesson on {canonical_topic}.")
+                                                        celeb_msg = args.get("celebration_message", "Great job mastering today's topic!")
+                                                        
+                                                        # 1. Update student mastery model in DB
+                                                        mastery_result = record_mastery_attempt(
+                                                            user_id=user_id,
+                                                            topic_id=canonical_topic,
+                                                            is_correct=True,
+                                                            score_delta=0.35,
+                                                        )
+                                                        logger.info(f"[LIVE WS DB] Mastery attempt logged for {canonical_topic}: {mastery_result}")
+
+                                                        # 2. Update tutoring_sessions status to 'completed'
+                                                        try:
+                                                            admin_client().table("tutoring_sessions").update({
+                                                                "status": "completed",
+                                                                "ai_summary": f"{summary_msg} {celeb_msg}".strip(),
+                                                                "ended_at": datetime.now(timezone.utc).isoformat(),
+                                                            }).eq("id", current_session_id).execute()
+                                                        except Exception as s_err:
+                                                            logger.warning(f"[LIVE WS DB] Session update error: {s_err}")
+
+                                                        # 3. Save positive learner memory
+                                                        save_learner_memory(
+                                                            user_id=user_id,
+                                                            memory_type="mastery_milestone",
+                                                            topic=canonical_topic,
+                                                            summary=f"Mastered {canonical_topic}. {summary_msg}",
+                                                            confidence=1.0,
+                                                        )
+
+                                                        # 4. Determine next topic in curriculum
+                                                        mastered_topics = {canonical_topic}
+                                                        try:
+                                                            m_res = admin_client().table("student_learner_model").select("topic_id,mastery_score").eq("user_id", user_id).execute()
+                                                            if m_res.data:
+                                                                for r in m_res.data:
+                                                                    if float(r.get("mastery_score", 0)) >= 0.85:
+                                                                        mastered_topics.add(r["topic_id"])
+                                                        except Exception:
+                                                            pass
+
+                                                        next_topic = "Linear Equations (Two-Step & Multi-Step)"
+                                                        for t_name, t_info in KNOWLEDGE_GRAPH.items():
+                                                            prereqs_met = all(p in mastered_topics or p not in KNOWLEDGE_GRAPH for p in t_info.get("prerequisites", []))
+                                                            if t_name not in mastered_topics and prereqs_met:
+                                                                next_topic = t_name
+                                                                break
+
+                                                        await websocket.send_json({
+                                                            "type": "lesson_completed",
+                                                            "topic": canonical_topic,
+                                                            "summary": summary_msg,
+                                                            "celebration": celeb_msg,
+                                                            "next_topic": next_topic,
+                                                        })
                                                 except Exception as db_err:
                                                     logger.warning(f"[LIVE WS DB] DB persistence warning for tool {name}: {db_err}")
 

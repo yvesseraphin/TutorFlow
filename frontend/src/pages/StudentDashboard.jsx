@@ -17,6 +17,7 @@ import {
 import { api } from "../lib/api";
 import NotificationDropdown from "../components/NotificationDropdown";
 import DiagnosticModal from "../components/DiagnosticModal";
+import { useNotification } from "../components/NotificationBanner";
 
 const styles = `
   .tf-dashboard-wrapper {
@@ -452,6 +453,8 @@ const StudentDashboard = () => {
     return !localStorage.getItem("tutorflow_cached_analytics");
   });
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
+  const notif = useNotification();
+  const notifShownRef = React.useRef(false);
 
   useEffect(() => {
     Promise.all([
@@ -462,6 +465,40 @@ const StudentDashboard = () => {
         if (analyticsData) {
           setAnalytics(analyticsData);
           localStorage.setItem("tutorflow_cached_analytics", JSON.stringify(analyticsData));
+
+          const risks = analyticsData.retention_risk_topics || [];
+          if (risks.length > 0 && !notifShownRef.current) {
+            notifShownRef.current = true;
+            notif.info(
+              <span>
+                Spaced Repetition Review Due:{" "}
+                {risks.slice(0, 4).map((r, i) => (
+                  <span key={r.topic}>
+                    {i > 0 && ", "}
+                    <span
+                      style={{ textDecoration: "underline", textUnderlineOffset: "3px", cursor: "pointer", color: "#ffffff", fontWeight: 600 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/classroom?topic=${encodeURIComponent(r.topic)}`);
+                      }}
+                    >
+                      {r.topic}
+                    </span>
+                  </span>
+                ))}
+                {" — "}
+                <span
+                  style={{ textDecoration: "underline", textUnderlineOffset: "3px", cursor: "pointer", color: "#ffffff", fontWeight: 700 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/classroom?topic=${encodeURIComponent(risks[0].topic)}`);
+                  }}
+                >
+                  Quick 2-Min Review
+                </span>
+              </span>
+            );
+          }
         }
         if (meData) {
           setUser(meData);
@@ -470,7 +507,7 @@ const StudentDashboard = () => {
       })
       .catch(() => { /* non-fatal */ })
       .finally(() => setLoading(false));
-  }, []);
+  }, [navigate, notif]);
 
   const fullName = user?.full_name || user?.profile?.full_name || user?.email?.split("@")[0] || "";
   const firstName = fullName ? fullName.split(" ")[0] : "";
@@ -573,74 +610,6 @@ const StudentDashboard = () => {
             </div>
           </div>
         </header>
-
-        {/* ── Spaced Repetition Retention Black Bar ── */}
-        {retentionRisks.length > 0 && (
-          <div
-            style={{
-              background: "#000000",
-              color: "#ffffff",
-              borderRadius: "14px",
-              padding: "14px 22px",
-              marginBottom: "24px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "16px",
-              fontFamily: "'Outfit', sans-serif",
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-              <AlertTriangle size={18} color="#ffffff" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: "14px", fontWeight: 700, color: "#ffffff" }}>
-                Spaced Repetition Review Due:
-              </span>
-              <span style={{ fontSize: "14px", color: "#e5e5e5", fontWeight: 400 }}>
-                {retentionRisks.map((r, idx) => (
-                  <span key={r.topic}>
-                    {idx > 0 && ", "}
-                    <span
-                      onClick={() => navigate(`/classroom?topic=${encodeURIComponent(r.topic)}`)}
-                      style={{
-                        textDecoration: "underline",
-                        textUnderlineOffset: "3px",
-                        cursor: "pointer",
-                        color: "#ffffff",
-                        fontWeight: 500,
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
-                      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-                      title={`Review ${r.topic}`}
-                    >
-                      {r.topic}
-                    </span>
-                  </span>
-                ))}
-              </span>
-            </div>
-            <span
-              onClick={() => navigate(`/classroom?topic=${encodeURIComponent(retentionRisks[0].topic)}`)}
-              style={{
-                color: "#ffffff",
-                fontSize: "13.5px",
-                fontWeight: 700,
-                textDecoration: "underline",
-                textUnderlineOffset: "3px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                transition: "opacity 0.15s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            >
-              Quick 2-Min Review &rarr;
-            </span>
-          </div>
-        )}
 
         {/* ── Tutor AI Hero Card ── */}
         <section className="tf-hero-card" aria-label="Tutor AI">
