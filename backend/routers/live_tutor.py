@@ -52,12 +52,22 @@ def get_live_tools():
         types.Tool(
             function_declarations=[
                 types.FunctionDeclaration(
+                    name="clear_ai_writing",
+                    description="Clear previous AI handwriting from the whiteboard to start a clean new step or worked example.",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "reason": types.Schema(type=types.Type.STRING, description="Why the board is being cleared (e.g. 'Starting practice problem')")
+                        },
+                    ),
+                ),
+                types.FunctionDeclaration(
                     name="write_math_equation",
                     description="Write a formatted LaTeX mathematical equation or step onto the whiteboard in handwriting style.",
                     parameters=types.Schema(
                         type=types.Type.OBJECT,
                         properties={
-                            "latex": types.Schema(type=types.Type.STRING, description="The clean equation or mathematical step, e.g. '2x + 4 = 10' or '⟵ -3, -2, -1, 0, 1, 2, 3 ⟶'"),
+                            "latex": types.Schema(type=types.Type.STRING, description="The clean equation or mathematical step, e.g. '2x + 4 = 10' or 'x = 3'"),
                             "x": types.Schema(type=types.Type.NUMBER, description="X coordinate percentage (e.g. 6 for left side)"),
                             "y": types.Schema(type=types.Type.NUMBER, description="Y coordinate percentage (0-100)"),
                             "color": types.Schema(type=types.Type.STRING, description="Marker color: 'blue', 'green', 'red', 'purple', 'black', 'orange'"),
@@ -374,10 +384,20 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
    - NEVER use the word "learner", "student", or "user" when speaking.
    - Speak like a friendly, enthusiastic human tutor in a voice call.
 
-2. ALWAYS EXPLAIN WHILE WRITING ON THE WHITEBOARD (MANDATORY):
+2. TOPIC-SPECIFIC WHITEBOARD WRITING (MANDATORY WHILE SPEAKING):
    - The student learns mathematics by SEEING IT WRITTEN AS YOU SPEAK.
-   - For every concept, example, practice problem, or hint, YOU MUST CALL `write_math_equation` (or `draw_number_line` for number sense/integers, or `display_interactive_balance_scale` for algebra equations) AT THE SAME TIME as speaking!
-   - Never explain in pure audio alone without writing the equations, steps, and visual representations on the whiteboard.
+   - ALWAYS write math steps on the whiteboard using the exact tool appropriate for the topic:
+     * FOR ALGEBRA / EQUATIONS / EXPRESSIONS / POLYNOMIALS / QUADRATICS:
+       - Use `write_math_equation` to write clear algebraic equations (e.g. '2x + 5 = 15'), intermediate steps (e.g. '2x = 10'), and solutions ('x = 5').
+       - You may use `display_interactive_balance_scale` to show balance on two sides.
+       - NEVER DRAW NUMBER LINES FOR ALGEBRA TOPICS!
+     * FOR PRE-ALGEBRA / INTEGERS / SIGNED NUMBERS / NUMBER LINE GRAPHING:
+       - Use `draw_number_line` or `write_math_equation` for integer arithmetic.
+     * FOR GEOMETRY:
+       - Use `draw_geometric_shape` and `write_math_equation` for formulas (e.g. 'a^2 + b^2 = c^2').
+     * FOR FUNCTIONS:
+       - Use `write_math_equation` for function rules 'f(x) = 2x + 1' and coordinates.
+   - Never explain in pure audio alone without writing on the whiteboard!
 
 3. PROACTIVE GUIDANCE ON HESITATION & MISTAKES:
    - Always respond out loud with clear spoken audio to every student turn.
@@ -392,7 +412,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
 
 4. STRUCTURED 4-STEP LESSON FLOW & CLEAR CONCLUSION:
    - Step 1 (Visual Intuition): Introduce the concept with an intuitive real-world analogy, write the concept on the board, and call `update_lesson_step(step_index=1, step_title="Visual Intuition")`.
-   - Step 2 (Worked Whiteboard Example): Call `clear_ai_writing()` to start fresh. Work through a clear example on the whiteboard using `write_math_equation`, `draw_number_line`, or `display_interactive_balance_scale` and call `update_lesson_step(step_index=2, step_title="Worked Example")`.
+   - Step 2 (Worked Whiteboard Example): Call `clear_ai_writing()` to start fresh. Work through a clear worked example on the whiteboard using `write_math_equation` and call `update_lesson_step(step_index=2, step_title="Worked Example")`.
    - Step 3 (Guided Practice): Call `clear_ai_writing()`. Write ONE practice problem on the whiteboard using `write_math_equation` and ask the student to solve it. Call `update_lesson_step(step_index=3, step_title="Guided Practice")`.
    - Step 4 (Mastery & Conclusion): Once the student answers correctly, enthusiastically conclude the lesson:
      * Say: "Congratulations! You have successfully mastered today's lesson on {canonical_topic}! You did an amazing job today. We are all finished with this topic. You can click 'End Lesson' to view your report card, or let me know if you want to explore anything else!"
@@ -496,6 +516,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                     pass
                                 elif msg_type in ("image", "canvas_frame"):
                                     img_b64 = msg.get("data", "")
+                                    trigger_turn = msg.get("triggerTurn", False)
                                     if "," in img_b64:
                                         img_b64 = img_b64.split(",", 1)[1]
                                     if img_b64:
@@ -503,8 +524,18 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                             img_bytes = base64.b64decode(img_b64)
                                             async with _send_lock:
                                                 await session.send_realtime_input(
-                                                    video=types.Blob(data=img_bytes, mime_type="image/jpeg")
+                                                    media_chunks=[types.Blob(data=img_bytes, mime_type="image/jpeg")]
                                                 )
+                                                if trigger_turn:
+                                                    logger.info("[LIVE WS VISION] Student clicked Check My Board — asking AI to inspect whiteboard work")
+                                                    inspect_turn = (
+                                                        "System event: The student just clicked 'Check My Board' and wants you to inspect the whiteboard in front of you. "
+                                                        "Look at what they wrote or drew on the whiteboard, check their mathematical work out loud, and tell them warmly if it is correct or guide them on the next step!"
+                                                    )
+                                                    await session.send_client_content(
+                                                        turns=[types.Content(role="user", parts=[types.Part.from_text(text=inspect_turn)])],
+                                                        turn_complete=True,
+                                                    )
                                         except Exception as img_err:
                                             logger.warning(f"[LIVE WS] Canvas frame stream warning: {img_err}")
                                 elif msg_type == "text":

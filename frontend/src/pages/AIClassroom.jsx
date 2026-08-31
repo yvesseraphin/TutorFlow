@@ -3139,6 +3139,28 @@ function renderKaTeX(latex) {
 
 const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, index = 0 }) => {
   const cleanText = useMemo(() => cleanLatexString(text), [text]);
+  const [displayedChars, setDisplayedChars] = useState(0);
+
+  // Progressive handwriting stroke animation effect
+  useEffect(() => {
+    setDisplayedChars(0);
+    const totalChars = cleanText.length;
+    if (totalChars === 0) return;
+
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 1;
+      setDisplayedChars(current);
+      if (current >= totalChars) {
+        clearInterval(interval);
+      }
+    }, 28); // 28ms per character matches natural human handwriting speed while speaking
+
+    return () => clearInterval(interval);
+  }, [cleanText]);
+
+  const isComplete = displayedChars >= cleanText.length;
+  const animatedPartialText = cleanText.slice(0, displayedChars);
 
   // Check if text is LaTeX math formula
   const isLatex = useMemo(() => {
@@ -3148,8 +3170,8 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
 
   const katexHtml = useMemo(() => {
     if (!isLatex) return null;
-    return renderKaTeX(cleanText);
-  }, [isLatex, cleanText]);
+    return renderKaTeX(isComplete ? cleanText : animatedPartialText);
+  }, [isLatex, cleanText, isComplete, animatedPartialText]);
 
   const textColor = useMemo(() => {
     if (!color || color === "black") return "#111111";
@@ -3161,9 +3183,10 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
     return color;
   }, [color]);
 
-  // Position cleanly: top-left corner stacked neatly down the board below the title
-  const topPos = y !== undefined && y > 0 ? Math.min(y, 75) : 15 + index * 14;
-  const leftPos = x !== undefined && x > 0 ? Math.min(x, 60) : 6;
+  // Clean structured slot positioning preventing any overlaps
+  const slotTop = 18 + (index % 4) * 18;
+  const topPos = y !== undefined && y > 15 ? Math.min(y, 75) : slotTop;
+  const leftPos = x !== undefined && x > 0 ? Math.min(x, 60) : 8;
 
   return (
     <div
@@ -3176,9 +3199,9 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
         display: "flex",
         flexDirection: "column",
         gap: 4,
-        maxWidth: "540px",
-        animation: "fadeIn 0.25s ease-out",
+        maxWidth: "600px",
         userSelect: "none",
+        animation: "fadeIn 0.2s ease",
       }}
     >
       {katexHtml ? (
@@ -3190,6 +3213,8 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
             fontWeight: 700,
             letterSpacing: "0.01em",
             lineHeight: 1.3,
+            display: "inline-flex",
+            alignItems: "center",
           }}
           dangerouslySetInnerHTML={{ __html: katexHtml }}
         />
@@ -3204,11 +3229,14 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
             letterSpacing: "-0.01em",
           }}
         >
-          {cleanText}
+          {animatedPartialText}
+          {!isComplete && (
+            <span style={{ display: "inline-block", width: 2, height: "1em", background: textColor, marginLeft: 2, animation: "blink 0.6s infinite" }} />
+          )}
         </span>
       )}
 
-      {explanation && (
+      {explanation && isComplete && (
         <span
           style={{
             fontFamily: "'Outfit', sans-serif",
@@ -3217,6 +3245,7 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
             color: textColor === "#111111" ? "#555555" : textColor,
             lineHeight: "1.4",
             opacity: 0.9,
+            animation: "fadeIn 0.3s ease",
           }}
         >
           {explanation}
@@ -4110,6 +4139,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const [studentVolume, setStudentVolume] = useState(0);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const hasLoadedOnceRef = useRef(false);
   const [interimSpeech, setInterimSpeech] = useState("");
   const [aiHighlights, setAiHighlights] = useState([]);
   const [aiHints, setAiHints] = useState([]);
@@ -4276,6 +4306,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             return;
           }
           if (msg.type === "ready") {
+            hasLoadedOnceRef.current = true;
             setIsLiveConnected(true);
             setIsInitialLoading(false);
             setLoadingAI(false);
@@ -4290,6 +4321,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               { sender: "ai", text: `Session notice: ${errMsg}`, time: errTime },
             ]);
           } else if (msg.type === "audio" && msg.data) {
+            hasLoadedOnceRef.current = true;
             setIsLiveConnected(true);
             setIsInitialLoading(false);
             setLoadingAI(false);
@@ -4374,6 +4406,9 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 ...prev,
                 { sender: "ai", text: `[Teach-Back Challenge] ${args.prompt}`, time: now },
               ]);
+            } else if (name === "clear_ai_writing" || name === "clear_board") {
+              setAiHints([]);
+              setAiHighlights([]);
             } else if (name === "highlight_board") {
               const newHl = {
                 id: Date.now(),
@@ -4846,9 +4881,9 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     }
   };
 
-  const handleCanvasFrame = (base64Image) => {
+  const handleCanvasFrame = (base64Image, triggerTurn = false) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "canvas_frame", data: base64Image }));
+      wsRef.current.send(JSON.stringify({ type: "canvas_frame", data: base64Image, triggerTurn }));
     }
   };
 
@@ -4874,7 +4909,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     { label: "Resources", icon: BookOpen },
   ];
 
-  if (isInitialLoading) {
+  if (isInitialLoading && !hasLoadedOnceRef.current) {
     return (
       <main
         style={{
@@ -4983,6 +5018,25 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             <h1>
               {lessonTitle} <span className="live-dot">•</span>
             </h1>
+            {!isLiveConnected && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#fef3c7",
+                  color: "#92400e",
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  border: "1px solid #fde68a",
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706", animation: "pulse 1s infinite" }} />
+                Reconnecting to AI Tutor...
+              </span>
+            )}
             <span
               style={{
                 display: "inline-flex",
@@ -5826,7 +5880,15 @@ const AIClassroom = () => {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setLiveLesson(true)}
+                          onClick={() => {
+                            setSelectedSubject({
+                              ...selectedSubject,
+                              name: les.title,
+                              subject: selectedSubject.name,
+                              module: les.title,
+                            });
+                            setLiveLesson(true);
+                          }}
                           style={{
                             padding: "6px 14px",
                             background: "#111111",
