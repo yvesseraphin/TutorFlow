@@ -512,6 +512,13 @@ const StudentDashboard = () => {
   const fullName = user?.full_name || user?.profile?.full_name || user?.email?.split("@")[0] || "";
   const firstName = fullName ? fullName.split(" ")[0] : "";
   const userInitial = firstName ? firstName[0].toUpperCase() : (user?.email ? user.email[0].toUpperCase() : "S");
+  const avatarUrl =
+    user?.avatar_url ||
+    user?.profile?.avatar_url ||
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.picture ||
+    analytics?.avatar_url ||
+    "";
 
   const overallMastery = analytics ? Math.round((analytics.overall_mastery || 0) * 100) : 0;
   const accuracy = analytics ? Math.round((analytics.accuracy || 0) * 100) : 0;
@@ -605,8 +612,13 @@ const StudentDashboard = () => {
               className="tf-user-avatar"
               onClick={() => navigate("/profile")}
               title="View Profile"
+              style={{ overflow: "hidden" }}
             >
-              {userInitial}
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+              ) : (
+                userInitial
+              )}
             </div>
           </div>
         </header>

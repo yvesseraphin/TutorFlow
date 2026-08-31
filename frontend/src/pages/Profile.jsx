@@ -463,6 +463,24 @@ const Profile = () => {
 
   const [newGoal, setNewGoal] = useState("");
   const [addingGoal, setAddingGoal] = useState(false);
+  const avatarInputRef = React.useRef(null);
+
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem("tutorflow_cached_profile") || "null");
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      return (
+        cached?.avatar_url ||
+        cached?.profile?.avatar_url ||
+        user?.avatar_url ||
+        user?.user_metadata?.avatar_url ||
+        user?.user_metadata?.picture ||
+        ""
+      );
+    } catch {
+      return "";
+    }
+  });
 
   useEffect(() => {
     Promise.all([
@@ -473,6 +491,13 @@ const Profile = () => {
         if (profileData) {
           setProfile(profileData);
           localStorage.setItem("tutorflow_cached_profile", JSON.stringify(profileData));
+          const av =
+            profileData.avatar_url ||
+            profileData.profile?.avatar_url ||
+            profileData.metadata?.avatar_url ||
+            profileData.metadata?.picture ||
+            "";
+          if (av) setAvatarUrl(av);
           setForm({
             full_name: profileData.full_name || profileData.profile?.full_name || "",
             grade: profileData.grade || profileData.profile?.grade || "",
@@ -490,6 +515,34 @@ const Profile = () => {
       .finally(() => setLoading(false));
   }, [notif]);
 
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      notif.error("Image file size must be smaller than 5MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result;
+      setAvatarUrl(base64);
+      try {
+        await api("/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ avatar_url: base64 }),
+        });
+        const stored = JSON.parse(localStorage.getItem("user") || "{}");
+        localStorage.setItem("user", JSON.stringify({ ...stored, avatar_url: base64 }));
+        const cached = JSON.parse(localStorage.getItem("tutorflow_cached_profile") || "{}");
+        localStorage.setItem("tutorflow_cached_profile", JSON.stringify({ ...cached, avatar_url: base64 }));
+        notif.success("Profile photo updated successfully!");
+      } catch (err) {
+        notif.error("Failed to save profile photo.");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -499,6 +552,7 @@ const Profile = () => {
         school: form.school || undefined,
         bio: form.bio || undefined,
         learning_goals: form.learning_goals.length ? form.learning_goals : undefined,
+        avatar_url: avatarUrl || undefined,
       };
 
       const updated = await api("/profile", {
@@ -510,7 +564,7 @@ const Profile = () => {
 
       // Update localStorage
       const stored = JSON.parse(localStorage.getItem("user") || "{}");
-      localStorage.setItem("user", JSON.stringify({ ...stored, full_name: form.full_name }));
+      localStorage.setItem("user", JSON.stringify({ ...stored, full_name: form.full_name, avatar_url: avatarUrl }));
 
       notif.success("Profile updated successfully!");
     } catch (err) {
@@ -568,8 +622,13 @@ const Profile = () => {
             <div
               className="tf-user-avatar"
               title="Profile"
+              style={{ overflow: "hidden" }}
             >
-              {initials || "YS"}
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Profile Avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+              ) : (
+                initials || "YS"
+              )}
             </div>
           </div>
         </header>
@@ -582,12 +641,34 @@ const Profile = () => {
 
           <div className="pf-info-layout">
             <div className="pf-avatar-box">
-              <div className="pf-avatar-circle">
-                {initials || "YS"}
+              <div
+                className="pf-avatar-circle"
+                onClick={() => avatarInputRef.current?.click()}
+                style={{ cursor: "pointer", overflow: "hidden" }}
+                title="Click to upload profile photo"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile Avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                ) : (
+                  initials || "YS"
+                )}
               </div>
-              <button type="button" className="pf-avatar-cam-btn" title="Upload Photo" aria-label="Upload Photo">
+              <button
+                type="button"
+                className="pf-avatar-cam-btn"
+                title="Upload Photo"
+                aria-label="Upload Photo"
+                onClick={() => avatarInputRef.current?.click()}
+              >
                 <Camera size={14} />
               </button>
+              <input
+                type="file"
+                ref={avatarInputRef}
+                style={{ display: "none" }}
+                accept="image/*"
+                onChange={handleAvatarUpload}
+              />
             </div>
 
             <div className="pf-fields-grid">

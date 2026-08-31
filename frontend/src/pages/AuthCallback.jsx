@@ -15,6 +15,9 @@ const AuthCallback = () => {
     const saveUserAndRedirect = async (session) => {
       if (!session || !session.access_token) return false;
       const user = session.user;
+      const meta = user.user_metadata || {};
+      const avatar = meta.avatar_url || meta.picture || meta.avatar || "";
+
       localStorage.setItem("token", session.access_token);
       localStorage.setItem(
         "user",
@@ -22,15 +25,16 @@ const AuthCallback = () => {
           id: user.id,
           email: user.email,
           full_name:
-            user.user_metadata?.full_name ||
-            user.user_metadata?.name ||
+            meta.full_name ||
+            meta.name ||
             user.email?.split("@")[0] ||
             "",
+          avatar_url: avatar,
         })
       );
       await prefetchUserData();
       if (isMounted) {
-        notif.success("Signed in successfully!");
+        notif.success("Verification successful! Welcome to TutorFlow.");
         navigate("/dashboard", { replace: true });
       }
       return true;
@@ -38,47 +42,72 @@ const AuthCallback = () => {
 
     const handleAuth = async () => {
       try {
-        // 1. Check if session was already created by Supabase's automatic listener
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        if (existingSession && saveUserAndRedirect(existingSession)) {
-          return;
+        // 1. Check for errors in query or hash fragment
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+        const errorDesc =
+          urlParams.get("error_description") ||
+          hashParams.get("error_description") ||
+          urlParams.get("error") ||
+          hashParams.get("error");
+
+        if (errorDesc) {
+          throw new Error(decodeURIComponent(errorDesc.replace(/\+/g, " ")));
         }
 
-        // 2. If URL contains a PKCE ?code= parameter, exchange it manually
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get("code");
+        // 2. Check for token_hash and type (Email Verification Link / OTP flow)
+        const tokenHash = urlParams.get("token_hash") || hashParams.get("token_hash");
+        const otpType = urlParams.get("type") || hashParams.get("type") || "signup";
 
-        if (code) {
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) {
-            // Check if the code exchange succeeded in background despite error
-            const { data: { session: retrySession } } = await supabase.auth.getSession();
-            if (retrySession && saveUserAndRedirect(retrySession)) {
-              return;
-            }
-            throw exchangeError;
-          }
-          if (data?.session && saveUserAndRedirect(data.session)) {
+        if (tokenHash) {
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: otpType,
+          });
+          if (verifyError) throw verifyError;
+          if (data?.session && (await saveUserAndRedirect(data.session))) {
             return;
           }
         }
 
-        // 3. Subscribe to auth state changes to catch async OAuth sign-in completion
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (session && saveUserAndRedirect(session)) {
+        // 3. If URL contains a PKCE ?code= parameter, exchange it manually
+        const code = urlParams.get("code");
+        if (code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            if (retrySession && (await saveUserAndRedirect(retrySession))) {
+              return;
+            }
+            throw exchangeError;
+          }
+          if (data?.session && (await saveUserAndRedirect(data.session))) {
+            return;
+          }
+        }
+
+        // 4. Check for implicit hash session or existing session
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        if (existingSession && (await saveUserAndRedirect(existingSession))) {
+          return;
+        }
+
+        // 5. Subscribe to auth state changes to catch async sign-in completion
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (session && (await saveUserAndRedirect(session))) {
             subscription.unsubscribe();
           }
         });
 
       } catch (err) {
-        console.error("OAuth callback error:", err);
-        // Check session one last time before displaying error
+        console.error("Auth callback error:", err);
         const { data: { session: fallbackSession } } = await supabase.auth.getSession();
-        if (fallbackSession && saveUserAndRedirect(fallbackSession)) {
+        if (fallbackSession && (await saveUserAndRedirect(fallbackSession))) {
           return;
         }
         if (isMounted) {
-          const msg = err.message || "Sign-in failed. Please try again.";
+          const msg = err.message || "Verification or sign-in failed. Please try again.";
           setError(msg);
           notif.error(msg);
         }
@@ -103,30 +132,44 @@ const AuthCallback = () => {
           minHeight: "100vh",
           background: "#ffffff",
           fontFamily: "'Outfit', sans-serif",
-          gap: 16,
+          gap: 18,
           padding: 24,
         }}
       >
         <div
           style={{
-            background: "#fef2f2",
-            border: "1px solid #fca5a5",
-            color: "#dc2626",
-            padding: "14px 20px",
-            borderRadius: 12,
+            background: "#f5f5f5",
+            border: "1px solid #e5e5e5",
+            color: "#111111",
+            padding: "16px 24px",
+            borderRadius: 14,
             fontSize: 15,
-            maxWidth: 420,
+            fontWeight: 500,
+            maxWidth: 440,
             textAlign: "center",
+            lineHeight: "22px",
           }}
         >
           {error}
         </div>
-        <a
-          href="/login"
-          style={{ color: "#2563eb", fontSize: 15, fontWeight: 600, textDecoration: "none" }}
+        <button
+          type="button"
+          onClick={() => navigate("/login")}
+          style={{
+            height: "48px",
+            padding: "0 24px",
+            background: "#111111",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "12px",
+            fontSize: "15px",
+            fontWeight: "600",
+            cursor: "pointer",
+            fontFamily: "'Outfit', sans-serif",
+          }}
         >
-          ← Back to login
-        </a>
+          Return to Login
+        </button>
       </div>
     );
   }

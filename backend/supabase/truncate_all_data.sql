@@ -27,8 +27,8 @@ truncate table public.learning_materials restart identity cascade;
 truncate table public.confidence_snapshots restart identity cascade;
 truncate table public.learning_style_profiles restart identity cascade;
 
--- (Optional) If you also want to reset student profiles back to default, uncomment:
--- update public.profiles
--- set learning_goals = '{}',
---     preferred_teaching_style = 'step_by_step',
---     learning_pace = 'normal';
+
+update public.profiles
+set learning_goals = '{}',
+    preferred_teaching_style = 'step_by_step',
+     learning_pace = 'normal';
