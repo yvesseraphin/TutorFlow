@@ -1,8 +1,10 @@
 import asyncio
 import base64
+from datetime import datetime, timezone
 import json
 import logging
 from typing import Any, Optional
+import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google import genai
@@ -19,6 +21,14 @@ from backend.services.ai_learner import (
 from backend.services.supabase import admin_client
 
 import google.genai.live
+
+
+def is_valid_uuid(val: str) -> bool:
+    try:
+        uuid.UUID(str(val))
+        return True
+    except Exception:
+        return False
 
 # Ensure Google GenAI Live WebSocket connection never times out on keepalive pings
 if hasattr(google.genai.live, "ws_connect"):
