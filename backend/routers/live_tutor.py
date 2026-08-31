@@ -403,16 +403,16 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
    - NEVER speak internal labels like 'Thought:', '[Strategy Adaptation]', 'Reasoning:', or raw JSON.
 """
 
-    client = genai.Client(
-        api_key=settings.gemini_api_key,
-        http_options={"api_version": "v1alpha"}
-    )
+    valid_voices = {"Aoede", "Puck", "Charon", "Kore", "Fenrir"}
+    pref_voice = profile.get("voice_preference", "Aoede")
+    if pref_voice not in valid_voices:
+        pref_voice = "Aoede"
 
     config = types.LiveConnectConfig(
         response_modalities=[types.Modality.AUDIO],
         speech_config=types.SpeechConfig(
             voice_config=types.VoiceConfig(
-                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=profile.get("voice_preference", "Aoede"))
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=pref_voice)
             )
         ),
         system_instruction=types.Content(
@@ -456,6 +456,10 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                 await asyncio.sleep(0.3)
 
             try:
+                client = genai.Client(
+                    api_key=settings.gemini_api_key,
+                    http_options={"api_version": "v1alpha"}
+                )
                 async with client.aio.live.connect(
                     model=live_model_name,
                     config=config,
