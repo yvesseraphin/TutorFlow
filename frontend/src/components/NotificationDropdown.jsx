@@ -263,9 +263,37 @@ export const NotificationDropdown = ({ children }) => {
     async function loadNotifications() {
       try {
         const res = await api("/analytics/notifications");
-        if (res?.notifications) {
-          setNotifications(res.notifications);
-          localStorage.setItem("tutorflow_cached_notifications", JSON.stringify(res.notifications));
+        let notifs = res?.notifications || [];
+
+        // Also check cached dashboard analytics for any immediate retention risks
+        try {
+          const cachedAnalytics = localStorage.getItem("tutorflow_cached_analytics");
+          if (cachedAnalytics) {
+            const parsed = JSON.parse(cachedAnalytics);
+            if (parsed?.retention_risk_topics?.length > 0) {
+              const existingIds = new Set(notifs.map((n) => n.id));
+              parsed.retention_risk_topics.forEach((r) => {
+                const id = `retention-${r.topic}`;
+                if (!existingIds.has(id)) {
+                  notifs.unshift({
+                    id,
+                    type: "retention",
+                    title: `Spaced Repetition Due: ${r.topic}`,
+                    desc: `Quick 2-min review scheduled to retain your ${Math.round((r.mastery || 0.8) * 100)}% mastery.`,
+                    created_at: new Date().toISOString(),
+                    topic: r.topic,
+                    action_url: `/classroom?topic=${encodeURIComponent(r.topic)}`,
+                  });
+                  existingIds.add(id);
+                }
+              });
+            }
+          }
+        } catch { /* ignore */ }
+
+        if (notifs.length > 0) {
+          setNotifications(notifs);
+          localStorage.setItem("tutorflow_cached_notifications", JSON.stringify(notifs));
         }
       } catch (err) {
         console.error("Failed to load notifications:", err);

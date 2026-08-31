@@ -276,7 +276,7 @@ def get_notifications(user: dict = Depends(current_user)) -> dict:
             .eq("user_id", uid)
             .lte("next_review_due_at", now_iso)
             .order("next_review_due_at", desc=False)
-            .limit(3)
+            .limit(5)
             .execute()
         )
         retention_rows = retention_res.data or []
@@ -284,8 +284,8 @@ def get_notifications(user: dict = Depends(current_user)) -> dict:
             notifications.append({
                 "id": f"retention-{r['topic_id']}",
                 "type": "retention",
-                "title": "Retention Alert",
-                "desc": f"Review due for {r['topic_id']} to retain your {int(float(r.get('mastery_score', 0)) * 100)}% mastery.",
+                "title": f"Spaced Repetition Review Due: {r['topic_id']}",
+                "desc": f"Quick 2-min review scheduled to retain your {int(float(r.get('mastery_score', 0)) * 100)}% mastery.",
                 "created_at": r.get("updated_at") or now_iso,
                 "topic": r["topic_id"],
                 "action_url": f"/classroom?topic={r['topic_id']}",

@@ -574,43 +574,71 @@ const StudentDashboard = () => {
           </div>
         </header>
 
-        {/* ── Spaced Repetition Retention Warning Banner ── */}
+        {/* ── Spaced Repetition Retention Black Bar ── */}
         {retentionRisks.length > 0 && (
-          <div style={{
-            background: "#fffbeb",
-            border: "1px solid #fef3c7",
-            borderRadius: "16px",
-            padding: "16px 24px",
-            marginBottom: "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "16px"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <AlertTriangle size={22} color="#d97706" />
-              <div>
-                <strong style={{ color: "#92400e", fontSize: "14px" }}>Spaced Repetition Review Due:</strong>
-                <span style={{ color: "#b45309", fontSize: "14px", marginLeft: "6px" }}>
-                  {retentionRisks.map(r => r.topic).join(", ")}
-                </span>
-              </div>
+          <div
+            style={{
+              background: "#000000",
+              color: "#ffffff",
+              borderRadius: "14px",
+              padding: "14px 22px",
+              marginBottom: "24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              fontFamily: "'Outfit', sans-serif",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <AlertTriangle size={18} color="#ffffff" style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: "14px", fontWeight: 700, color: "#ffffff" }}>
+                Spaced Repetition Review Due:
+              </span>
+              <span style={{ fontSize: "14px", color: "#e5e5e5", fontWeight: 400 }}>
+                {retentionRisks.map((r, idx) => (
+                  <span key={r.topic}>
+                    {idx > 0 && ", "}
+                    <span
+                      onClick={() => navigate(`/classroom?topic=${encodeURIComponent(r.topic)}`)}
+                      style={{
+                        textDecoration: "underline",
+                        textUnderlineOffset: "3px",
+                        cursor: "pointer",
+                        color: "#ffffff",
+                        fontWeight: 500,
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+                      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                      title={`Review ${r.topic}`}
+                    >
+                      {r.topic}
+                    </span>
+                  </span>
+                ))}
+              </span>
             </div>
-            <button
+            <span
               onClick={() => navigate(`/classroom?topic=${encodeURIComponent(retentionRisks[0].topic)}`)}
               style={{
-                padding: "8px 16px",
-                background: "#d97706",
                 color: "#ffffff",
-                borderRadius: "10px",
-                border: "none",
-                fontSize: "13px",
-                fontWeight: "700",
-                cursor: "pointer"
+                fontSize: "13.5px",
+                fontWeight: 700,
+                textDecoration: "underline",
+                textUnderlineOffset: "3px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                transition: "opacity 0.15s ease",
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              Quick 2-Min Review
-            </button>
+              Quick 2-Min Review &rarr;
+            </span>
           </div>
         )}
 
