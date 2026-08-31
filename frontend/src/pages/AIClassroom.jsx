@@ -3370,13 +3370,13 @@ const InteractiveWhiteboard = ({
     // X Axis
     strokes.push({
       tool: "pen",
-      color: "#2563eb",
+      color: "#111111",
       strokeWidth: 3,
       points: [cx - 200, cy, cx + 200, cy],
     });
     strokes.push({
       tool: "pen",
-      color: "#2563eb",
+      color: "#111111",
       strokeWidth: 3,
       points: [cx + 190, cy - 6, cx + 200, cy, cx + 190, cy + 6],
     });
@@ -3384,13 +3384,13 @@ const InteractiveWhiteboard = ({
     // Y Axis
     strokes.push({
       tool: "pen",
-      color: "#2563eb",
+      color: "#111111",
       strokeWidth: 3,
       points: [cx, cy + 160, cx, cy - 160],
     });
     strokes.push({
       tool: "pen",
-      color: "#2563eb",
+      color: "#111111",
       strokeWidth: 3,
       points: [cx - 6, cy - 150, cx, cy - 160, cx + 6, cy - 150],
     });
@@ -3418,7 +3418,7 @@ const InteractiveWhiteboard = ({
     // Right angle corner box
     strokes.push({
       tool: "pen",
-      color: "#ef4444",
+      color: "#666666",
       strokeWidth: 2.5,
       points: [ox + 16, oy, ox + 16, oy - 16, ox, oy - 16],
     });
@@ -3481,7 +3481,7 @@ const InteractiveWhiteboard = ({
       // Center to radius line
       {
         tool: "pen",
-        color: "#ef4444",
+        color: "#666666",
         strokeWidth: 2.5,
         points: [cx, cy, cx + r, cy],
       },
@@ -3496,13 +3496,13 @@ const InteractiveWhiteboard = ({
     const cy = h * 0.55;
     const strokes = [
       // Base & Fulcrum triangle
-      { tool: "pen", color: "#475569", strokeWidth: 4, points: [cx - 30, cy + 60, cx, cy, cx + 30, cy + 60, cx - 30, cy + 60] },
+      { tool: "pen", color: "#111111", strokeWidth: 4, points: [cx - 30, cy + 60, cx, cy, cx + 30, cy + 60, cx - 30, cy + 60] },
       // Beam
-      { tool: "pen", color: "#1e293b", strokeWidth: 5, points: [cx - 130, cy - 10, cx + 130, cy - 10] },
+      { tool: "pen", color: "#111111", strokeWidth: 5, points: [cx - 130, cy - 10, cx + 130, cy - 10] },
       // Left Pan
-      { tool: "pen", color: "#2563eb", strokeWidth: 3, points: [cx - 130, cy - 10, cx - 150, cy + 30, cx - 110, cy + 30, cx - 130, cy - 10] },
+      { tool: "pen", color: "#666666", strokeWidth: 3, points: [cx - 130, cy - 10, cx - 150, cy + 30, cx - 110, cy + 30, cx - 130, cy - 10] },
       // Right Pan
-      { tool: "pen", color: "#2563eb", strokeWidth: 3, points: [cx + 130, cy - 10, cx + 110, cy + 30, cx + 150, cy + 30, cx + 130, cy - 10] },
+      { tool: "pen", color: "#666666", strokeWidth: 3, points: [cx + 130, cy - 10, cx + 110, cy + 30, cx + 150, cy + 30, cx + 130, cy - 10] },
     ];
     insertShapeStrokes(strokes);
   };
@@ -3632,11 +3632,11 @@ const InteractiveWhiteboard = ({
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       if (cardRef.current?.requestFullscreen) {
-        cardRef.current.requestFullscreen().catch(() => {});
+        cardRef.current.requestFullscreen().catch(() => { });
       }
     } else {
       if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() => { });
       }
     }
   };
@@ -3686,14 +3686,14 @@ const InteractiveWhiteboard = ({
                 gap: 6,
                 padding: "3px 10px",
                 borderRadius: 20,
-                background: "#f0fdf4",
-                color: "#16a34a",
+                background: "#f5f5f5",
+                color: "#111111",
                 fontSize: 12,
                 fontWeight: 600,
-                border: "1px solid #bbf7d0",
+                border: "1px solid #e5e5e5",
               }}
             >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#16a34a", animation: "pulse 1.5s infinite" }} />
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#111111", animation: "pulse 1.5s infinite" }} />
               AI Watching Live
             </span>
           )}
@@ -3709,8 +3709,8 @@ const InteractiveWhiteboard = ({
                 title={item.label}
                 onClick={item.action}
                 style={{
-                  background: item.id === "grid" && isGridVisible ? "#eff6ff" : "transparent",
-                  color: item.id === "grid" && isGridVisible ? "#2563eb" : "inherit",
+                  background: item.id === "grid" && isGridVisible ? "#111111" : "transparent",
+                  color: item.id === "grid" && isGridVisible ? "#ffffff" : "inherit",
                 }}
               >
                 <Icon size={20} />
@@ -4550,7 +4550,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 ...prev,
                 {
                   sender: "ai",
-                  text: `🎉 Lesson Concluded! ${summary} ${celeb}`,
+                  text: `Lesson Concluded! ${summary} ${celeb}`,
                   time: now,
                 },
               ]);
@@ -4558,9 +4558,9 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 ...prev,
                 {
                   id: Date.now(),
-                  text: "🏆 Lesson Mastered!",
+                  text: "Lesson Mastered!",
                   explanation: summary,
-                  color: "green",
+                  color: "#111111",
                   x: 10,
                   y: 10,
                 },
@@ -4725,9 +4725,9 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
     try {
       await unlockAudioContext();
-    } catch (e) {}
+    } catch (e) { }
 
-    console.log("[LIVE WS STUDENT SPEECH VALIDATED] 🎤 Sending:", trimmed);
+    console.log("[LIVE WS STUDENT SPEECH VALIDATED] Sending:", trimmed);
     setLoadingAI(true);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "text", text: trimmed }));
@@ -4740,7 +4740,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
     try {
       await unlockAudioContext();
-    } catch (e) {}
+    } catch (e) { }
 
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const fullText = attachedFile
@@ -4792,28 +4792,65 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     { label: "Resources", icon: BookOpen },
   ];
 
-  const isWhiteboard = activeRailTab === "Whiteboard";
-
   if (isInitialLoading) {
     return (
       <main
         style={{
-          minHeight: "100vh",
+          position: "fixed",
+          inset: 0,
+          width: "100vw",
+          height: "100vh",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           background: "#ffffff",
-          fontFamily: "Outfit, sans-serif",
+          fontFamily: "'Outfit', sans-serif",
           padding: 24,
           textAlign: "center",
+          zIndex: 99999,
+          boxSizing: "border-box",
         }}
       >
-        <style>{styles}</style>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
+
+        <button
+          type="button"
+          onClick={() => onEnd()}
+          style={{
+            position: "absolute",
+            top: "32px",
+            right: "40px",
+            height: "56px",
+            padding: "0 32px",
+            background: "#0a0a0a",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "14px",
+            fontSize: "17px",
+            fontWeight: "600",
+            cursor: "pointer",
+            fontFamily: "'Outfit', sans-serif",
+            lineHeight: "24px",
+            letterSpacing: "-0.01em",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxSizing: "border-box",
+            transition: "opacity 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          Cancel
+        </button>
+
         <div
           style={{
-            width: 46,
-            height: 46,
+            width: 48,
+            height: 48,
             border: "3.5px solid #f0f0f0",
             borderTopColor: "#111111",
             borderRadius: "50%",
@@ -4821,32 +4858,24 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             marginBottom: 20,
           }}
         />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111111", margin: "0 0 8px" }}>
-          Starting Your 1-on-1 Lesson
-        </h2>
-        <p style={{ fontSize: 14.5, color: "#666666", maxWidth: 380, margin: "0 0 24px", lineHeight: "22px" }}>
-          Preparing your AI Teacher workspace on <strong style={{ color: "#111111" }}>{lessonTitle}</strong>...
-        </p>
-        <button
-          type="button"
-          onClick={() => onEnd()}
+
+        <h2
           style={{
-            padding: "8px 18px",
-            background: "#ffffff",
-            color: "#666666",
-            border: "1px solid #e5e5e5",
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
+            fontSize: "24px",
+            fontWeight: 700,
+            color: "#111111",
+            margin: 0,
+            fontFamily: "'Outfit', sans-serif",
+            letterSpacing: "-0.02em",
           }}
         >
-          Cancel
-        </button>
+          Starting your classroom
+        </h2>
       </main>
     );
   }
+
+  const isWhiteboard = activeRailTab === "Whiteboard";
 
   return (
     <main
@@ -5099,8 +5128,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
           {activeMisconception && (
             <div style={{
-              background: "#fffbeb",
-              border: "1px solid #fde68a",
+              background: "#f5f5f5",
+              border: "1px solid #e5e5e5",
               borderRadius: 10,
               padding: "10px 12px",
               margin: "8px 12px 0",
@@ -5110,19 +5139,19 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               fontSize: 12.5,
               animation: "fadeIn 0.2s ease"
             }}>
-              <AlertTriangle size={16} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+              <AlertTriangle size={16} color="#111111" style={{ flexShrink: 0, marginTop: 2 }} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, color: "#92400e" }}>
+                <div style={{ fontWeight: 700, color: "#111111" }}>
                   Misconception: {activeMisconception.type}
                 </div>
-                <div style={{ color: "#b45309", marginTop: 2, lineHeight: "17px" }}>
+                <div style={{ color: "#666666", marginTop: 2, lineHeight: "17px" }}>
                   {activeMisconception.explanation}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveMisconception(null)}
-                style={{ border: 0, background: "transparent", cursor: "pointer", color: "#92400e", padding: 0 }}
+                style={{ border: 0, background: "transparent", cursor: "pointer", color: "#111111", padding: 0 }}
                 title="Dismiss"
               >
                 <X size={14} />
@@ -5257,8 +5286,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                   onClick={toggleLiveMic}
                   style={{
                     border: 0,
-                    background: isMicStreaming ? "#f0fdf4" : "#f5f5f5",
-                    color: isMicStreaming ? "#16a34a" : "#555555",
+                    background: isMicStreaming ? "#111111" : "#f5f5f5",
+                    color: isMicStreaming ? "#ffffff" : "#111111",
                     padding: "6px 10px",
                     borderRadius: 8,
                     cursor: "pointer",
@@ -5362,12 +5391,12 @@ const buildSubjectsList = (courses, skillMastery = []) => {
       courseName.includes("Algebra") && !courseName.includes("Pre")
         ? Calculator
         : courseName.includes("Functions")
-        ? FunctionSquare
-        : courseName.includes("Geometry")
-        ? Shapes
-        : courseName.includes("Statistics")
-        ? BarChart3
-        : Divide;
+          ? FunctionSquare
+          : courseName.includes("Geometry")
+            ? Shapes
+            : courseName.includes("Statistics")
+              ? BarChart3
+              : Divide;
 
     const details = getSubjectDetails(courseName);
 

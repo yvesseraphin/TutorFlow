@@ -376,7 +376,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
    - Step 2 (Worked Whiteboard Example): Call `clear_ai_writing()` to start fresh. Work through a simple example on the whiteboard using `write_math_equation`, `draw_number_line`, or `display_interactive_balance_scale` and call `update_lesson_step(step_index=2, step_title="Worked Example")`.
    - Step 3 (Guided Practice): Call `clear_ai_writing()`. Give the student ONE simple problem to solve and wait for their answer. Call `update_lesson_step(step_index=3, step_title="Guided Practice")`.
    - Step 4 (Mastery & Conclusion): Once the student answers correctly, enthusiastically conclude the lesson:
-     * Say: "🎉 Congratulations! You have successfully mastered today's lesson on {canonical_topic}! You did an amazing job today. We are all finished with this topic. You can click 'End Lesson' to view your report card, or let me know if you want to explore anything else!"
+     * Say: "Congratulations! You have successfully mastered today's lesson on {canonical_topic}! You did an amazing job today. We are all finished with this topic. You can click 'End Lesson' to view your report card, or let me know if you want to explore anything else!"
      * Call `conclude_lesson(mastery_summary="Mastered core concepts and practice in " + canonical_topic)` and `update_lesson_step(step_index=4, step_title="Lesson Concluded")`.
 
 4. BITE-SIZED MICRO-STEPS:
@@ -487,7 +487,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                 elif msg_type == "text":
                                     text_content = msg.get("text", "")
                                     if text_content:
-                                        logger.info(f"[LIVE WS STUDENT SPEECH] 🎤 Student said: '{text_content}'")
+                                        logger.info(f"[LIVE WS STUDENT SPEECH] Student said: '{text_content}'")
                                         recent_turns.append(f"Student: {text_content}")
                                         if len(recent_turns) > 10:
                                             recent_turns.pop(0)
@@ -497,11 +497,11 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                                     turns=[types.Content(role="user", parts=[types.Part.from_text(text=text_content)])],
                                                     turn_complete=True,
                                                 )
-                                            logger.info(f"[LIVE WS GEMINI] 🚀 Delivered student turn to Gemini Live")
+                                            logger.info(f"[LIVE WS GEMINI] Delivered student turn to Gemini Live")
                                         except Exception as e:
-                                            logger.error(f"[LIVE WS GEMINI ERROR] ❌ Error sending text turn: {e}")
+                                            logger.error(f"[LIVE WS GEMINI ERROR] Error sending text turn: {e}")
                                 elif msg_type == "interrupt":
-                                    logger.info("[LIVE WS USER ACTION] 🛑 Student triggered voice barge-in interrupt")
+                                    logger.info("[LIVE WS USER ACTION] Student triggered voice barge-in interrupt")
                                     try:
                                         async with _send_lock:
                                             await session.send_client_content(
@@ -527,7 +527,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                                         )
                                                     ]
                                                 )
-                                            logger.info(f"[LIVE WS TOOL RESPONSE] ✅ Client tool response confirmed for {tool_name} ({call_id})")
+                                            logger.info(f"[LIVE WS TOOL RESPONSE] Client tool response confirmed for {tool_name} ({call_id})")
                                         except Exception as e:
                                             logger.warning(f"[LIVE WS] Tool response send error: {e}")
                         except WebSocketDisconnect:
@@ -545,7 +545,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                     server_content = response.server_content
                                     if server_content is not None:
                                         if server_content.interrupted:
-                                            logger.info("[LIVE WS] ⚡ Gemini voice generation interrupted by student")
+                                            logger.info("[LIVE WS] Gemini voice generation interrupted by student")
                                             await websocket.send_json({"type": "interrupted"})
 
                                         model_turn = server_content.model_turn
@@ -561,7 +561,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                                 if getattr(part, "text", None) and not getattr(part, "thought", False):
                                                     raw_text = part.text
                                                     if not raw_text.startswith("**") and not raw_text.startswith("Thought:"):
-                                                        logger.info(f"[LIVE WS AI TRANSCRIPT] 💬 Teacher: '{raw_text[:60]}...'")
+                                                        logger.info(f"[LIVE WS AI TRANSCRIPT] Teacher: '{raw_text[:60]}...'")
                                                         recent_turns.append(f"Teacher: {raw_text[:80]}")
                                                         if len(recent_turns) > 10:
                                                             recent_turns.pop(0)
@@ -571,7 +571,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                                         })
 
                                         if server_content.turn_complete:
-                                            logger.info("[LIVE WS AI TURN] 🏁 Gemini Live speech turn completed")
+                                            logger.info("[LIVE WS AI TURN] Gemini Live speech turn completed")
                                             await websocket.send_json({"type": "audio_turn_complete"})
 
                                     tool_call = response.tool_call
@@ -582,7 +582,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                             args = fc.args or {}
                                             call_id = fc.id
 
-                                            logger.info(f"[LIVE WS WHITEBOARD TOOL] ✏️ AI called whiteboard action '{name}' | Args: {args}")
+                                            logger.info(f"[LIVE WS WHITEBOARD TOOL] AI called whiteboard action '{name}' | Args: {args}")
                                             handled_tool_call_ids.add(call_id)
 
                                             await websocket.send_json({
