@@ -297,9 +297,17 @@ def get_student_learner_context(user_id: str, topic: Optional[str] = None, cogni
     }
 
 
-def record_mastery_attempt(user_id: str, topic_id: str, is_correct: bool, score_delta: float = 0.1) -> Dict[str, Any]:
+def record_mastery_attempt(
+    user_id: str,
+    topic_id: str,
+    is_correct: bool,
+    score_delta: float = 0.1,
+    is_completion: bool = False,
+) -> Dict[str, Any]:
     """
     Updates the student's mastery score and calculates SM-2 spaced repetition review date.
+    When is_completion=True (the student successfully concluded a full 4-step lesson),
+    the topic is promoted directly to mastered (mastery >= 0.90).
     """
     now = datetime.now(timezone.utc)
     node = find_topic_node(topic_id)
@@ -324,14 +332,15 @@ def record_mastery_attempt(user_id: str, topic_id: str, is_correct: bool, score_
             corrects = row.get("correct_count", 0) + (1 if is_correct else 0)
             curr_mastery = float(row.get("mastery_score", 0.0))
             
-            # Calculate new mastery with retention weight
-            new_mastery = min(1.0, max(0.0, curr_mastery + (score_delta if is_correct else -score_delta * 0.7)))
+            if is_completion:
+                new_mastery = max(0.92, min(1.0, curr_mastery + score_delta))
+            else:
+                new_mastery = min(1.0, max(0.0, curr_mastery + (score_delta if is_correct else -score_delta * 0.7)))
             
-            # SM-2 calculation
             stability = float(row.get("retention_stability", 1.0))
-            if is_correct:
+            if is_correct or is_completion:
                 stability = stability * 1.5
-                days_to_add = max(1, int(stability * 2))
+                days_to_add = max(2, int(stability * 3))
             else:
                 stability = max(1.0, stability * 0.7)
                 days_to_add = 1
@@ -357,16 +366,17 @@ def record_mastery_attempt(user_id: str, topic_id: str, is_correct: bool, score_
             )
             return res.data[0] if res.data else update_payload
         else:
-            new_mastery = 0.25 if is_correct else 0.05
-            next_review = now + timedelta(days=1)
+            new_mastery = 0.92 if is_completion else (0.35 if is_correct else 0.05)
+            status = "mastered" if new_mastery >= 0.85 else "in_progress"
+            next_review = now + timedelta(days=3 if is_completion else 1)
             insert_payload = {
                 "user_id": user_id,
                 "topic_id": canonical_topic,
-                "mastery_score": new_mastery,
+                "mastery_score": round(new_mastery, 3),
                 "attempts_count": 1,
                 "correct_count": 1 if is_correct else 0,
-                "retention_stability": 1.0,
-                "status": "in_progress",
+                "retention_stability": 1.5 if is_completion else 1.0,
+                "status": status,
                 "last_practiced_at": now.isoformat(),
                 "next_review_due_at": next_review.isoformat(),
             }

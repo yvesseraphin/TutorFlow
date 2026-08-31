@@ -4115,6 +4115,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   const [aiHints, setAiHints] = useState([]);
   const [liveTranscript, setLiveTranscript] = useState("");
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [currentLessonProgress, setCurrentLessonProgress] = useState(lessonProgress || 20);
 
   // AI Teaching Strategy Engine & Adaptive Timeline State
   const [teachingStrategy, setTeachingStrategy] = useState("Visual Intuition");
@@ -4253,6 +4254,25 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             // Seamless background virtual session hot-swap
             console.log("[LIVE WS CLIENT] Seamless Gemini session renewal #", msg.attempt);
             setIsLiveConnected(true);
+            return;
+          }
+          if (msg.type === "lesson_completed") {
+            setCurrentLessonProgress(100);
+            localStorage.removeItem("tutorflow_cached_analytics");
+            localStorage.removeItem("tutorflow_cached_curriculum");
+            const summaryText = msg.summary || "Lesson successfully completed!";
+            const celebText = msg.celebration || "Great job mastering today's topic!";
+            const nextTopic = msg.next_topic || "";
+            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            setChatMessages((prev) => [
+              ...prev,
+              {
+                sender: "ai",
+                text: `Lesson Concluded! ${summaryText} ${celebText}${nextTopic ? ` Next recommended topic: ${nextTopic}.` : ""}`,
+                time: now,
+              },
+            ]);
+            setShowSummaryModal(true);
             return;
           }
           if (msg.type === "ready") {
@@ -4574,6 +4594,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             } else if (name === "update_lesson_step") {
               const stepIdx = args.step_index || 1;
               const stepTitle = args.step_title || "";
+              const progressPct = Math.min(100, Math.round((stepIdx / 4) * 100));
+              setCurrentLessonProgress(progressPct);
               const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               setAdaptiveTimeline((prev) => [
                 ...prev,
@@ -4601,6 +4623,10 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             } else if (name === "conclude_lesson") {
               const summary = args.mastery_summary || "Lesson successfully completed!";
               const celeb = args.celebration_message || "Congratulations on mastering today's topic!";
+              setCurrentLessonProgress(100);
+              localStorage.removeItem("tutorflow_cached_analytics");
+              localStorage.removeItem("tutorflow_cached_curriculum");
+              setShowSummaryModal(true);
               const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               setChatMessages((prev) => [
                 ...prev,
@@ -5062,10 +5088,10 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           <h3>Lesson Progress</h3>
           <div className="live-progress-row">
             <span />
-            <span>{lessonProgress}%</span>
+            <span>{currentLessonProgress}%</span>
           </div>
           <div className="live-progress-track">
-            <div className="live-progress-fill" style={{ width: `${lessonProgress}%` }} />
+            <div className="live-progress-fill" style={{ width: `${currentLessonProgress}%` }} />
           </div>
         </div>
       </aside>
@@ -5402,9 +5428,10 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
         isOpen={showSummaryModal}
         onClose={() => setShowSummaryModal(false)}
         onFinish={() => {
-          recorderRef.current?.stop();
-          playerRef.current?.destroy();
-          wsRef.current?.close();
+          if (playerRef.current) playerRef.current.destroy();
+          if (wsRef.current) wsRef.current.close();
+          localStorage.removeItem("tutorflow_cached_analytics");
+          localStorage.removeItem("tutorflow_cached_curriculum");
           onEnd();
         }}
         lessonTitle={lessonTitle}
@@ -5608,7 +5635,12 @@ const AIClassroom = () => {
     const progress = selectedSubject ? (selectedSubject.progress || 0) : 0;
     return (
       <LiveLesson
-        onEnd={() => setLiveLesson(false)}
+        onEnd={() => {
+          localStorage.removeItem("tutorflow_cached_analytics");
+          localStorage.removeItem("tutorflow_cached_curriculum");
+          fetchSubjects();
+          setLiveLesson(false);
+        }}
         lessonTitle={title}
         lessonSubtitle={subtitle}
         lessonProgress={progress}

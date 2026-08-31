@@ -653,7 +653,8 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                                             user_id=user_id,
                                                             topic_id=canonical_topic,
                                                             is_correct=True,
-                                                            score_delta=0.35,
+                                                            score_delta=0.45,
+                                                            is_completion=True,
                                                         )
                                                         logger.info(f"[LIVE WS DB] Mastery attempt logged for {canonical_topic}: {mastery_result}")
 
