@@ -3151,8 +3151,18 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
     return renderKaTeX(cleanText);
   }, [isLatex, cleanText]);
 
-  // Position cleanly: top-left corner stacked neatly down the board
-  const topPos = y !== undefined && y > 0 ? Math.min(y, 75) : 12 + index * 18;
+  const textColor = useMemo(() => {
+    if (!color || color === "black") return "#111111";
+    if (color === "blue") return "#2563eb";
+    if (color === "green") return "#16a34a";
+    if (color === "red") return "#ef4444";
+    if (color === "purple") return "#8b5cf6";
+    if (color === "orange") return "#f97316";
+    return color;
+  }, [color]);
+
+  // Position cleanly: top-left corner stacked neatly down the board below the title
+  const topPos = y !== undefined && y > 0 ? Math.min(y, 75) : 15 + index * 14;
   const leftPos = x !== undefined && x > 0 ? Math.min(x, 60) : 6;
 
   return (
@@ -3165,64 +3175,53 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
         pointerEvents: "none",
         display: "flex",
         flexDirection: "column",
-        gap: 6,
-        maxWidth: "480px",
-        animation: "fadeIn 0.2s ease-out",
+        gap: 4,
+        maxWidth: "540px",
+        animation: "fadeIn 0.25s ease-out",
+        userSelect: "none",
       }}
     >
-      <div
-        style={{
-          background: "#ffffff",
-          border: "1px solid #e5e5e5",
-          borderRadius: 10,
-          padding: "10px 18px",
-          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}
-      >
-        {katexHtml ? (
-          <div
-            className="katex-math-render"
-            style={{
-              fontSize: "clamp(20px, 2.4vw, 28px)",
-              color: "#111111",
-              fontWeight: 600,
-              letterSpacing: "0.01em",
-            }}
-            dangerouslySetInnerHTML={{ __html: katexHtml }}
-          />
-        ) : (
-          <span
-            style={{
-              fontFamily: "Outfit, -apple-system, sans-serif",
-              fontSize: "clamp(16px, 1.8vw, 22px)",
-              fontWeight: 600,
-              color: "#111111",
-              lineHeight: "26px",
-            }}
-          >
-            {cleanText}
-          </span>
-        )}
+      {katexHtml ? (
+        <div
+          className="katex-math-render"
+          style={{
+            fontSize: "clamp(22px, 2.6vw, 32px)",
+            color: textColor,
+            fontWeight: 700,
+            letterSpacing: "0.01em",
+            lineHeight: 1.3,
+          }}
+          dangerouslySetInnerHTML={{ __html: katexHtml }}
+        />
+      ) : (
+        <span
+          style={{
+            fontFamily: "'Outfit', -apple-system, sans-serif",
+            fontSize: "clamp(18px, 2vw, 24px)",
+            fontWeight: 700,
+            color: textColor,
+            lineHeight: "1.35",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {cleanText}
+        </span>
+      )}
 
-        {explanation && (
-          <span
-            style={{
-              fontFamily: "Outfit, sans-serif",
-              fontSize: 12.5,
-              fontWeight: 500,
-              color: "#555555",
-              borderTop: "1px solid #f0f0f0",
-              paddingTop: 4,
-              marginTop: 2,
-            }}
-          >
-            {explanation}
-          </span>
-        )}
-      </div>
+      {explanation && (
+        <span
+          style={{
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: "13.5px",
+            fontWeight: 500,
+            color: textColor === "#111111" ? "#555555" : textColor,
+            lineHeight: "1.4",
+            opacity: 0.9,
+          }}
+        >
+          {explanation}
+        </span>
+      )}
     </div>
   );
 };
@@ -3659,18 +3658,20 @@ const InteractiveWhiteboard = ({
 
   const markers = [
     { color: "#111111", gradient: "linear-gradient(#111111 0 28%, #d1d5db 28%)", label: "Black Marker" },
+    { color: "#2563eb", gradient: "linear-gradient(#2563eb 0 28%, #bfdbfe 28%)", label: "Blue Marker" },
     { color: "#16a34a", gradient: "linear-gradient(#16a34a 0 28%, #bbf7d0 28%)", label: "Green Marker" },
     { color: "#ef4444", gradient: "linear-gradient(#ef4444 0 28%, #fecaca 28%)", label: "Red Marker" },
-    { color: "#2563eb", gradient: "linear-gradient(#2563eb 0 28%, #bfdbfe 28%)", label: "Blue Marker" },
     { color: "#8b5cf6", gradient: "linear-gradient(#8b5cf6 0 28%, #ddd6fe 28%)", label: "Purple Marker" },
+    { color: "#f97316", gradient: "linear-gradient(#f97316 0 28%, #fed7aa 28%)", label: "Orange Marker" },
   ];
 
   const colorDots = [
     { color: "#111111", label: "Black" },
+    { color: "#2563eb", label: "Blue" },
     { color: "#16a34a", label: "Green" },
     { color: "#ef4444", label: "Red" },
-    { color: "#2563eb", label: "Blue" },
     { color: "#8b5cf6", label: "Purple" },
+    { color: "#f97316", label: "Orange" },
   ];
 
   return (
@@ -3823,11 +3824,26 @@ const InteractiveWhiteboard = ({
           />
         ))}
 
-        {/* Whiteboard Header */}
+        {/* Whiteboard Header Topic - Positioned cleanly in top-left */}
         {lessonTitle && (
-          <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", userSelect: "none", padding: "28px 32px" }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, borderBottom: "2px solid #111111", paddingBottom: 6 }}>
-              <h3 style={{ margin: 0, color: "#111111", fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em" }}>
+          <div
+            style={{
+              position: "absolute",
+              top: "16px",
+              left: "24px",
+              zIndex: 3,
+              pointerEvents: "none",
+              userSelect: "none",
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#888888" }}>
+              Topic
+            </span>
+            <div style={{ display: "inline-flex", alignItems: "center", borderBottom: "2px solid #111111", paddingBottom: 4 }}>
+              <h3 style={{ margin: 0, color: "#111111", fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em" }}>
                 {lessonTitle}
               </h3>
             </div>
@@ -4825,11 +4841,11 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             right: "40px",
             height: "56px",
             padding: "0 32px",
-            background: "#0a0a0a",
-            color: "#ffffff",
-            border: "none",
+            background: "#ffffff",
+            color: "#0a0a0a",
+            border: "1px solid #E2E8F0",
             borderRadius: "14px",
-            fontSize: "17px",
+            fontSize: "16px",
             fontWeight: "600",
             cursor: "pointer",
             fontFamily: "'Outfit', sans-serif",
@@ -4839,10 +4855,17 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             alignItems: "center",
             justifyContent: "center",
             boxSizing: "border-box",
-            transition: "opacity 0.2s ease",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+            transition: "all 0.15s ease",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#cbd5e1";
+            e.currentTarget.style.background = "#f8fafc";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "#E2E8F0";
+            e.currentTarget.style.background = "#ffffff";
+          }}
         >
           Cancel
         </button>
