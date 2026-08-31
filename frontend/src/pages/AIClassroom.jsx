@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Stage, Layer, Line } from "react-konva";
+import { Stage, Layer, Line, Text as KonvaText } from "react-konva";
 import katex from "katex";
 import { api } from "../lib/api";
 import { AudioStreamPlayer, AudioStreamRecorder, SpeechTranscriber, unlockAudioContext } from "../lib/liveAudio";
@@ -3344,15 +3344,28 @@ const InteractiveWhiteboard = ({
       points: [endX - 14, centerY - 8, endX, centerY, endX - 14, centerY + 8],
     });
 
-    // Tick marks
+    // Tick marks and integer labels
     for (let i = 0; i <= 10; i++) {
       const tx = startX + i * step;
-      const tickH = i === 5 ? 16 : 10; // Zero tick is longer
+      const val = i - 5;
+      const isZero = val === 0;
+      const tickH = isZero ? 16 : 10;
       strokes.push({
         tool: "pen",
-        color: i === 5 ? "#ef4444" : activeColor || "#111111",
-        strokeWidth: i === 5 ? 4 : 2.5,
+        color: isZero ? "#ef4444" : activeColor || "#111111",
+        strokeWidth: isZero ? 4 : 2.5,
         points: [tx, centerY - tickH, tx, centerY + tickH],
+      });
+      strokes.push({
+        type: "text",
+        x: tx,
+        y: centerY + tickH + 6,
+        text: val.toString(),
+        fontSize: isZero ? 16 : 14,
+        fontStyle: isZero ? "bold" : "normal",
+        color: isZero ? "#ef4444" : activeColor || "#111111",
+        width: 36,
+        align: "center",
       });
     }
 
@@ -3760,20 +3773,36 @@ const InteractiveWhiteboard = ({
             >
               <Layer>
                 {localLines.map((line, i) => (
-                  <Line
-                    key={i}
-                    points={line.points}
-                    stroke={line.tool === "eraser" ? "#ffffff" : line.color || "#111111"}
-                    strokeWidth={line.strokeWidth || (line.tool === "highlighter" ? 26 : line.tool === "eraser" ? 36 : 3.5)}
-                    tension={line.tool === "shape-rect" ? 0 : 0.4}
-                    closed={line.tool === "shape-rect"}
-                    lineCap="round"
-                    lineJoin="round"
-                    globalCompositeOperation={
-                      line.tool === "eraser" ? "destination-out" : "source-over"
-                    }
-                    opacity={line.tool === "highlighter" ? 0.35 : 1}
-                  />
+                  line.type === "text" ? (
+                    <KonvaText
+                      key={i}
+                      x={line.x}
+                      y={line.y}
+                      text={line.text}
+                      fontSize={line.fontSize || 14}
+                      fontFamily="'Outfit', sans-serif"
+                      fontStyle={line.fontStyle || "normal"}
+                      fill={line.color || "#111111"}
+                      align={line.align || "center"}
+                      width={line.width || 40}
+                      offsetX={(line.width || 40) / 2}
+                    />
+                  ) : (
+                    <Line
+                      key={i}
+                      points={line.points}
+                      stroke={line.tool === "eraser" ? "#ffffff" : line.color || "#111111"}
+                      strokeWidth={line.strokeWidth || (line.tool === "highlighter" ? 26 : line.tool === "eraser" ? 36 : 3.5)}
+                      tension={line.tool === "shape-rect" ? 0 : 0.4}
+                      closed={line.tool === "shape-rect"}
+                      lineCap="round"
+                      lineJoin="round"
+                      globalCompositeOperation={
+                        line.tool === "eraser" ? "destination-out" : "source-over"
+                      }
+                      opacity={line.tool === "highlighter" ? 0.35 : 1}
+                    />
+                  )
                 ))}
               </Layer>
             </Stage>
@@ -4394,7 +4423,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 points: [endX - 14, centerY - 8, endX, centerY, endX - 14, centerY + 8],
               });
 
-              // Tick marks
+              // Tick marks and number labels below
               const tickCount = Math.round(range / step);
               for (let i = 0; i <= tickCount; i++) {
                 const val = minVal + i * step;
@@ -4406,6 +4435,17 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                   color: isZero ? "#ef4444" : "#1e293b",
                   strokeWidth: isZero ? 4 : 2.5,
                   points: [tx, centerY - tickH, tx, centerY + tickH],
+                });
+                strokes.push({
+                  type: "text",
+                  x: tx,
+                  y: centerY + tickH + 6,
+                  text: val.toString(),
+                  fontSize: isZero ? 16 : 14,
+                  fontStyle: isZero ? "bold" : "normal",
+                  color: isZero ? "#ef4444" : "#111111",
+                  width: 40,
+                  align: "center",
                 });
               }
 
