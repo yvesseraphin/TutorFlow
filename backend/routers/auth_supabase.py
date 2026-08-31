@@ -48,11 +48,15 @@ def session_payload(session, user) -> dict:
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(credentials: Credentials):
     try:
+        redirect_url = f"{settings.cors_origins[0]}/auth/callback" if settings.cors_origins else "http://localhost:5173/auth/callback"
         result = public_client().auth.sign_up(
             {
                 "email": str(credentials.email),
                 "password": credentials.password,
-                "options": {"data": {"full_name": credentials.full_name or ""}},
+                "options": {
+                    "data": {"full_name": credentials.full_name or ""},
+                    "email_redirect_to": redirect_url,
+                },
             }
         )
         if result.user:
@@ -106,8 +110,15 @@ def login(credentials: Credentials):
 @router.post("/resend-verification", status_code=status.HTTP_200_OK)
 def resend_verification(credentials: PasswordResetRequest):
     try:
+        redirect_url = f"{settings.cors_origins[0]}/auth/callback" if settings.cors_origins else "http://localhost:5173/auth/callback"
         public_client().auth.resend(
-            {"type": "signup", "email": str(credentials.email)}
+            {
+                "type": "signup",
+                "email": str(credentials.email),
+                "options": {
+                    "email_redirect_to": redirect_url,
+                },
+            }
         )
         return {"status": "ok", "message": "Verification email resent successfully."}
     except Exception as exc:
