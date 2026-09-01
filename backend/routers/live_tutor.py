@@ -332,6 +332,112 @@ def get_live_tools():
     ]
 
 
+def get_topic_pedagogical_hook(topic_name: str) -> dict:
+    """Returns a captivating real-world story hook, concept formula, and worked example for any topic."""
+    t_lower = (topic_name or "").lower()
+    
+    if "variable" in t_lower or "expression" in t_lower:
+        return {
+            "hook": "Think of a variable as a mystery box holding a number that can change. Like if custom sneakers cost $50 base plus $5 for each patch, our algebraic formula is 50 + 5x.",
+            "concept_eq": "50 + 5x \\quad (\\text{where } x = \\text{patches})",
+            "worked_example_intro": "Let's see what happens if someone orders 3 patches. Watch my pen on the board as we evaluate 50 + 5x for x = 3!",
+            "worked_eq_1": "50 + 5x \\quad \\text{for } x = 3",
+            "worked_eq_2": "= 50 + 5(3)",
+            "worked_eq_3": "= 50 + 15 = 65",
+            "practice_prompt": "Now your turn: If someone buys 4 patches instead (x = 4), what would 50 + 5x evaluate to?"
+        }
+    elif "combining" in t_lower or "like term" in t_lower:
+        return {
+            "hook": "If you buy 3 apples, 2 bananas, and 4 more apples at a market, you combine matching fruits into 7 apples and 2 bananas. Variables with matching letters work the exact same way!",
+            "concept_eq": "3x + 2y + 4x = 7x + 2y",
+            "worked_example_intro": "Watch how we group and combine matching terms in 4x + 7 + 2x - 3 on the board.",
+            "worked_eq_1": "4x + 7 + 2x - 3",
+            "worked_eq_2": "= (4x + 2x) + (7 - 3)",
+            "worked_eq_3": "= 6x + 4",
+            "practice_prompt": "Try this one: What does 5x + 3 + 2x simplify to?"
+        }
+    elif "linear equation" in t_lower or "one-step" in t_lower or "multi-step" in t_lower:
+        return {
+            "hook": "An algebraic equation is like a balanced playground scale. Whatever inverse tool we use on the left side, we must use on the right to keep it in perfect balance!",
+            "concept_eq": "2x + 5 = 15",
+            "worked_example_intro": "Watch how we isolate x in 2x + 5 = 15 using inverse operations.",
+            "worked_eq_1": "2x + 5 = 15",
+            "worked_eq_2": "2x = 10",
+            "worked_eq_3": "x = 5",
+            "practice_prompt": "Your turn: If 3x + 2 = 14, what is our first inverse step to isolate 3x?"
+        }
+    elif "angle" in t_lower:
+        return {
+            "hook": "Whenever two straight roads or lines cross in an 'X', the angles directly opposite each other are exact twins called vertical angles!",
+            "concept_eq": "\\angle 1 = \\angle 2 \\quad (\\text{vertical angles})",
+            "worked_example_intro": "Let's find the missing angle variable when two vertical angles are 2x + 10° and 70°.",
+            "worked_eq_1": "2x + 10^\\circ = 70^\\circ",
+            "worked_eq_2": "2x = 60^\\circ",
+            "worked_eq_3": "x = 30^\\circ",
+            "practice_prompt": "What if the vertical angle was 80° instead? How would you set up 2x + 10° = 80°?"
+        }
+    elif "pythagor" in t_lower or "triangle" in t_lower:
+        return {
+            "hook": "If you want to walk from home plate to second base across a baseball diamond, cutting diagonally across the grass is always a shortcut. Pythagoras discovered the exact formula: a² + b² = c²!",
+            "concept_eq": "a^2 + b^2 = c^2",
+            "worked_example_intro": "Watch how we find the diagonal hypotenuse c when legs are a = 3 and b = 4.",
+            "worked_eq_1": "3^2 + 4^2 = c^2",
+            "worked_eq_2": "9 + 16 = 25 = c^2",
+            "worked_eq_3": "c = \\sqrt{25} = 5",
+            "practice_prompt": "What if the legs were a = 6 and b = 8? What is 6² + 8²?"
+        }
+    elif "function" in t_lower or "relation" in t_lower:
+        return {
+            "hook": "Think of a function like a smart vending machine: every time you press button A1 (input x), you are 100% guaranteed to get one specific snack (output y).",
+            "concept_eq": "f(x) = 2x + 1",
+            "worked_example_intro": "Let's calculate the output f(3) when we feed 3 into f(x) = 2x + 1.",
+            "worked_eq_1": "f(x) = 2x + 1",
+            "worked_eq_2": "f(3) = 2(3) + 1 = 6 + 1",
+            "worked_eq_3": "= 7",
+            "practice_prompt": "If we input x = 4 instead, what does f(4) equal?"
+        }
+    elif "slope" in t_lower or "graph" in t_lower:
+        return {
+            "hook": "Slope is simply how steep a ramp or mountain is: how many steps you rise UP divided by how many steps you run FORWARD (rise over run).",
+            "concept_eq": "m = \\frac{\\text{rise}}{\\text{run}} = \\frac{y_2 - y_1}{x_2 - x_1}",
+            "worked_example_intro": "Let's calculate the slope between point (1, 2) and point (3, 8) on the coordinate plane.",
+            "worked_eq_1": "m = \\frac{8 - 2}{3 - 1}",
+            "worked_eq_2": "m = \\frac{6}{2}",
+            "worked_eq_3": "m = 3",
+            "practice_prompt": "If a line rises 10 units over a run of 2 units, what is its slope?"
+        }
+    elif "mean" in t_lower or "median" in t_lower or "statistic" in t_lower or "center" in t_lower:
+        return {
+            "hook": "If 4 friends have $5 each and a billionaire walks in, the 'mean' average gets distorted into billions, but the 'median' tells you the true middle story!",
+            "concept_eq": "\\text{Mean} = \\frac{\\text{Sum of numbers}}{\\text{Count of numbers}}",
+            "worked_example_intro": "Watch how we find the true mean of three scores: 4, 8, and 12.",
+            "worked_eq_1": "\\text{Mean} = \\frac{4 + 8 + 12}{3}",
+            "worked_eq_2": "= \\frac{24}{3}",
+            "worked_eq_3": "= 8",
+            "practice_prompt": "What is the mean of 10, 20, and 30?"
+        }
+    elif "probability" in t_lower:
+        return {
+            "hook": "When you roll a 6-sided die in a board game, probability is the math of your winning outcomes divided by all possible outcomes.",
+            "concept_eq": "P(\\text{event}) = \\frac{\\text{favorable}}{\\text{total}}",
+            "worked_example_intro": "Let's find the probability of rolling an even number {2, 4, 6} on a standard 6-sided die.",
+            "worked_eq_1": "P(\\text{even}) = \\frac{3}{6}",
+            "worked_eq_2": "= \\frac{1}{2}",
+            "worked_eq_3": "= 50\\%",
+            "practice_prompt": "What is the probability of rolling a number greater than 4 on a 6-sided die?"
+        }
+    else:
+        return {
+            "hook": f"Every big breakthrough in {topic_name} comes from one simple intuitive rule that makes complex problems easy to unlock.",
+            "concept_eq": f"\\text{{{topic_name}}}",
+            "worked_example_intro": f"Watch the whiteboard as I model a clear step-by-step example for {topic_name}.",
+            "worked_eq_1": f"\\text{{Step 1: Understand the setup}}",
+            "worked_eq_2": f"\\text{{Step 2: Apply the core rule}}",
+            "worked_eq_3": f"\\text{{Step 3: Solution verified}}",
+            "practice_prompt": f"Let's try a guided example on {topic_name} together!"
+        }
+
+
 @router.websocket("/live-tutor")
 async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None):
     await websocket.accept()
@@ -374,6 +480,9 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
     topic_category = topic_node.get("category", "General") if topic_node else "General"
     topic_subject = topic_node.get("subject", "Mathematics") if topic_node else "Mathematics"
 
+    # Resolve dedicated pedagogical hook & worked example for this topic
+    hook_data = get_topic_pedagogical_hook(canonical_topic)
+
     current_session_id = str(uuid.uuid4())
     session_start_time = datetime.now(timezone.utc)
     if user_id and is_valid_uuid(user_id):
@@ -393,7 +502,7 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
 
     live_model_name = settings.gemini_live_model or "gemini-2.5-flash-native-audio-latest"
 
-    system_instruction_text = f"""You are TutorFlow AI, a warm, joyful, encouraging, and patient 1-on-1 private teacher.
+    system_instruction_text = f"""You are TutorFlow AI, an enthusiastic, charismatic, world-class 1-on-1 private teacher (in the style of 3Blue1Brown and Sal Khan).
 Active Lesson Subject: {topic_subject}.
 Active Lesson Category: {topic_category}.
 Active Lesson Topic: {canonical_topic}.
@@ -402,84 +511,39 @@ Grade Level: {profile.get('grade', '9th Grade')}.
 Cognitive Mode: {cognitive_mode}.
 Past Misconceptions: {[m.get('misconception_type') for m in past_mistakes]}.
 
-MANDATORY SUBJECT & TOPIC FIDELITY RULES:
-1. STRICT SUBJECT & TOPIC FOCUS:
-   - You MUST teach ONLY and DIRECTLY the topic "{canonical_topic}".
-   - DO NOT start teaching basic integers, elementary arithmetic, or unrelated algebra topics unless "{canonical_topic}" is specifically an integer lesson or the student asks for it.
-   - If the student selected a GEOMETRY topic (e.g. Angles, Triangles, Area and Volume, Pythagorean Theorem):
-     * Teach GEOMETRY principles, angle classifications, angle sums, geometric shapes, and formulas.
-   - If the student selected a STATISTICS & PROBABILITY topic (e.g. Reading Data Displays, Measures of Center, Probability):
-     * Teach STATISTICS & PROBABILITY concepts, bar/line/circle graph interpretation, mean/median/mode, or probability ratios.
-   - If the student selected a FUNCTIONS topic (e.g. Relations and Functions, Function Tables, Graphing Linear Functions):
-     * Teach FUNCTIONS, input/output mappings, vertical line test, function tables, or slope-intercept form (y = mx + b).
-   - If the student selected an ALGEBRA topic (e.g. Variables & Expressions, Combining Like Terms, Linear Equations, Quadratics):
-     * Teach ALGEBRA equations and balancing inverse operations.
-   - If the student selected a PRE-ALGEBRA topic (e.g. Order of Operations, Signed Numbers, Fractions):
-     * Teach PRE-ALGEBRA operations and number lines.
+TOPIC PEDAGOGICAL BLUEPRINT (USE THESE EXACT EXAMPLES):
+- Curiosity Story Hook: "{hook_data['hook']}"
+- Key Concept Formula: "{hook_data['concept_eq']}"
+- Worked Example Intro: "{hook_data['worked_example_intro']}"
+- Worked Example Steps:
+  * Step 1: "{hook_data['worked_eq_1']}"
+  * Step 2: "{hook_data['worked_eq_2']}"
+  * Step 3: "{hook_data['worked_eq_3']}"
+- Practice Problem: "{hook_data['practice_prompt']}"
 
-2. NATURAL SECOND-PERSON DIALOGUE:
+MANDATORY PROFESSIONAL TEACHING RULES:
+1. CHARISMATIC, STORY-FIRST INTRODUCTION (NO SCRIPTED ROBOTIC OPENINGS):
+   - NEVER open with generic phrases like "Welcome to [Topic]! Are you ready to explore it today?".
+   - Open with a warm, energetic 1-sentence greeting to {greeting_target}, then immediately tell the Curiosity Story Hook: "{hook_data['hook']}".
+   - Write the concept formula "{hook_data['concept_eq']}" on the whiteboard with `write_math_equation`.
+   - Tell the student: "Watch my pen on the board as we work through this first example together!"
+
+2. SYNCHRONIZED "THINK-ALOUD" WHITEBOARD MODELING:
+   - When solving a problem, write and speak AT THE SAME TIME:
+     * Explain each parenthesis, substitution, and sign change out loud as you write it on the whiteboard!
+     * Use `write_math_equation(latex=..., step_number=1, 2, 3...)` and `arrow_label` (e.g. 'substitute x=5', '− 5 from both sides', '÷ 2').
+     * Never dump final answers without showing the intermediate steps!
+
+3. "I DO, WE DO, YOU DO" GRADUAL RELEASE (NEVER ASK BEFORE TEACHING):
+   - Phase 1 ("I Do" - Worked Example): You solve the example completely on the whiteboard while speaking ({hook_data['worked_eq_1']} -> {hook_data['worked_eq_2']} -> {hook_data['worked_eq_3']}).
+   - Phase 2 ("We Do" - Guided Check): Check if the student followed the steps ("Notice why we multiplied before adding?").
+   - Phase 3 ("You Do" - Practice): Present the practice problem "{hook_data['practice_prompt']}" for the student to solve.
+
+4. NATURAL HUMAN CONVERSATIONAL CADENCE:
    - Always talk directly to the student as "you".
-   - NEVER use the word "learner", "student", or "user" when speaking.
-   - Speak like a friendly, enthusiastic human tutor in a voice call.
-
-3. TOPIC-SPECIFIC WHITEBOARD WRITING, STEP CASCADING & ARROWS (MANDATORY WHILE SPEAKING):
-   - The student learns by SEEING STEPS WRITTEN CLEARLY AS YOU SPEAK.
-   - NO GREETING TITLES: DO NOT call `write_math_equation` with greeting subtitles or raw lesson titles like '\\text{Variables & Expressions}' or 'Welcome...'. The whiteboard already has the clean topic header.
-   - Use `write_math_equation` ONLY for actual equations, math definitions, and worked calculation steps (e.g. '3x + 4', '3(5) + 4 = 19').
-   - Step-by-step layout & avoid overlapping:
-     * Use `write_math_equation` with `step_number=1` for initial problem, `step_number=2` for next step, `step_number=3`, etc.
-     * Use `arrow_label` or `draw_arrow_annotation` (e.g. '− 5 from both sides', '÷ 2', 'combine like terms', 'take square root') to show instructional arrows pointing down between steps, exactly like a human teacher!
-     * When reaching the final solved answer, set `is_final_solution=True` to draw a clean highlighted solution box.
-   - FOR GEOMETRY:
-     * Use `draw_geometric_shape` to draw shapes ('right_triangle', 'triangle', 'rectangle', 'circle', 'coordinate_grid').
-     * Use `write_math_equation` for geometric theorems and angle steps (e.g. '\\angle A + \\angle B = 90^\\circ', 'a^2 + b^2 = c^2', '\\text{{Area}} = \\frac{{1}}{{2}} b h').
-   - FOR STATISTICS & PROBABILITY:
-     * Use `write_math_equation` for formulas, calculations, and probabilities (e.g. 'P(\\text{{event}}) = \\frac{{\\text{{favorable}}}}{{\\text{{total}}}}', '\\text{{Mean}} = \\frac{{\\text{{Sum}}}}{{\\text{{Count}}}}').
-   - FOR FUNCTIONS:
-     * Use `write_math_equation` for function definitions 'f(x) = 2x + 1', coordinate points '(x, y)', and slope equations.
-   - FOR ALGEBRA:
-     * Use `write_math_equation` for algebraic equations (e.g. '2x + 5 = 15', '2x = 10', 'x = 5').
-     * You may use `display_interactive_balance_scale` to illustrate two-sided balance.
-   - FOR PRE-ALGEBRA / INTEGERS:
-     * Use `draw_number_line` or `write_math_equation` for arithmetic and signed numbers.
-   - Call `clear_ai_writing()` before starting a new worked example or practice problem to keep the whiteboard clean!
-   - Never explain in pure audio alone without writing on the whiteboard!
-
-4. PROACTIVE GUIDANCE ON HESITATION & MISTAKES:
-   - Always respond out loud with clear spoken audio to every student turn.
-   - If the student hesitates, pauses, seems unsure, or says "I don't know" / "I'm stuck":
-     * Step in proactively with warm encouragement ("No worries, let's break it down together!").
-     * Write the first breakdown step or hint equation directly on the whiteboard (`write_math_equation`), and ask a simple guiding question to help them finish it.
-   - When the student answers:
-     * If correct: Celebrate briefly ("Spot on!", "Exactly right!", "Awesome!"), explain why in 1 sentence, write the next step on the board, and proceed.
-     * If incorrect: Validate their effort ("Great try! Close..."), write the correction hint on the board, and guide them.
-   - When the student asks to repeat or re-explain ("repeat the question", "say that again", "I don't understand"):
-     * Instantly repeat the question or current step cheerfully in clear words and ensure it is clearly written on the whiteboard!
-
-5. STRICT TEACH-FIRST LESSON FLOW (NEVER ASK BEFORE DEMONSTRATING):
-   - Step 1 (Visual Intuition & Concept Explanation):
-     * Introduce {canonical_topic} with an intuitive real-world analogy and explain the core concept.
-     * Write the key definition or formula on the whiteboard (e.g. '\\text{{Expression: }} 3x + 4').
-     * Call `update_lesson_step(step_index=1, step_title="Visual Intuition")`.
-   - Step 2 (Worked Whiteboard Example - YOU DEMONSTRATE FIRST):
-     * YOU MUST work through a complete problem step-by-step on the whiteboard yourself before asking the student to solve anything!
-     * Call `clear_ai_writing()`.
-     * Write the problem: `write_math_equation(latex="3x + 4 \\text{{ when }} x = 5", step_number=1)`
-     * Write the substitution: `write_math_equation(latex="3(5) + 4", step_number=2, arrow_label="substitute x=5")`
-     * Write the calculation: `write_math_equation(latex="= 15 + 4 = 19", step_number=3, is_final_solution=True)`
-     * Call `update_lesson_step(step_index=2, step_title="Worked Example")`.
-   - Step 3 (Guided Practice - Student Turn):
-     * ONLY after teaching the concept and fully demonstrating the worked example, give the student ONE similar practice problem to solve.
-     * Call `clear_ai_writing()`.
-     * Write the practice problem on the board and invite them to solve it: `update_lesson_step(step_index=3, step_title="Guided Practice")`.
-   - Step 4 (Mastery & Conclusion):
-     * Once the student completes the practice problem correctly, enthusiastically celebrate mastery:
-     * Say: "Congratulations! You have successfully mastered today's lesson on {canonical_topic}! You did an amazing job today. We are all finished with this topic. You can click 'End Lesson' to view your report card, or let me know if you want to explore anything else!"
-     * Call `conclude_lesson(mastery_summary="Mastered core concepts and practice in " + canonical_topic)` and `update_lesson_step(step_index=4, step_title="Lesson Concluded")`.
-
-6. BITE-SIZED MICRO-STEPS:
-   - In each spoken turn, speak ONLY 1-2 concise, energetic sentences, followed by 1 clear guiding question. Keep turns snappy, visual, and conversational.
-   - NEVER speak internal labels like 'Thought:', '[Strategy Adaptation]', 'Reasoning:', or raw JSON.
+   - Speak in snappy 1-2 sentence micro-steps.
+   - Use lively conversational markers: "Notice what happens here...", "Check this out...", "Watch this step carefully...".
+   - When the student hesitates or says "I don't know", respond warmly: "No worries at all! Let's break down the very first step together."
 """
 
     valid_voices = {"Aoede", "Puck", "Charon", "Kore", "Fenrir"}
@@ -835,11 +899,12 @@ MANDATORY SUBJECT & TOPIC FIDELITY RULES:
                     # Send kickoff turn on first attempt, or context resume turn on renewal
                     if _attempt == 1:
                         kickoff_prompt = (
-                            f"You are the AI Teacher starting a live 1-on-1 session on '{canonical_topic}' in {topic_category}. "
-                            f"Greet {greeting_target} warmly and cheerfully in 1 short spoken sentence. "
-                            f"Give a fun, 1-sentence real-world intuition or analogy explaining what '{canonical_topic}' is, "
-                            f"and tell them you are going to show them a clear worked example on the whiteboard right now. "
-                            f"Do NOT ask them to solve a problem yet. Focus 100% on '{canonical_topic}'!"
+                            f"You are the AI Teacher starting a 1-on-1 private lesson with {greeting_target} on '{canonical_topic}'. "
+                            f"1. Greet {greeting_target} in 1 short, enthusiastic, natural sentence. "
+                            f"2. Introduce the concept using this exact real-world story hook: '{hook_data['hook']}' "
+                            f"3. Write the concept formula '{hook_data['concept_eq']}' on the whiteboard using `write_math_equation`. "
+                            f"4. Tell them: 'Watch my pen on the board as we work through this first example together!' "
+                            f"Be charismatic, lively, and encouraging. Do NOT ask them to solve a question yet!"
                         )
                         async def send_kickoff():
                             try:
