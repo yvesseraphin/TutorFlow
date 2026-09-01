@@ -27,7 +27,7 @@ const Sidebar = () => {
     <aside className="tf-sidebar">
       <style>{`
         .tf-sidebar {
-          width: 260px;
+          width: 280px;
           height: 100vh;
           position: fixed;
           left: 0;
@@ -36,9 +36,10 @@ const Sidebar = () => {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          padding: 28px 18px 24px;
+          padding: 28px 20px 24px;
           background: #ffffff;
-          border-right: 1px solid #eaeaea;
+          border-right: 1px solid #E2E8F0;
+          box-shadow: none !important;
           box-sizing: border-box;
           font-family: "Outfit", sans-serif;
         }

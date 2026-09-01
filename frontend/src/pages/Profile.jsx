@@ -94,11 +94,11 @@ const styles = `
   /* ── Cards ── */
   .pf-card {
     background: #ffffff;
-    border: 1px solid #f0f0f0;
+    border: 1px solid #E2E8F0;
     border-radius: 16px;
     padding: 28px 32px;
     margin-bottom: 24px;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: none;
   }
 
   .pf-card-header {

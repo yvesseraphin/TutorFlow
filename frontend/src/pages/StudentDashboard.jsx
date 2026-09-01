@@ -100,10 +100,10 @@ const styles = `
   /* ── AI Teacher Hero Card ── */
   .tf-hero-card {
     background: #ffffff;
-    border: 1px solid #f0f0f0;
+    border: 1px solid #E2E8F0;
     border-radius: 20px;
     padding: 36px 48px;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -191,7 +191,6 @@ const styles = `
     height: 100%;
     object-fit: contain;
     transform: scale(1.15);
-    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.09));
   }
 
   /* ── Statistics Grid (5 Columns) ── */
@@ -204,23 +203,23 @@ const styles = `
 
   .tf-stat-card {
     background: #ffffff;
-    border: 1px solid #f0f0f0;
+    border: 1px solid #E2E8F0;
     border-radius: 16px;
     padding: 24px 22px;
     min-height: 230px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: none;
+    transition: transform 0.2s ease, border-color 0.2s ease;
     cursor: pointer;
     box-sizing: border-box;
   }
 
   .tf-stat-card:hover {
-    border-color: #e5e5e5;
+    border-color: #cbd5e1;
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.06);
+    box-shadow: none;
   }
 
   .tf-stat-icon-wrap {
@@ -269,11 +268,11 @@ const styles = `
   /* ── Recent Sessions Section ── */
   .tf-recent-section {
     background: #ffffff;
-    border: 1px solid #f0f0f0;
+    border: 1px solid #E2E8F0;
     border-radius: 18px;
     padding: 28px 32px;
     min-height: 320px;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: none;
   }
 
   .tf-recent-header {
@@ -330,7 +329,7 @@ const styles = `
     justify-content: center;
     margin-bottom: 20px;
     overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    box-shadow: none;
   }
 
   .tf-empty-title {
@@ -374,17 +373,18 @@ const styles = `
 
   .tf-session-card {
     background: #ffffff;
-    border: 1px solid #e8e8e8;
+    border: 1px solid #E2E8F0;
     border-radius: 14px;
     padding: 18px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     transition: border-color 0.2s ease;
+    box-shadow: none;
   }
 
   .tf-session-card:hover {
-    border-color: #dadada;
+    border-color: #cbd5e1;
   }
 
   .tf-session-name {

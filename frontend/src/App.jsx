@@ -88,7 +88,7 @@ const DashboardLayout = () => {
       <Sidebar />
       <div style={{ 
         flex: 1, 
-        marginLeft: '260px',
+        marginLeft: '280px',
         minHeight: '100vh',
         background: '#ffffff',
         color: '#111111',
