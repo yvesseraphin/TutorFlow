@@ -2164,56 +2164,115 @@ const styles = `
   .sort-wrap {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
     color: #555555;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 500;
-  }
-
-  .sort-select {
-    height: 46px;
-    min-width: 220px;
-    padding: 0 42px 0 16px;
-    border: 1px solid #e5e5e5;
-    border-radius: 10px;
-    background: #ffffff;
-    color: #111111;
-    appearance: none;
-    cursor: pointer;
-    font-family: "Outfit", sans-serif;
-    font-size: 16px;
-    font-weight: 500;
-    transition: border-color 0.2s ease;
-  }
-
-  .sort-select:hover {
-    border-color: #cccccc;
-  }
-
-  .sort-select:focus {
-    outline: none;
-    border-color: #111111;
-    box-shadow: none;
-  }
-
-  .sort-select option {
-    font-family: "Outfit", sans-serif;
-    font-weight: 400;
-    color: #111111;
-    background: #ffffff;
   }
 
   .sort-control {
     position: relative;
   }
 
+  .sort-trigger {
+    height: 48px;
+    min-width: 220px;
+    padding: 0 42px 0 16px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #111111;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    text-align: left;
+    position: relative;
+  }
+
+  .sort-trigger:hover {
+    border-color: #cbd5e1;
+  }
+
+  .sort-trigger.open,
+  .sort-trigger:focus {
+    border: 2px solid #111111 !important;
+    outline: none;
+  }
+
+  .sort-trigger-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .sort-chevron {
     position: absolute;
+    right: 14px;
     top: 50%;
-    right: 16px;
-    color: #888888;
-    pointer-events: none;
     transform: translateY(-50%);
+    color: #64748b;
+    pointer-events: none;
+    transition: transform 0.2s ease;
+  }
+
+  .sort-chevron.open {
+    transform: translateY(-50%) rotate(180deg);
+  }
+
+  .sort-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 50;
+    min-width: 230px;
+    padding: 6px;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sort-option {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14.5px;
+    font-weight: 500;
+    text-align: left;
+    transition: background 0.15s ease, color 0.15s ease;
+    box-sizing: border-box;
+  }
+
+  .sort-option:hover,
+  .sort-option.active {
+    background: #f5f5f5;
+    color: #111111;
+    font-weight: 600;
+  }
+
+  .sort-option-label {
+    display: block;
+    font-size: 14.5px;
+    line-height: 20px;
   }
 
   .subject-grid {
@@ -2225,20 +2284,20 @@ const styles = `
   .subject-card {
     min-height: 252px;
     padding: 24px;
-    border: 1px solid #f0f0f0;
+    border: 1px solid #E2E8F0;
     border-radius: 16px;
     background: #ffffff;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: none;
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease;
     cursor: pointer;
   }
 
   .subject-card:hover {
     transform: translateY(-2px);
-    border-color: #e5e5e5;
-    box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.06);
+    border-color: #cbd5e1;
+    box-shadow: none;
   }
 
   .subject-top {
@@ -6149,7 +6208,23 @@ const AIClassroom = () => {
   const [nextLessonData, setNextLessonData] = useState(null);
   const [liveLesson, setLiveLesson] = useState(false);
   const [sortBy, setSortBy] = useState("recent");
+  const [isSortOpen, setIsSortOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const sortDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setIsSortOpen(false);
+      }
+    };
+    if (isSortOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isSortOpen]);
 
   // Auto-launch live classroom when navigating directly with a topic query parameter
   useEffect(() => {
@@ -6612,18 +6687,38 @@ const AIClassroom = () => {
           <h2 className="subjects-title">Your Subjects</h2>
           <div className="sort-wrap">
             <span>Sort by</span>
-            <div className="sort-control">
-              <select
-                className="sort-select"
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value)}
-                aria-label="Sort subjects"
+            <div className="sort-control" ref={sortDropdownRef}>
+              <button
+                type="button"
+                className={`sort-trigger ${isSortOpen ? "open" : ""}`}
+                onClick={() => setIsSortOpen(!isSortOpen)}
+                aria-haspopup="listbox"
+                aria-expanded={isSortOpen}
               >
-                {sortOptions.map((option) => (
-                  <option value={option.value} key={option.value}>{option.label}</option>
-                ))}
-              </select>
-              <ChevronDown className="sort-chevron" size={20} aria-hidden="true" />
+                <span className="sort-trigger-text">
+                  {sortOptions.find((o) => o.value === sortBy)?.label || "Select order"}
+                </span>
+                <ChevronDown className={`sort-chevron ${isSortOpen ? "open" : ""}`} size={18} />
+              </button>
+
+              {isSortOpen && (
+                <div className="sort-menu" role="listbox">
+                  {sortOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`sort-option ${sortBy === option.value ? "active" : ""}`}
+                      onClick={() => {
+                        setSortBy(option.value);
+                        setIsSortOpen(false);
+                      }}
+                    >
+                      <span className="sort-option-label">{option.label}</span>
+                      {sortBy === option.value && <CheckCircle2 size={16} color="#111111" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
