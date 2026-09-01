@@ -3122,6 +3122,81 @@ const COLOR_MAP = {
 };
 
 /**
+ * Strips raw LaTeX macros and tags into clean, human-readable plain text.
+ * Ensures that under NO circumstance does the student see raw syntax like \text{, \\, or {}.
+ */
+export function stripLatexToPlainText(raw) {
+  if (!raw) return "";
+  let s = String(raw).trim();
+  s = s.replace(/\\\\/g, "\\");
+  // Extract text from \text{...}, \mathrm{...}, \mathbf{...}
+  s = s.replace(/\\(?:text|mathrm|mathbf|mathit|textsf)\{([^}]+)\}/g, "$1");
+  s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1)/($2)");
+  s = s.replace(/\\sqrt\[3\]\{([^}]+)\}/g, "∛($1)");
+  s = s.replace(/\\sqrt\{([^}]+)\}/g, "√($1)");
+  s = s.replace(/\\times/g, "×");
+  s = s.replace(/\\div/g, "÷");
+  s = s.replace(/\\cdot/g, "·");
+  s = s.replace(/\\pm/g, "±");
+  s = s.replace(/\\mp/g, "∓");
+  s = s.replace(/\\neq/g, "≠");
+  s = s.replace(/\\leq/g, "≤");
+  s = s.replace(/\\geq/g, "≥");
+  s = s.replace(/\\approx/g, "≈");
+  s = s.replace(/\\equiv/g, "≡");
+  s = s.replace(/\\circ/g, "°");
+  s = s.replace(/\\angle/g, "∠");
+  s = s.replace(/\\parallel/g, "∥");
+  s = s.replace(/\\perp/g, "⊥");
+  s = s.replace(/\\triangle/g, "△");
+  s = s.replace(/\\pi/g, "π");
+  s = s.replace(/\\theta/g, "θ");
+  s = s.replace(/\\alpha/g, "α");
+  s = s.replace(/\\beta/g, "β");
+  s = s.replace(/\\Delta/g, "Δ");
+  s = s.replace(/\\sigma/g, "σ");
+  s = s.replace(/\\Sigma/g, "Σ");
+  s = s.replace(/\\mu/g, "μ");
+  s = s.replace(/\\lambda/g, "λ");
+  s = s.replace(/\\infty/g, "∞");
+  s = s.replace(/\\rightarrow/g, "→");
+  s = s.replace(/\\Rightarrow/g, "⇒");
+  s = s.replace(/\\leftarrow/g, "←");
+  s = s.replace(/\\Leftrightarrow/g, "⇔");
+  s = s.replace(/\\left|\\right/g, "");
+  s = s.replace(/[\\]/g, "");
+  s = s.replace(/[{}]/g, "");
+  s = s.replace(/^["']+|["']+$/g, "");
+  s = s.replace(/^\$+|\$+$/g, "");
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Checks if a string is a Topic Title / Concept Header rather than a math equation.
+ */
+export function isTitleOrConceptHeader(raw) {
+  if (!raw) return false;
+  let s = String(raw).trim().replace(/\\\\/g, "\\");
+
+  // Explicitly check for \text{...} wrapping the whole title
+  const textWrappedMatch = s.match(/^\\?text\{([^{}]+)\}$/);
+  if (textWrappedMatch) {
+    const inner = textWrappedMatch[1].trim();
+    if (!/[=+\-*\/^]|\b(frac|sqrt|times|div)\b/i.test(inner)) {
+      return true;
+    }
+  }
+
+  const clean = stripLatexToPlainText(s);
+  // If there are no math operators and mostly normal words, it's a title
+  const hasMathOps = /[=+\-*\/^]|\b(frac|sqrt|times|div|pm|leq|geq|neq)\b/i.test(s);
+  if (!hasMathOps && /^[a-zA-Z0-9\s&,!:?'"()\-–—]+$/.test(clean)) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Full Math & LaTeX Translation Engine:
  * Converts Unicode, shorthands, ASCII operators, spoken phrases, and unescaped functions
  * returned by AI models into 100% valid, renderable LaTeX.
@@ -3131,9 +3206,14 @@ export function translateToKaTeX(raw) {
   let s = String(raw).trim();
 
   // Strip markdown code fences, quotes, and dollar math delimiters
+  s = s.replace(/\\\\/g, "\\");
   s = s.replace(/^```(?:latex|math)?\s*/i, "").replace(/\s*```$/i, "");
   s = s.replace(/^["']+|["']+$/g, "");
   s = s.replace(/^\$+|\$+$/g, "");
+
+  // Protect & inside \text or equations so KaTeX doesn't crash on table separator: & -> \&
+  s = s.replace(/(?<!\\)&/g, "\\&");
+  s = s.replace(/(?<!\\)%/g, "\\%");
 
   // 1. Comprehensive Unicode to Standard LaTeX replacements
   const UNICODE_TRANSLATIONS = [
@@ -3206,15 +3286,17 @@ export function translateToKaTeX(raw) {
   // 4. Degrees: e.g. 90deg, 180 degrees -> 90^\circ
   s = s.replace(/(\d+)\s*(?:deg|degrees)\b/gi, "$1^\\circ");
 
-  // 5. Common word formulas: wrap descriptive math words in \text{...}
-  const WORDS_TO_WRAP = [
-    "Area", "Perimeter", "Volume", "Length", "Width", "Height", "Base", "Radius",
-    "Diameter", "Circumference", "Hypotenuse", "Slope", "Mean", "Median", "Mode",
-    "Range", "Probability", "Step", "Count", "Sum", "Total", "event", "favorable"
-  ];
-  for (const w of WORDS_TO_WRAP) {
-    const r = new RegExp(`(?<!\\\\text\\{)\\b${w}\\b(?![a-zA-Z0-9_{])`, "g");
-    s = s.replace(r, `\\text{${w}}`);
+  // 5. Common word formulas in equations: wrap descriptive math words in \text{...}
+  if (/[=+\-*\/^]|\b(frac|sqrt)\b/.test(s)) {
+    const WORDS_TO_WRAP = [
+      "Area", "Perimeter", "Volume", "Length", "Width", "Height", "Base", "Radius",
+      "Diameter", "Circumference", "Hypotenuse", "Slope", "Mean", "Median", "Mode",
+      "Range", "Probability", "Count", "Sum", "Total", "event", "favorable"
+    ];
+    for (const w of WORDS_TO_WRAP) {
+      const r = new RegExp(`(?<!\\\\text\\{)\\b${w}\\b(?![a-zA-Z0-9_{])`, "g");
+      s = s.replace(r, `\\text{${w}}`);
+    }
   }
 
   // 6. Trigonometric and math functions: ensure leading backslash if not present
@@ -3247,8 +3329,9 @@ export function renderKaTeX(latex, isBlock = false) {
 
 /**
  * AnimatedTeacherHandwriting:
- * Renders directly on the whiteboard surface with pure dry-erase marker ink (NO CARDS, NO BOXES).
+ * Renders directly on the whiteboard surface in pure dry-erase marker ink (NO CARDS, NO BOXES).
  * Cascades neatly down the board to prevent overlapping and shows teacher transformation arrows.
+ * Real-time progressive handwriting writes parentheses and math symbols smoothly as the teacher speaks.
  */
 const AnimatedTeacherHandwriting = ({
   text,
@@ -3262,46 +3345,55 @@ const AnimatedTeacherHandwriting = ({
   isFinalSolution = false,
   totalSteps = 1,
 }) => {
-  const cleanText = useMemo(() => translateToKaTeX(text), [text]);
+  const isHeader = useMemo(() => isTitleOrConceptHeader(text), [text]);
+  const displayText = useMemo(() => {
+    if (isHeader) return stripLatexToPlainText(text);
+    return translateToKaTeX(text);
+  }, [text, isHeader]);
+
+  // Clean visible text for character-by-character typewriter effect
+  const visiblePlainText = useMemo(() => stripLatexToPlainText(text), [text]);
   const [displayedChars, setDisplayedChars] = useState(0);
 
   // Progressive handwriting typewriter animation
   useEffect(() => {
     setDisplayedChars(0);
-    const totalChars = cleanText.length;
-    if (totalChars === 0) return;
+    const targetLength = isHeader ? displayText.length : visiblePlainText.length;
+    if (targetLength === 0) return;
 
     let current = 0;
     const interval = setInterval(() => {
       current += 1;
       setDisplayedChars(current);
-      if (current >= totalChars) {
+      if (current >= targetLength) {
         clearInterval(interval);
       }
-    }, 24); // 24ms matches real human handwriting cadence while speaking
+    }, 22); // 22ms per character matches natural human handwriting cadence while speaking
 
     return () => clearInterval(interval);
-  }, [cleanText]);
+  }, [displayText, visiblePlainText, isHeader]);
 
-  const isComplete = displayedChars >= cleanText.length;
-  const animatedPartialText = cleanText.slice(0, displayedChars);
+  const targetLength = isHeader ? displayText.length : visiblePlainText.length;
+  const isComplete = displayedChars >= targetLength;
+  const animatedVisibleText = visiblePlainText.slice(0, displayedChars);
 
-  // Check if text should be parsed with KaTeX
+  // Check if expression requires KaTeX
   const isLatex = useMemo(() => {
+    if (isHeader) return false;
     return (
       /[\\[\]{}^_=+*/<>~]|\b(lim|inf|sup|frac|dots|sqrt|times|approx|leq|geq|neq|pm|div|cdot|pi|theta|sin|cos|tan)\b/i.test(
-        cleanText
+        displayText
       ) ||
-      cleanText.includes("=") ||
-      cleanText.includes("+") ||
-      cleanText.includes("-")
+      displayText.includes("=") ||
+      displayText.includes("+") ||
+      displayText.includes("-")
     );
-  }, [cleanText]);
+  }, [displayText, isHeader]);
 
-  const katexHtml = useMemo(() => {
+  const fullKatexHtml = useMemo(() => {
     if (!isLatex) return null;
-    return renderKaTeX(isComplete ? cleanText : animatedPartialText);
-  }, [isLatex, cleanText, isComplete, animatedPartialText]);
+    return renderKaTeX(displayText);
+  }, [isLatex, displayText]);
 
   const inkColor = useMemo(() => {
     if (COLOR_MAP[color]) return COLOR_MAP[color].ink;
@@ -3315,8 +3407,11 @@ const AnimatedTeacherHandwriting = ({
   const topPos = y !== undefined && y > 10 && y < 85 ? y : slotTop;
   const leftPos = x !== undefined && x > 0 && x < 75 ? x : 8;
 
-  const displayStepLabel = stepNumber ? `Step ${stepNumber}` : totalSteps > 1 ? `Step ${index + 1}` : null;
-  const isSolutionBoxed = isFinalSolution || /(^x\s*=|solution|answer|result)/i.test(cleanText) && isComplete;
+  // Real teacher logic: DO NOT show 'STEP 1:' on titles! Only show on actual problem steps.
+  const displayStepLabel = !isHeader && stepNumber ? `Step ${stepNumber}` : !isHeader && totalSteps > 1 ? `Step ${index + 1}` : null;
+  const isSolutionBoxed = !isHeader && (isFinalSolution || (/(^x\s*=|solution|answer|result)/i.test(displayText) && isComplete));
+
+  const writeProgress = targetLength > 0 ? Math.min(1, displayedChars / targetLength) : 1;
 
   return (
     <div
@@ -3335,7 +3430,7 @@ const AnimatedTeacherHandwriting = ({
       }}
     >
       {/* Instructional Teacher Transition Arrow Linking from Previous Step */}
-      {(arrowLabel || (index > 0 && !y)) && (
+      {!isHeader && (arrowLabel || (index > 0 && !y)) && (
         <div
           style={{
             display: "flex",
@@ -3374,63 +3469,28 @@ const AnimatedTeacherHandwriting = ({
         </div>
       )}
 
-      {/* Direct Whiteboard Math Ink (Zero Cards, Pure Dry-Erase Whiteboard Canvas Look) */}
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 10,
-          background: "transparent",
-          border: isSolutionBoxed ? `2.5px solid ${inkColor}` : "none",
-          borderRadius: isSolutionBoxed ? 10 : 0,
-          padding: isSolutionBoxed ? "6px 14px" : "0",
-          boxShadow: isSolutionBoxed ? `0 0 12px ${inkColor}22` : "none",
-          transition: "border 0.2s ease, padding 0.2s ease",
-        }}
-      >
-        {displayStepLabel && (
+      {/* Header / Topic Title Display on Whiteboard (No "STEP 1:" label, clean teacher title) */}
+      {isHeader ? (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            borderBottom: `2.5px solid ${inkColor}`,
+            paddingBottom: 4,
+            marginBottom: 4,
+          }}
+        >
           <span
             style={{
               fontFamily: "'Cabin', -apple-system, sans-serif",
-              fontSize: "12.5px",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              color: inkColor,
-              opacity: 0.85,
-              marginRight: 4,
-            }}
-          >
-            {displayStepLabel}:
-          </span>
-        )}
-
-        {katexHtml ? (
-          <div
-            className="katex-math-render"
-            style={{
-              fontSize: "clamp(24px, 2.8vw, 36px)",
-              color: inkColor,
-              fontWeight: 600,
-              letterSpacing: "0.01em",
-              lineHeight: 1.25,
-              display: "inline-flex",
-              alignItems: "center",
-            }}
-            dangerouslySetInnerHTML={{ __html: katexHtml }}
-          />
-        ) : (
-          <span
-            style={{
-              fontFamily: "'Cabin', -apple-system, sans-serif",
-              fontSize: "clamp(20px, 2.2vw, 28px)",
+              fontSize: "clamp(24px, 2.7vw, 32px)",
               fontWeight: 700,
               color: inkColor,
-              lineHeight: "1.3",
               letterSpacing: "-0.01em",
             }}
           >
-            {animatedPartialText}
+            {displayText.slice(0, displayedChars)}
             {!isComplete && (
               <span
                 style={{
@@ -3444,27 +3504,122 @@ const AnimatedTeacherHandwriting = ({
               />
             )}
           </span>
-        )}
+        </div>
+      ) : (
+        /* Direct Whiteboard Math Ink (Zero Cards, Pure Dry-Erase Whiteboard Canvas Look) */
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            background: "transparent",
+            border: isSolutionBoxed ? `2.5px solid ${inkColor}` : "none",
+            borderRadius: isSolutionBoxed ? 10 : 0,
+            padding: isSolutionBoxed ? "6px 14px" : "0",
+            boxShadow: isSolutionBoxed ? `0 0 12px ${inkColor}22` : "none",
+            transition: "border 0.2s ease, padding 0.2s ease",
+          }}
+        >
+          {displayStepLabel && (
+            <span
+              style={{
+                fontFamily: "'Cabin', -apple-system, sans-serif",
+                fontSize: "12.5px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: inkColor,
+                opacity: 0.85,
+                marginRight: 4,
+              }}
+            >
+              {displayStepLabel}:
+            </span>
+          )}
 
-        {isSolutionBoxed && (
-          <span
-            style={{
-              fontFamily: "'Cabin', -apple-system, sans-serif",
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "#ffffff",
-              background: inkColor,
-              padding: "2px 6px",
-              borderRadius: 4,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              marginLeft: 6,
-            }}
-          >
-            Solution
-          </span>
-        )}
-      </div>
+          {fullKatexHtml ? (
+            <div
+              style={{
+                position: "relative",
+                display: "inline-flex",
+                alignItems: "center",
+                clipPath: isComplete ? "none" : `inset(0 ${(1 - writeProgress) * 100}% 0 0)`,
+                transition: "clip-path 0.08s linear",
+              }}
+            >
+              <div
+                className="katex-math-render"
+                style={{
+                  fontSize: "clamp(24px, 2.8vw, 36px)",
+                  color: inkColor,
+                  fontWeight: 600,
+                  letterSpacing: "0.01em",
+                  lineHeight: 1.25,
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+                dangerouslySetInnerHTML={{ __html: fullKatexHtml }}
+              />
+              {!isComplete && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 3,
+                    height: "1em",
+                    background: inkColor,
+                    marginLeft: 2,
+                    animation: "blink 0.6s infinite",
+                  }}
+                />
+              )}
+            </div>
+          ) : (
+            <span
+              style={{
+                fontFamily: "'Cabin', -apple-system, sans-serif",
+                fontSize: "clamp(20px, 2.2vw, 28px)",
+                fontWeight: 700,
+                color: inkColor,
+                lineHeight: "1.3",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {animatedVisibleText}
+              {!isComplete && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 2.5,
+                    height: "1em",
+                    background: inkColor,
+                    marginLeft: 3,
+                    animation: "blink 0.6s infinite",
+                  }}
+                />
+              )}
+            </span>
+          )}
+
+          {isSolutionBoxed && (
+            <span
+              style={{
+                fontFamily: "'Cabin', -apple-system, sans-serif",
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "#ffffff",
+                background: inkColor,
+                padding: "2px 6px",
+                borderRadius: 4,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginLeft: 6,
+              }}
+            >
+              Solution
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Teacher Explanation Written Below Math Ink */}
       {explanation && isComplete && (
