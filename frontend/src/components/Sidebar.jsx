@@ -48,27 +48,14 @@ const Sidebar = () => {
           height: 48px;
           display: flex;
           align-items: center;
-          gap: 12px;
-          margin-bottom: 45px;
+          margin-bottom: 40px;
           text-decoration: none;
           padding: 0 4px;
         }
 
-        .tf-sidebar-logo-icon {
-          width: 32px;
-          height: 32px;
-          flex-shrink: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .tf-sidebar-logo span {
-          color: #111111;
-          font-size: 28px;
-          font-weight: 700;
-          line-height: 32px;
-          letter-spacing: -0.02em;
+        .tf-sidebar-logo img {
+          height: 40px;
+          object-fit: contain;
         }
 
         .tf-sidebar-nav {
@@ -131,15 +118,10 @@ const Sidebar = () => {
 
       <div>
         <Link className="tf-sidebar-logo" to="/dashboard" aria-label="TutorFlow home">
-          <div className="tf-sidebar-logo-icon">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 7.5C3 6.11929 4.11929 5 5.5 5H12C13.1046 5 14 5.89543 14 7V22C14 21.1716 13.3284 20.5 12.5 20.5H5.5C4.11929 20.5 3 21.6193 3 23V7.5Z" stroke="#111111" strokeWidth="2" strokeLinejoin="round" />
-              <path d="M25 7.5C25 6.11929 23.8807 5 22.5 5H16C14.8954 5 14 5.89543 14 7V22C14 21.1716 14.6716 20.5 15.5 20.5H22.5C23.8807 20.5 25 21.6193 25 23V7.5Z" stroke="#111111" strokeWidth="2" strokeLinejoin="round" />
-              <path d="M8.5 9.5L9 8L10.5 7.5L9 7L8.5 5.5L8 7L6.5 7.5L8 8L8.5 9.5Z" fill="#111111" />
-              <circle cx="10" cy="11.5" r="0.8" fill="#111111" />
-            </svg>
-          </div>
-          <span>TutorFlow</span>
+          <img
+            src="/Logo_cropped.png"
+            alt="TutorFlow"
+          />
         </Link>
 
         <nav className="tf-sidebar-nav" aria-label="Main navigation">
