@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, ArrowLeft, Send, CheckCircle } from "lucide-react";
+import { Mail, CheckCircle } from "lucide-react";
 import { api } from "../lib/api";
 import { useNotification } from "../components/NotificationBanner";
 
@@ -38,18 +38,18 @@ const S = {
 
   formArea: { width: "100%", maxWidth: "380px" },
   h1: {
-    fontSize: "42px",
+    fontSize: "46px",
     fontWeight: "700",
     color: "#0f172a",
     marginBottom: "6px",
     letterSpacing: "-1px",
     fontFamily: "'Outfit', sans-serif",
-    lineHeight: "46px",
+    lineHeight: "48px",
     textAlign: "center",
   },
   subtitle: {
     color: "#64748b",
-    fontSize: "17px",
+    fontSize: "18px",
     fontWeight: "400",
     marginBottom: "28px",
     fontFamily: "'Outfit', sans-serif",
@@ -89,7 +89,7 @@ const S = {
   input: {
     width: "100%",
     height: "56px",
-    padding: "0 20px 0 50px",
+    padding: "0 50px",
     border: "1px solid #E2E8F0",
     borderRadius: "14px",
     fontSize: "16px",
@@ -101,6 +101,8 @@ const S = {
     fontFamily: "'Outfit', sans-serif",
     fontWeight: "400",
     lineHeight: "24px",
+    gap: "14px",
+    alignItems: "center",
   },
   submitBtn: {
     background: "#0a0a0a",
@@ -111,15 +113,11 @@ const S = {
     fontSize: "17px",
     fontWeight: "600",
     cursor: "pointer",
-    marginTop: "8px",
+    marginTop: "4px",
     transition: "background 0.2s",
     letterSpacing: "-0.01em",
     fontFamily: "'Outfit', sans-serif",
     lineHeight: "24px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
   },
   footer: {
     fontSize: "15px",
@@ -292,7 +290,6 @@ const ForgotPassword = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#222222")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "#0a0a0a")}
               >
-                <Send size={18} />
                 {loading ? "Sending link…" : "Send Reset Link"}
               </button>
             </form>
