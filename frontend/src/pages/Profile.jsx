@@ -94,7 +94,7 @@ const styles = `
   /* ── Cards ── */
   .pf-card {
     background: #ffffff;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EDF2F7;
     border-radius: 16px;
     padding: 28px 32px;
     margin-bottom: 24px;

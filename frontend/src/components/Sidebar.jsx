@@ -38,7 +38,7 @@ const Sidebar = () => {
           justify-content: space-between;
           padding: 28px 20px 24px;
           background: #ffffff;
-          border-right: 1px solid #E2E8F0;
+          border-right: 1px solid #EDF2F7;
           box-shadow: none !important;
           box-sizing: border-box;
           font-family: "Outfit", sans-serif;

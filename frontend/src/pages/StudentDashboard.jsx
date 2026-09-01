@@ -100,7 +100,7 @@ const styles = `
   /* ── AI Teacher Hero Card ── */
   .tf-hero-card {
     background: #ffffff;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EDF2F7;
     border-radius: 20px;
     padding: 36px 48px;
     box-shadow: none;
@@ -203,7 +203,7 @@ const styles = `
 
   .tf-stat-card {
     background: #ffffff;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EDF2F7;
     border-radius: 16px;
     padding: 24px 22px;
     min-height: 230px;
@@ -217,7 +217,7 @@ const styles = `
   }
 
   .tf-stat-card:hover {
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EDF2F7;
     transform: translateY(-2px);
     box-shadow: none;
   }
@@ -268,7 +268,7 @@ const styles = `
   /* ── Recent Sessions Section ── */
   .tf-recent-section {
     background: #ffffff;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EDF2F7;
     border-radius: 18px;
     padding: 28px 32px;
     min-height: 320px;
@@ -373,7 +373,7 @@ const styles = `
 
   .tf-session-card {
     background: #ffffff;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EDF2F7;
     border-radius: 14px;
     padding: 18px 20px;
     display: flex;
@@ -384,7 +384,7 @@ const styles = `
   }
 
   .tf-session-card:hover {
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EDF2F7;
     transform: translateY(-1px);
   }
 
