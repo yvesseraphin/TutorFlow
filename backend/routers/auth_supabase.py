@@ -182,10 +182,95 @@ def me(user: dict = Depends(current_user)) -> dict:
     return {**user, "profile": profile, "avatar_url": profile.get("avatar_url") or oauth_avatar}
 
 
-@router.patch("/me")
-def update_me(payload: ProfileUpdate, user: dict = Depends(current_user)) -> dict:
-    update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
-    admin_client().table("profiles").update(update_data).eq("id", user["id"]).execute()
-    return me(user)
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8)
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str
+
+
+@router.post("/change-password")
+def change_password(payload: ChangePasswordRequest, user: dict = Depends(current_user)):
+    # 1. Verify old password
+    try:
+        public_client().auth.sign_in_with_password(
+            {"email": user["email"], "password": payload.old_password}
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your current password is incorrect. Please check and try again.",
+        ) from exc
+
+    # 2. Update to new password
+    try:
+        admin_client().auth.admin.update_user_by_id(
+            user["id"],
+            {"password": payload.new_password},
+        )
+        return {"status": "ok", "message": "Password changed successfully."}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc) or "Failed to update password.",
+        ) from exc
+
+
+@router.post("/delete-account")
+def delete_account(payload: DeleteAccountRequest, user: dict = Depends(current_user)):
+    # 1. Verify password before destruction
+    try:
+        public_client().auth.sign_in_with_password(
+            {"email": user["email"], "password": payload.password}
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect password. Account deletion cancelled.",
+        ) from exc
+
+    uid = user["id"]
+    client = admin_client()
+
+    # 2. Delete all student database records
+    tables = [
+        ("diagnostic_assessments", "user_id"),
+        ("sessions", "user_id"),
+        ("student_mistakes", "user_id"),
+        ("student_memories", "user_id"),
+        ("student_topic_mastery", "user_id"),
+        ("spaced_repetition_cards", "user_id"),
+        ("profiles", "id"),
+    ]
+    for table_name, user_col in tables:
+        try:
+            client.table(table_name).delete().eq(user_col, uid).execute()
+        except Exception:
+            pass
+
+    # 3. Clean up related files from storage buckets
+    try:
+        buckets = ["avatars", "lesson_notes", "whiteboards"]
+        for b in buckets:
+            try:
+                files = client.storage.from_(b).list(uid)
+                if files:
+                    client.storage.from_(b).remove([f"{uid}/{f['name']}" for f in files])
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # 4. Permanently delete auth user
+    try:
+        client.auth.admin.delete_user(uid)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc) or "Failed to delete auth user.",
+        ) from exc
+
+    return {"status": "ok", "message": "Your account and all associated data have been permanently deleted."}
+

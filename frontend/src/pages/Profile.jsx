@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bell,
   Camera,
@@ -8,6 +9,12 @@ import {
   Plus,
   X,
   ChevronRight,
+  ChevronDown,
+  CheckCircle2,
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  GraduationCap,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useNotification } from "../components/NotificationBanner";
@@ -89,12 +96,17 @@ const styles = `
     font-weight: 600;
     cursor: pointer;
     user-select: none;
+    transition: transform 0.2s ease;
+  }
+
+  .tf-user-avatar:hover {
+    transform: scale(1.05);
   }
 
   /* ── Cards ── */
   .pf-card {
     background: #ffffff;
-    border: 1px solid #EDF2F7;
+    border: 1px solid #E2E8F0;
     border-radius: 16px;
     padding: 28px 32px;
     margin-bottom: 24px;
@@ -132,38 +144,46 @@ const styles = `
   }
 
   .pf-avatar-circle {
-    width: 88px;
-    height: 88px;
+    width: 96px;
+    height: 96px;
     border-radius: 50%;
     background: #111111;
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32px;
+    font-size: 34px;
     font-weight: 700;
+    cursor: pointer;
+    overflow: hidden;
+    transition: opacity 0.2s ease;
+  }
+
+  .pf-avatar-circle:hover {
+    opacity: 0.9;
   }
 
   .pf-avatar-cam-btn {
     position: absolute;
     bottom: -2px;
     right: -2px;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: #ffffff;
-    border: 1px solid #e5e5e5;
+    border: 1px solid #E2E8F0;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #111111;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     cursor: pointer;
     transition: all 0.15s ease;
   }
 
   .pf-avatar-cam-btn:hover {
     background: #f5f5f5;
+    transform: scale(1.05);
   }
 
   .pf-fields-grid {
@@ -177,6 +197,7 @@ const styles = `
     display: flex;
     flex-direction: column;
     gap: 6px;
+    position: relative;
   }
 
   .pf-field-group.half-row {
@@ -193,56 +214,125 @@ const styles = `
 
   .pf-input {
     width: 100%;
-    height: 44px;
+    height: 48px;
     padding: 0 16px;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
     background: #ffffff;
     color: #111111;
     font-family: "Outfit", sans-serif;
     font-size: 15px;
     outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    box-sizing: border-box;
-  }
-
-  .pf-input:focus {
-    border-color: #111111;
-    box-shadow: 0 0 0 1px #111111;
-  }
-
-  .pf-input:disabled {
-    background: #fafafa;
-    color: #777777;
-    cursor: not-allowed;
-  }
-
-  .pf-select {
-    width: 100%;
-    height: 44px;
-    padding: 0 16px;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #111111;
-    font-family: "Outfit", sans-serif;
-    font-size: 15px;
-    outline: none;
-    cursor: pointer;
     transition: border-color 0.15s ease;
     box-sizing: border-box;
   }
 
-  .pf-select:focus {
-    border-color: #111111;
+  .pf-input:focus {
+    border: 2px solid #111111 !important;
+  }
+
+  .pf-input:disabled {
+    background: #f8fafc;
+    color: #64748B;
+    cursor: not-allowed;
+  }
+
+  /* ── Custom Grade Dropdown ── */
+  .pf-dropdown-trigger {
+    width: 100%;
+    height: 48px;
+    padding: 0 40px 0 16px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #111111;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    text-align: left;
+    position: relative;
+  }
+
+  .pf-dropdown-trigger:hover {
+    border-color: #cbd5e1;
+  }
+
+  .pf-dropdown-trigger.open,
+  .pf-dropdown-trigger:focus {
+    border: 2px solid #111111 !important;
+    outline: none;
+  }
+
+  .pf-dropdown-chevron {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+    pointer-events: none;
+    transition: transform 0.2s ease;
+  }
+
+  .pf-dropdown-chevron.open {
+    transform: translateY(-50%) rotate(180deg);
+  }
+
+  .pf-dropdown-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 50;
+    padding: 6px;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pf-dropdown-option {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14.5px;
+    font-weight: 500;
+    text-align: left;
+    transition: background 0.15s ease, color 0.15s ease;
+    box-sizing: border-box;
+  }
+
+  .pf-dropdown-option:hover,
+  .pf-dropdown-option.active {
+    background: #f5f5f5;
+    color: #111111;
+    font-weight: 500;
   }
 
   .pf-textarea {
     width: 100%;
     min-height: 90px;
     padding: 12px 16px;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
     background: #ffffff;
     color: #111111;
     font-family: "Outfit", sans-serif;
@@ -254,8 +344,7 @@ const styles = `
   }
 
   .pf-textarea:focus {
-    border-color: #111111;
-    box-shadow: 0 0 0 1px #111111;
+    border: 2px solid #111111 !important;
   }
 
   .pf-tags-list {
@@ -271,8 +360,8 @@ const styles = `
     gap: 6px;
     padding: 6px 14px;
     background: #f5f5f5;
-    border: 1px solid #ebebeb;
-    border-radius: 6px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     color: #111111;
@@ -284,7 +373,9 @@ const styles = `
     cursor: pointer;
     padding: 0;
     display: flex;
+    align-items: center;
     color: #666666;
+    transition: color 0.15s ease;
   }
 
   .pf-tag-remove-btn:hover {
@@ -292,10 +383,10 @@ const styles = `
   }
 
   .pf-add-goal-btn {
-    border: 1px dashed #cccccc;
+    border: 1px dashed #cbd5e1;
     background: transparent;
     padding: 6px 14px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-family: "Outfit", sans-serif;
     font-size: 14px;
     font-weight: 500;
@@ -320,12 +411,12 @@ const styles = `
   }
 
   .pf-save-btn {
-    height: 44px;
+    height: 48px;
     padding: 0 28px;
     background: #0a0a0a;
     color: #ffffff;
     border: 0;
-    border-radius: 8px;
+    border-radius: 12px;
     font-family: "Outfit", sans-serif;
     font-size: 15px;
     font-weight: 600;
@@ -338,6 +429,7 @@ const styles = `
 
   .pf-save-btn:hover:not(:disabled) {
     background: #222222;
+    transform: translateY(-1px);
   }
 
   .pf-save-btn:disabled {
@@ -356,9 +448,9 @@ const styles = `
     align-items: center;
     justify-content: space-between;
     padding: 18px 0;
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 1px solid #f1f5f9;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: all 0.15s ease;
   }
 
   .pf-action-row:last-child {
@@ -381,7 +473,7 @@ const styles = `
     height: 42px;
     border-radius: 10px;
     background: #ffffff;
-    border: 1px solid #e5e5e5;
+    border: 1px solid #E2E8F0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -390,16 +482,193 @@ const styles = `
   }
 
   .pf-action-title {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
     color: #111111;
     margin: 0 0 2px;
   }
 
   .pf-action-desc {
-    font-size: 13.5px;
-    color: #666666;
+    font-size: 14px;
+    color: #64748b;
     margin: 0;
+  }
+
+  /* ── Modal Styles ── */
+  .pf-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .pf-modal-box {
+    width: 100%;
+    max-width: 440px;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.25);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  .pf-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .pf-modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111111;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .pf-modal-desc {
+    font-size: 14px;
+    color: #64748b;
+    margin: 0;
+    line-height: 20px;
+  }
+
+  .pf-modal-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: #f5f5f5;
+    color: #555555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .pf-modal-close-btn:hover {
+    background: #ebebeb;
+    color: #111111;
+  }
+
+  .pf-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pf-input-wrap-rel {
+    position: relative;
+    width: 100%;
+  }
+
+  .pf-eye-btn {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    padding: 0;
+  }
+
+  .pf-modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .pf-btn-cancel {
+    flex: 1;
+    height: 48px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #111111;
+    font-family: "Outfit", sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .pf-btn-cancel:hover {
+    background: #f5f5f5;
+  }
+
+  .pf-btn-primary-modal {
+    flex: 1;
+    height: 48px;
+    border: none;
+    border-radius: 12px;
+    background: #0a0a0a;
+    color: #ffffff;
+    font-family: "Outfit", sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .pf-btn-primary-modal:hover:not(:disabled) {
+    background: #222222;
+  }
+
+  .pf-btn-primary-modal:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .pf-btn-danger-modal {
+    flex: 1;
+    height: 48px;
+    border: none;
+    border-radius: 12px;
+    background: #ef4444;
+    color: #ffffff;
+    font-family: "Outfit", sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .pf-btn-danger-modal:hover:not(:disabled) {
+    background: #dc2626;
+  }
+
+  .pf-btn-danger-modal:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .pf-danger-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    border-radius: 12px;
+    color: #991b1b;
+    font-size: 13.5px;
+    line-height: 20px;
+    margin-bottom: 8px;
   }
 
   /* ── Footer ── */
@@ -408,6 +677,22 @@ const styles = `
     padding: 40px 0 16px;
     color: #888888;
     font-size: 14px;
+  }
+
+  @media (max-width: 768px) {
+    .pf-page-wrapper {
+      padding: 24px 20px;
+    }
+    .pf-info-layout {
+      flex-direction: column;
+      align-items: center;
+    }
+    .pf-fields-grid {
+      width: 100%;
+    }
+    .pf-field-group.half-row {
+      grid-template-columns: 1fr;
+    }
   }
 `;
 
@@ -422,6 +707,7 @@ const GRADE_OPTIONS = [
 
 const Profile = () => {
   const notif = useNotification();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(() => {
     try {
       const cached = localStorage.getItem("tutorflow_cached_profile");
@@ -463,7 +749,27 @@ const Profile = () => {
 
   const [newGoal, setNewGoal] = useState("");
   const [addingGoal, setAddingGoal] = useState(false);
-  const avatarInputRef = React.useRef(null);
+  const [isGradeOpen, setIsGradeOpen] = useState(false);
+  const gradeDropdownRef = useRef(null);
+  const avatarInputRef = useRef(null);
+
+  // Password Change State
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    old_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
+  const [showOldPass, setShowOldPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  // Account Deletion State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [showDeletePass, setShowDeletePass] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [avatarUrl, setAvatarUrl] = useState(() => {
     try {
@@ -482,6 +788,21 @@ const Profile = () => {
       return "";
     }
   });
+
+  // Handle outside click for Grade dropdown
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (gradeDropdownRef.current && !gradeDropdownRef.current.contains(e.target)) {
+        setIsGradeOpen(false);
+      }
+    };
+    if (isGradeOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isGradeOpen]);
 
   useEffect(() => {
     Promise.all([
@@ -537,7 +858,7 @@ const Profile = () => {
         const cached = JSON.parse(localStorage.getItem("tutorflow_cached_profile") || "{}");
         localStorage.setItem("tutorflow_cached_profile", JSON.stringify({ ...cached, avatar_url: base64 }));
         notif.success("Profile photo updated successfully!");
-      } catch (err) {
+      } catch {
         notif.error("Failed to save profile photo.");
       }
     };
@@ -588,6 +909,64 @@ const Profile = () => {
     setForm((f) => ({ ...f, learning_goals: f.learning_goals.filter((g) => g !== goal) }));
   };
 
+  const handleChangePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!passwordForm.old_password) {
+      notif.error("Please enter your current password.");
+      return;
+    }
+    if (passwordForm.new_password.length < 8) {
+      notif.error("New password must be at least 8 characters long.");
+      return;
+    }
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      notif.error("New passwords do not match.");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await api("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({
+          old_password: passwordForm.old_password,
+          new_password: passwordForm.new_password,
+        }),
+      });
+      notif.success("Password changed successfully!");
+      setShowPasswordModal(false);
+      setPasswordForm({ old_password: "", new_password: "", confirm_password: "" });
+    } catch (err) {
+      notif.error(err.message || "Failed to change password. Please check your current password.");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleDeleteAccountSubmit = async (e) => {
+    e.preventDefault();
+    if (!deletePassword) {
+      notif.error("Please enter your password to confirm deletion.");
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      await api("/auth/delete-account", {
+        method: "POST",
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      localStorage.clear();
+      notif.success("Your account and all associated data have been permanently deleted.");
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 700);
+    } catch (err) {
+      notif.error(err.message || "Failed to delete account. Please verify your password.");
+      setDeletingAccount(false);
+    }
+  };
+
   const displayName =
     form.full_name || profile?.full_name || profile?.profile?.full_name || profile?.email?.split("@")[0] || "";
   const displayEmail = profile?.email || "";
@@ -607,7 +986,7 @@ const Profile = () => {
       <style>{styles}</style>
 
       <div className="pf-page-container">
-        {/* Unified Dashboard / My Lessons Header */}
+        {/* Header */}
         <header className="pf-header">
           <div>
             <h1 className="pf-welcome-title">Settings</h1>
@@ -638,6 +1017,7 @@ const Profile = () => {
         <section className="pf-card">
           <div className="pf-card-header">
             <h2 className="pf-card-title">Profile Information</h2>
+            <p className="pf-card-desc">Update your personal information and learning profile.</p>
           </div>
 
           <div className="pf-info-layout">
@@ -645,7 +1025,6 @@ const Profile = () => {
               <div
                 className="pf-avatar-circle"
                 onClick={() => avatarInputRef.current?.click()}
-                style={{ cursor: "pointer", overflow: "hidden" }}
                 title="Click to upload profile photo"
               >
                 {avatarUrl ? (
@@ -661,7 +1040,7 @@ const Profile = () => {
                 aria-label="Upload Photo"
                 onClick={() => avatarInputRef.current?.click()}
               >
-                <Camera size={14} />
+                <Camera size={15} />
               </button>
               <input
                 type="file"
@@ -678,7 +1057,7 @@ const Profile = () => {
                 <input
                   className="pf-input"
                   value={form.full_name}
-                  placeholder="Full Name"
+                  placeholder="Enter your full name"
                   onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
                 />
               </div>
@@ -694,21 +1073,41 @@ const Profile = () => {
               </div>
 
               <div className="pf-field-group half-row">
-                <div>
-                  <label className="pf-label">Grade / Level</label>
-                  <select
-                    className="pf-select"
-                    value={form.grade}
-                    onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
+                <div ref={gradeDropdownRef} style={{ position: "relative" }}>
+                  <label className="pf-label" style={{ display: "block", marginBottom: 6 }}>Grade / Level</label>
+                  <button
+                    type="button"
+                    className={`pf-dropdown-trigger ${isGradeOpen ? "open" : ""}`}
+                    onClick={() => setIsGradeOpen(!isGradeOpen)}
+                    aria-haspopup="listbox"
+                    aria-expanded={isGradeOpen}
                   >
-                    <option value="">Select Grade</option>
-                    {GRADE_OPTIONS.map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
+                    <span>{form.grade || "Select Grade Level"}</span>
+                    <ChevronDown className={`pf-dropdown-chevron ${isGradeOpen ? "open" : ""}`} size={18} />
+                  </button>
+
+                  {isGradeOpen && (
+                    <div className="pf-dropdown-menu" role="listbox">
+                      {GRADE_OPTIONS.map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          className={`pf-dropdown-option ${form.grade === g ? "active" : ""}`}
+                          onClick={() => {
+                            setForm((f) => ({ ...f, grade: g }));
+                            setIsGradeOpen(false);
+                          }}
+                        >
+                          <span>{g}</span>
+                          {form.grade === g && <CheckCircle2 size={16} color="#111111" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
                 <div>
-                  <label className="pf-label">School</label>
+                  <label className="pf-label" style={{ display: "block", marginBottom: 6 }}>School</label>
                   <input
                     className="pf-input"
                     value={form.school}
@@ -723,7 +1122,7 @@ const Profile = () => {
                 <textarea
                   className="pf-textarea"
                   value={form.bio}
-                  placeholder="Tell us about yourself..."
+                  placeholder="Tell us a little about your learning goals and background..."
                   onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
                 />
               </div>
@@ -740,7 +1139,7 @@ const Profile = () => {
                         onClick={() => removeGoal(g)}
                         aria-label={`Remove goal ${g}`}
                       >
-                        <X size={13} />
+                        <X size={14} />
                       </button>
                     </span>
                   ))}
@@ -748,7 +1147,7 @@ const Profile = () => {
                     <input
                       autoFocus
                       className="pf-input"
-                      style={{ height: 34, width: 150, padding: "0 10px", fontSize: 13 }}
+                      style={{ height: 36, width: 160, padding: "0 12px", fontSize: 13 }}
                       placeholder="Add goal..."
                       value={newGoal}
                       onChange={(e) => setNewGoal(e.target.value)}
@@ -760,7 +1159,7 @@ const Profile = () => {
                     />
                   ) : (
                     <button type="button" className="pf-add-goal-btn" onClick={() => setAddingGoal(true)}>
-                      <Plus size={13} /> Add Goal
+                      <Plus size={14} /> Add Goal
                     </button>
                   )}
                 </div>
@@ -781,17 +1180,20 @@ const Profile = () => {
           </div>
         </section>
 
-        {/* 2. Account Card */}
+        {/* 2. Account Security & Management Card */}
         <section className="pf-card">
           <div className="pf-card-header">
-            <h2 className="pf-card-title">Account</h2>
-            <p className="pf-card-desc">Manage your account settings.</p>
+            <h2 className="pf-card-title">Account Security</h2>
+            <p className="pf-card-desc">Manage your authentication and account settings.</p>
           </div>
 
           <div className="pf-account-rows">
+            {/* Change Password Row */}
             <div
               className="pf-action-row"
-              onClick={() => notif.info("Password change flow opened.")}
+              onClick={() => setShowPasswordModal(true)}
+              role="button"
+              tabIndex={0}
             >
               <div className="pf-action-left">
                 <div className="pf-icon-box">
@@ -799,23 +1201,26 @@ const Profile = () => {
                 </div>
                 <div>
                   <h3 className="pf-action-title">Change Password</h3>
-                  <p className="pf-action-desc">Update your password</p>
+                  <p className="pf-action-desc">Update your password securely</p>
                 </div>
               </div>
               <ChevronRight size={18} color="#888888" />
             </div>
 
+            {/* Delete Account Row */}
             <div
               className="pf-action-row"
-              onClick={() => notif.error("Account deletion requires confirmation.")}
+              onClick={() => setShowDeleteModal(true)}
+              role="button"
+              tabIndex={0}
             >
               <div className="pf-action-left">
-                <div className="pf-icon-box">
+                <div className="pf-icon-box" style={{ color: "#ef4444", borderColor: "#fee2e2", background: "#fef2f2" }}>
                   <Trash2 size={18} />
                 </div>
                 <div>
-                  <h3 className="pf-action-title">Delete Account</h3>
-                  <p className="pf-action-desc">Permanently delete your account and all data</p>
+                  <h3 className="pf-action-title" style={{ color: "#ef4444" }}>Delete Account</h3>
+                  <p className="pf-action-desc">Permanently erase your account, diagnostic records, and files</p>
                 </div>
               </div>
               <ChevronRight size={18} color="#888888" />
@@ -828,8 +1233,185 @@ const Profile = () => {
           TutorFlow © 2025. All rights reserved.
         </div>
       </div>
+
+      {/* ══════════════════ MODAL: CHANGE PASSWORD ══════════════════ */}
+      {showPasswordModal && (
+        <div className="pf-modal-backdrop" onClick={() => setShowPasswordModal(false)}>
+          <div className="pf-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="pf-modal-header">
+              <div>
+                <h2 className="pf-modal-title">Change Password</h2>
+                <p className="pf-modal-desc">Enter your current password and choose a new one.</p>
+              </div>
+              <button
+                type="button"
+                className="pf-modal-close-btn"
+                onClick={() => setShowPasswordModal(false)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePasswordSubmit} className="pf-modal-form">
+              <div className="pf-field-group">
+                <label className="pf-label">Current Password</label>
+                <div className="pf-input-wrap-rel">
+                  <input
+                    type={showOldPass ? "text" : "password"}
+                    required
+                    className="pf-input"
+                    placeholder="Enter current password"
+                    value={passwordForm.old_password}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, old_password: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    className="pf-eye-btn"
+                    onClick={() => setShowOldPass(!showOldPass)}
+                  >
+                    {showOldPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pf-field-group">
+                <label className="pf-label">New Password</label>
+                <div className="pf-input-wrap-rel">
+                  <input
+                    type={showNewPass ? "text" : "password"}
+                    required
+                    minLength={8}
+                    className="pf-input"
+                    placeholder="At least 8 characters"
+                    value={passwordForm.new_password}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, new_password: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    className="pf-eye-btn"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                  >
+                    {showNewPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pf-field-group">
+                <label className="pf-label">Confirm New Password</label>
+                <div className="pf-input-wrap-rel">
+                  <input
+                    type={showConfirmPass ? "text" : "password"}
+                    required
+                    minLength={8}
+                    className="pf-input"
+                    placeholder="Confirm new password"
+                    value={passwordForm.confirm_password}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, confirm_password: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    className="pf-eye-btn"
+                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                  >
+                    {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pf-modal-actions">
+                <button
+                  type="button"
+                  className="pf-btn-cancel"
+                  onClick={() => setShowPasswordModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="pf-btn-primary-modal"
+                  disabled={changingPassword}
+                >
+                  {changingPassword ? "Updating..." : "Update Password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════ MODAL: DELETE ACCOUNT ══════════════════ */}
+      {showDeleteModal && (
+        <div className="pf-modal-backdrop" onClick={() => !deletingAccount && setShowDeleteModal(false)}>
+          <div className="pf-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="pf-modal-header">
+              <div>
+                <h2 className="pf-modal-title" style={{ color: "#ef4444" }}>Delete Account</h2>
+                <p className="pf-modal-desc">This action cannot be undone.</p>
+              </div>
+              <button
+                type="button"
+                className="pf-modal-close-btn"
+                onClick={() => !deletingAccount && setShowDeleteModal(false)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="pf-danger-banner">
+              <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                All your learning history, diagnostic assessments, topic mastery, memories, and files will be permanently erased.
+              </div>
+            </div>
+
+            <form onSubmit={handleDeleteAccountSubmit} className="pf-modal-form">
+              <div className="pf-field-group">
+                <label className="pf-label">Enter your password to confirm</label>
+                <div className="pf-input-wrap-rel">
+                  <input
+                    type={showDeletePass ? "text" : "password"}
+                    required
+                    className="pf-input"
+                    placeholder="Enter your password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="pf-eye-btn"
+                    onClick={() => setShowDeletePass(!showDeletePass)}
+                  >
+                    {showDeletePass ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pf-modal-actions">
+                <button
+                  type="button"
+                  className="pf-btn-cancel"
+                  disabled={deletingAccount}
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="pf-btn-danger-modal"
+                  disabled={deletingAccount || !deletePassword}
+                >
+                  {deletingAccount ? "Deleting Account..." : "Permanently Delete Account"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Profile;
+

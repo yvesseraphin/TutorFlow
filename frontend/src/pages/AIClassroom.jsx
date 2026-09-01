@@ -2266,7 +2266,7 @@ const styles = `
   .sort-option.active {
     background: #f5f5f5;
     color: #111111;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .sort-option-label {
