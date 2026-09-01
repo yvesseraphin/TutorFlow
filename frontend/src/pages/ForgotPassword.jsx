@@ -76,7 +76,7 @@ const S = {
     width: "100%",
     height: "56px",
     padding: "0 50px",
-    border: "1px solid #EDF2F7",
+    border: "1px solid #E2E8F0",
     borderRadius: "14px",
     fontSize: "16px",
     background: "#ffffff",
@@ -254,7 +254,7 @@ const ForgotPassword = () => {
                   style={S.input}
                   className="custom-input"
                   onFocus={(e) => (e.target.style.borderColor = "#111111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#EDF2F7")}
+                  onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
               </div>
             </div>

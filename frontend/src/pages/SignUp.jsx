@@ -89,7 +89,7 @@ const S = {
     width: "100%",
     height: "56px",
     padding: "0 50px",
-    border: "1px solid #EDF2F7",
+    border: "1px solid #E2E8F0",
     borderRadius: "14px",
     fontSize: "16px",
     background: "#ffffff",
@@ -107,7 +107,7 @@ const S = {
     width: "100%",
     height: "56px",
     padding: "0 50px",
-    border: "1px solid #EDF2F7",
+    border: "1px solid #E2E8F0",
     borderRadius: "14px",
     fontSize: "16px",
     background: "#ffffff",
@@ -158,11 +158,11 @@ const S = {
     fontWeight: "500",
     fontFamily: "'Outfit', sans-serif",
   },
-  dividerLine: { flex: 1, height: "1px", background: "#EDF2F7" },
+  dividerLine: { flex: 1, height: "1px", background: "#e2e8f0" },
   googleBtn: {
     width: "100%",
     height: "56px",
-    border: "1px solid #EDF2F7",
+    border: "1px solid #E2E8F0",
     borderRadius: "14px",
     background: "#ffffff",
     display: "flex",
@@ -355,7 +355,7 @@ const SignUp = () => {
           width: 100%;
           height: 56px;
           padding: 0 46px 0 50px;
-          border: 1px solid #EDF2F7;
+          border: 1px solid #E2E8F0;
           border-radius: 14px;
           background: #ffffff;
           color: #64748B;
@@ -404,7 +404,7 @@ const SignUp = () => {
           top: calc(100% + 8px);
           z-index: 20;
           padding: 8px;
-          border: 1px solid #EDF2F7;
+          border: 1px solid #E2E8F0;
           border-radius: 16px;
           background: #ffffff;
           box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
@@ -486,7 +486,7 @@ const SignUp = () => {
                   style={S.input}
                   className="custom-input"
                   onFocus={(e) => (e.target.style.borderColor = "#111111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#EDF2F7")}
+                  onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
               </div>
             </div>
@@ -507,7 +507,7 @@ const SignUp = () => {
                   style={S.input}
                   className="custom-input"
                   onFocus={(e) => (e.target.style.borderColor = "#111111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#EDF2F7")}
+                  onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
               </div>
             </div>
@@ -528,7 +528,7 @@ const SignUp = () => {
                   style={S.input}
                   className="custom-input"
                   onFocus={(e) => (e.target.style.borderColor = "#111111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#EDF2F7")}
+                  onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
                 />
                 <button
                   type="button"
