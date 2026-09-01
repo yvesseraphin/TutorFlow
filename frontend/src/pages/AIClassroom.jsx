@@ -1098,7 +1098,7 @@ const styles = `
     min-height: 0;
     overflow: hidden;
     background: #ffffff;
-    font-family: "Outfit", sans-serif;
+    font-family: "Cabin", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 
   .board-canvas h3 {
@@ -1109,12 +1109,13 @@ const styles = `
     text-decoration: underline;
     text-decoration-color: #111111;
     text-underline-offset: 8px;
+    font-family: "Cabin", sans-serif;
   }
 
-  .blue-write { color: #111111; }
-  .black-write { color: #111111; }
-  .red-write { color: #ef4444; }
-  .green-write { color: #16a34a; }
+  .blue-write { color: #111111; font-family: "Cabin", sans-serif; }
+  .black-write { color: #111111; font-family: "Cabin", sans-serif; }
+  .red-write { color: #ef4444; font-family: "Cabin", sans-serif; }
+  .green-write { color: #16a34a; font-family: "Cabin", sans-serif; }
 
   .equation-block {
     width: 520px;
@@ -1122,6 +1123,7 @@ const styles = `
     color: #111111;
     font-size: 20px;
     line-height: 1.9;
+    font-family: "Cabin", sans-serif;
   }
 
   .boxed-answer {
@@ -1130,6 +1132,7 @@ const styles = `
     padding: 2px 18px;
     margin: 8px 18px 0 86px;
     border-radius: 4px;
+    font-family: "Cabin", sans-serif;
   }
 
   .board-divider {
@@ -1146,6 +1149,7 @@ const styles = `
     font-size: 18px;
     line-height: 1.35;
     transform: rotate(-3deg);
+    font-family: "Cabin", sans-serif;
   }
 
   .drawing-toolbar {
@@ -1163,6 +1167,7 @@ const styles = `
     gap: 12px;
     padding: 0 14px;
     z-index: 20;
+    font-family: "Cabin", sans-serif;
   }
 
   .marker {
@@ -3352,8 +3357,8 @@ const AnimatedTeacherHandwriting = ({
           {arrowLabel && (
             <span
               style={{
-                fontFamily: "'Outfit', -apple-system, sans-serif",
-                fontSize: "12.5px",
+                fontFamily: "'Cabin', -apple-system, sans-serif",
+                fontSize: "13px",
                 fontWeight: 700,
                 color: inkColor,
                 background: "rgba(241, 245, 249, 0.95)",
@@ -3386,9 +3391,9 @@ const AnimatedTeacherHandwriting = ({
         {displayStepLabel && (
           <span
             style={{
-              fontFamily: "'Outfit', -apple-system, sans-serif",
-              fontSize: "12px",
-              fontWeight: 800,
+              fontFamily: "'Cabin', -apple-system, sans-serif",
+              fontSize: "12.5px",
+              fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "0.06em",
               color: inkColor,
@@ -3417,7 +3422,7 @@ const AnimatedTeacherHandwriting = ({
         ) : (
           <span
             style={{
-              fontFamily: "'Outfit', -apple-system, sans-serif",
+              fontFamily: "'Cabin', -apple-system, sans-serif",
               fontSize: "clamp(20px, 2.2vw, 28px)",
               fontWeight: 700,
               color: inkColor,
@@ -3444,9 +3449,9 @@ const AnimatedTeacherHandwriting = ({
         {isSolutionBoxed && (
           <span
             style={{
-              fontFamily: "'Outfit', -apple-system, sans-serif",
+              fontFamily: "'Cabin', -apple-system, sans-serif",
               fontSize: "11px",
-              fontWeight: 800,
+              fontWeight: 700,
               color: "#ffffff",
               background: inkColor,
               padding: "2px 6px",
@@ -3465,8 +3470,8 @@ const AnimatedTeacherHandwriting = ({
       {explanation && isComplete && (
         <span
           style={{
-            fontFamily: "'Outfit', -apple-system, sans-serif",
-            fontSize: "14px",
+            fontFamily: "'Cabin', -apple-system, sans-serif",
+            fontSize: "14.5px",
             fontWeight: 600,
             color: inkColor === "#0f172a" ? "#475569" : inkColor,
             lineHeight: "1.35",
@@ -4153,7 +4158,7 @@ const InteractiveWhiteboard = ({
           </div>
         )}
 
-        <div className="drawing-toolbar" style={{ zIndex: 10 }}>
+        <div className="drawing-toolbar" style={{ zIndex: 10, fontFamily: "'Cabin', -apple-system, sans-serif" }}>
           {/* Math Tools Dropdown */}
           <div style={{ position: "relative" }}>
             <button
@@ -4166,8 +4171,8 @@ const InteractiveWhiteboard = ({
                 background: showMathMenu ? "#eff6ff" : "#ffffff",
                 color: showMathMenu ? "#2563eb" : "#111111",
                 border: "1px solid #d1d5db",
-                fontFamily: "Outfit, sans-serif",
-                fontSize: 12.5,
+                fontFamily: "'Cabin', sans-serif",
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
                 display: "inline-flex",
@@ -4197,6 +4202,7 @@ const InteractiveWhiteboard = ({
                   flexDirection: "column",
                   gap: 4,
                   zIndex: 20,
+                  fontFamily: "'Cabin', sans-serif",
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", padding: "4px 8px", textTransform: "uppercase" }}>
@@ -4205,7 +4211,7 @@ const InteractiveWhiteboard = ({
                 <button
                   type="button"
                   onClick={insertNumberLine}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left", fontFamily: "'Cabin', sans-serif" }}
                   className="dropdown-item-hover"
                 >
                   <Minus size={16} />
@@ -4214,7 +4220,7 @@ const InteractiveWhiteboard = ({
                 <button
                   type="button"
                   onClick={insertCoordinateAxes}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left", fontFamily: "'Cabin', sans-serif" }}
                   className="dropdown-item-hover"
                 >
                   <Grid size={16} />
@@ -4223,7 +4229,7 @@ const InteractiveWhiteboard = ({
                 <button
                   type="button"
                   onClick={insertRightTriangle}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left", fontFamily: "'Cabin', sans-serif" }}
                   className="dropdown-item-hover"
                 >
                   <Triangle size={16} />
@@ -4232,7 +4238,7 @@ const InteractiveWhiteboard = ({
                 <button
                   type="button"
                   onClick={insertTriangle}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left", fontFamily: "'Cabin', sans-serif" }}
                   className="dropdown-item-hover"
                 >
                   <Triangle size={16} />
@@ -4241,7 +4247,7 @@ const InteractiveWhiteboard = ({
                 <button
                   type="button"
                   onClick={insertRectangle}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left", fontFamily: "'Cabin', sans-serif" }}
                   className="dropdown-item-hover"
                 >
                   <Square size={16} />
@@ -4250,7 +4256,7 @@ const InteractiveWhiteboard = ({
                 <button
                   type="button"
                   onClick={insertCircle}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left", fontFamily: "'Cabin', sans-serif" }}
                   className="dropdown-item-hover"
                 >
                   <Circle size={16} />
@@ -4259,7 +4265,7 @@ const InteractiveWhiteboard = ({
                 <button
                   type="button"
                   onClick={insertBalanceScale}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: 0, background: "transparent", cursor: "pointer", fontSize: 13, textAlign: "left", fontFamily: "'Cabin', sans-serif" }}
                   className="dropdown-item-hover"
                 >
                   <Scale size={16} />
@@ -4338,8 +4344,8 @@ const InteractiveWhiteboard = ({
               background: isCheckingBoard ? "#2563eb" : "#0a0a0a",
               color: "#ffffff",
               border: 0,
-              fontFamily: "Outfit, sans-serif",
-              fontSize: 13,
+              fontFamily: "'Cabin', sans-serif",
+              fontSize: 13.5,
               fontWeight: 600,
               cursor: isCheckingBoard ? "default" : "pointer",
               marginLeft: "auto",
