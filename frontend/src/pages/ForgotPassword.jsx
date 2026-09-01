@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, CheckCircle } from "lucide-react";
+import { Mail } from "lucide-react";
 import { api } from "../lib/api";
 import { useNotification } from "../components/NotificationBanner";
 
@@ -55,20 +55,6 @@ const S = {
     fontFamily: "'Outfit', sans-serif",
     lineHeight: "24px",
     textAlign: "center",
-  },
-  successBox: {
-    background: "#f0fdf4",
-    border: "1px solid #86efac",
-    color: "#15803d",
-    padding: "16px",
-    borderRadius: "14px",
-    fontSize: "15px",
-    lineHeight: "22px",
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "10px",
-    fontFamily: "'Outfit', sans-serif",
-    marginBottom: "20px",
   },
   form: { display: "flex", flexDirection: "column", gap: "16px" },
   label: {
@@ -192,7 +178,6 @@ const S = {
 const ForgotPassword = () => {
   const notif = useNotification();
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -207,8 +192,7 @@ const ForgotPassword = () => {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      setSent(true);
-      notif.success(`Password reset link sent to ${email}`);
+      notif.success(`If an account exists for ${email}, a reset link has been sent. Check your inbox!`);
     } catch (err) {
       notif.error(err.message || "Unable to send reset link. Please try again.");
     } finally {
@@ -254,46 +238,37 @@ const ForgotPassword = () => {
             Enter your email to receive a password reset link.
           </p>
 
-          {sent ? (
-            <div style={S.successBox}>
-              <CheckCircle size={20} style={{ flexShrink: 0, marginTop: 2, color: "#16a34a" }} />
-              <span>
-                If an account exists for <strong>{email}</strong>, a reset link has been sent. Check your inbox!
-              </span>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} style={S.form}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label style={S.label}>Email</label>
-                <div style={S.inputWrap}>
-                  <span style={S.inputIcon}>
-                    <Mail size={20} color="#64748B" />
-                  </span>
-                  <input
-                    type="email"
-                    required
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={S.input}
-                    className="custom-input"
-                    onFocus={(e) => (e.target.style.borderColor = "#111111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
-                  />
-                </div>
+          <form onSubmit={handleSubmit} style={S.form}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={S.label}>Email</label>
+              <div style={S.inputWrap}>
+                <span style={S.inputIcon}>
+                  <Mail size={20} color="#64748B" />
+                </span>
+                <input
+                  type="email"
+                  required
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={S.input}
+                  className="custom-input"
+                  onFocus={(e) => (e.target.style.borderColor = "#111111")}
+                  onBlur={(e) => (e.target.style.borderColor = "#cbd5e1")}
+                />
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                style={S.submitBtn}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#222222")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#0a0a0a")}
-              >
-                {loading ? "Sending link…" : "Send Reset Link"}
-              </button>
-            </form>
-          )}
+            <button
+              type="submit"
+              disabled={loading}
+              style={S.submitBtn}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#222222")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#0a0a0a")}
+            >
+              {loading ? "Sending link…" : "Send Reset Link"}
+            </button>
+          </form>
 
           <p style={S.footer}>
             Remember your password?{" "}
