@@ -525,7 +525,7 @@ const StudentDashboard = () => {
   const streak = analytics?.streak_days ?? analytics?.current_streak ?? 0;
   const sessionsCompleted = analytics?.completed_sessions ?? analytics?.sessions_completed ?? 0;
   const nextLessonTitle = analytics?.next_recommended_lesson || "Linear Equations (One-Step)";
-  const teacherGreeting = analytics?.ai_teacher_greeting || "I'm your AI Teacher, ready to guide you step-by-step through your mathematics journey.";
+  const teacherGreeting = analytics?.ai_teacher_greeting || "Step-by-step guided practice tailored to your learning flow.";
   const retentionRisks = analytics?.retention_risk_topics || [];
 
   const quickCards = [
@@ -572,7 +572,7 @@ const StudentDashboard = () => {
         <header className="tf-header">
           <div>
             <h1 className="tf-welcome-title">Hello{firstName ? `, ${firstName}` : ""}!</h1>
-            <p className="tf-welcome-subtitle">Your AI Personal Teacher is active and tracking your progress.</p>
+            <p className="tf-welcome-subtitle">Your AI Personal Tutor is active and tracking your progress.</p>
           </div>
 
           <div className="tf-header-actions">
@@ -627,8 +627,8 @@ const StudentDashboard = () => {
         <section className="tf-hero-card" aria-label="Tutor AI">
           <div className="tf-hero-copy">
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-              <Sparkles size={16} color="#111111" />
-              <p className="tf-hero-kicker" style={{ margin: 0 }}>AI Teacher Insights</p>
+              <Brain size={16} color="#111111" />
+              <p className="tf-hero-kicker" style={{ margin: 0 }}>AI Tutor</p>
             </div>
             <h2 className="tf-hero-heading">{nextLessonTitle}</h2>
             <p className="tf-hero-desc">{teacherGreeting}</p>
@@ -641,7 +641,7 @@ const StudentDashboard = () => {
                 <span className="tf-play-pill-icon">
                   <Play size={10} fill="currentColor" strokeWidth={0} />
                 </span>
-                Start Lesson with AI Teacher
+                Start Lesson
               </button>
             </div>
           </div>

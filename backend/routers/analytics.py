@@ -138,24 +138,19 @@ def dashboard(user: dict = Depends(current_user)) -> dict:
             streak += 1
             check_date -= timedelta(days=1)
 
-    # AI Personalized Greeting & Context
+    # AI Personalized Brief Summary & Context
     recent_topic = sessions[0]["topic"] if sessions else None
     if mistakes:
         latest_mistake = mistakes[0]
-        greeting_text = (
-            f"Welcome back, {first_name}! Last time we worked on {recent_topic or 'mathematics'}. "
-            f"I noticed a small stumbling block with {latest_mistake.get('misconception_type', 'key concepts')}. "
-            f"Let's do a quick 2-minute warmup to master it!"
-        )
-    elif memories:
-        greeting_text = (
-            f"Great to see you again, {first_name}! {memories[0].get('summary', 'Ready for your next learning milestone?')}"
-            + (f" Let's jump straight into {recent_topic}." if recent_topic else " Let's continue your learning path.")
-        )
+        concept_hint = latest_mistake.get("misconception_type")
+        if concept_hint:
+            greeting_text = f"Strengthen your understanding on {concept_hint} with step-by-step guided practice."
+        else:
+            greeting_text = "Strengthen your core math skills with step-by-step guided practice."
+    elif memories and recent_topic:
+        greeting_text = f"Continue your progress on {recent_topic} with step-by-step guided practice."
     else:
-        greeting_text = (
-            f"Hello {first_name}! I'm your AI Teacher, ready to guide you step-by-step through your mathematics journey."
-        )
+        greeting_text = "Step-by-step guided practice tailored to your learning flow."
 
     # Spaced Repetition Retention Risks
     now_iso = datetime.now(timezone.utc).isoformat()
