@@ -232,6 +232,7 @@ def dashboard(user: dict = Depends(current_user)) -> dict:
         "recent_sessions": recent_sessions,
         "skill_mastery": skill_mastery_list,
         "has_completed_diagnostic": has_completed_diagnostic,
+        "avatar_url": profile.get("avatar_url") or (user.get("metadata", {}) or {}).get("avatar_url") or (user.get("metadata", {}) or {}).get("picture") or "",
     }
 
 

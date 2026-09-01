@@ -32,6 +32,21 @@ class ProfileUpdate(BaseModel):
 def session_payload(session, user) -> dict:
     meta = user.user_metadata or {}
     avatar = meta.get("avatar_url") or meta.get("picture") or meta.get("avatar") or None
+    full_name = meta.get("full_name") or ""
+    
+    # Query database profile table to ensure avatar_url is always returned immediately on login
+    if user and getattr(user, "id", None):
+        try:
+            p_res = admin_client().table("profiles").select("full_name,avatar_url").eq("id", user.id).execute()
+            if p_res.data and len(p_res.data) > 0:
+                p = p_res.data[0]
+                if p.get("avatar_url"):
+                    avatar = p["avatar_url"]
+                if p.get("full_name") and not full_name:
+                    full_name = p["full_name"]
+        except Exception:
+            pass
+
     return {
         "access_token": session.access_token if session else None,
         "refresh_token": session.refresh_token if session else None,
@@ -39,7 +54,7 @@ def session_payload(session, user) -> dict:
         "user": {
             "id": user.id,
             "email": user.email,
-            "full_name": meta.get("full_name", ""),
+            "full_name": full_name,
             "avatar_url": avatar,
         },
     }

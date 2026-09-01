@@ -36,7 +36,36 @@ CURRICULUM = {
 
 
 def course_for_topic(topic: str) -> str:
-    normalized = topic.casefold()
+    if not topic:
+        return "Algebra"
+    normalized = topic.strip().casefold()
+
+    # 1. Exact course match
+    for course in CURRICULUM:
+        if course.casefold() == normalized:
+            return course
+
+    # 2. Check if topic matches any lesson title or skill in CURRICULUM
+    for course, lessons in CURRICULUM.items():
+        for lesson in lessons:
+            if lesson["title"].casefold() == normalized:
+                return course
+            for skill in lesson["skills"]:
+                if skill.casefold() == normalized or normalized in skill.casefold():
+                    return course
+
+    # 3. Subject keyword matching
+    if "pre-algebra" in normalized or "pre algebra" in normalized or "pemdas" in normalized or "signed number" in normalized:
+        return "Pre-Algebra"
+    if "geometry" in normalized or "angle" in normalized or "triangle" in normalized or "pythagor" in normalized or "area" in normalized or "volume" in normalized:
+        return "Geometry"
+    if "statistic" in normalized or "data display" in normalized or "mean" in normalized or "median" in normalized or "mode" in normalized or "probability" in normalized:
+        return "Statistics"
+    if "function" in normalized or "slope" in normalized or "table" in normalized:
+        return "Functions"
+    if "algebra" in normalized or "equation" in normalized or "variable" in normalized or "quadratic" in normalized or "expression" in normalized:
+        return "Algebra"
+
     return next((course for course in CURRICULUM if course.casefold() in normalized), "Algebra")
 
 

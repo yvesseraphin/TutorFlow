@@ -473,6 +473,7 @@ const Profile = () => {
         cached?.avatar_url ||
         cached?.profile?.avatar_url ||
         user?.avatar_url ||
+        user?.profile?.avatar_url ||
         user?.user_metadata?.avatar_url ||
         user?.user_metadata?.picture ||
         ""

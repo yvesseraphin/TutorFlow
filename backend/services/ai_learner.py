@@ -16,11 +16,12 @@ def is_valid_uuid(val: Any) -> bool:
     except (ValueError, AttributeError, TypeError):
         return False
 
-# Comprehensive Knowledge Graph & Prerequisite Dependency Map
+# Comprehensive Knowledge Graph & Prerequisite Dependency Map across All Subjects
 KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
+    # ── Pre-Algebra ──
     "Integers & Negative Numbers": {
         "id": "integers_negative_numbers",
-        "aliases": ["integers", "negative numbers", "signed numbers", "integers and signed numbers", "Pre-Algebra: integer operations"],
+        "aliases": ["integers", "negative numbers", "signed numbers", "integers and signed numbers", "Pre-Algebra: integer operations", "Integers", "Integer Operations"],
         "subject": "Mathematics",
         "grade": "8th Grade",
         "category": "Pre-Algebra",
@@ -30,7 +31,7 @@ KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
     },
     "Order of Operations (PEMDAS)": {
         "id": "order_of_operations",
-        "aliases": ["order of operations", "pemdas", "Pre-Algebra: order of operations"],
+        "aliases": ["order of operations", "pemdas", "Pre-Algebra: order of operations", "Order of Operations"],
         "subject": "Mathematics",
         "grade": "8th Grade",
         "category": "Pre-Algebra",
@@ -40,7 +41,7 @@ KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
     },
     "Fractions and Ratios": {
         "id": "fractions_and_ratios",
-        "aliases": ["fractions", "ratios", "fractions and ratios", "Pre-Algebra: fractions and ratios"],
+        "aliases": ["fractions", "ratios", "fractions and ratios", "Pre-Algebra: fractions and ratios", "Fractions & Ratios"],
         "subject": "Mathematics",
         "grade": "8th Grade",
         "category": "Pre-Algebra",
@@ -48,9 +49,11 @@ KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
         "core_concepts": ["Simplifying Fractions", "Equivalent Fractions", "Common Denominators", "Ratio Proportions"],
         "difficulty": 1,
     },
+
+    # ── Algebra ──
     "Variables & Expressions": {
         "id": "variables_and_expressions",
-        "aliases": ["variables", "expressions", "variables and expressions", "Algebra: variables and expressions"],
+        "aliases": ["variables", "expressions", "variables and expressions", "Algebra: variables and expressions", "Variables & Expressions", "Variables and Expressions"],
         "subject": "Mathematics",
         "grade": "8th Grade",
         "category": "Algebra",
@@ -64,43 +67,43 @@ KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
         "subject": "Mathematics",
         "grade": "8th Grade",
         "category": "Algebra",
-        "prerequisites": ["Variables & Expressions", "Integers & Negative Numbers"],
+        "prerequisites": ["Variables & Expressions"],
         "core_concepts": ["Like Terms vs Unlike Terms", "Simplifying Expressions", "Distributive Sign Handling"],
-        "difficulty": 2,
-    },
-    "Distributive Property": {
-        "id": "distributive_property",
-        "aliases": ["distributive property", "Algebra: distributive property", "Algebra: negative signs"],
-        "subject": "Mathematics",
-        "grade": "8th Grade",
-        "category": "Algebra",
-        "prerequisites": ["Combining Like Terms", "Integers & Negative Numbers"],
-        "core_concepts": ["Expanding Parentheses", "Distributing Negative Multipliers", "Simplifying Expanded Terms"],
         "difficulty": 2,
     },
     "Linear Equations (One-Step)": {
         "id": "linear_equations_one_step",
-        "aliases": ["one-step equations", "linear equations one-step", "simple equations"],
+        "aliases": ["one-step equations", "linear equations one-step", "simple equations", "Linear Equations (One-Step)", "one step equations"],
         "subject": "Mathematics",
         "grade": "8th Grade",
         "category": "Algebra",
-        "prerequisites": ["Variables & Expressions", "Integers & Negative Numbers"],
+        "prerequisites": ["Variables & Expressions"],
         "core_concepts": ["Inverse Operations", "Isolating the Variable", "Balancing Both Sides"],
+        "difficulty": 2,
+    },
+    "Distributive Property": {
+        "id": "distributive_property",
+        "aliases": ["distributive property", "Algebra: distributive property", "Algebra: negative signs", "Distributive Property"],
+        "subject": "Mathematics",
+        "grade": "8th Grade",
+        "category": "Algebra",
+        "prerequisites": ["Combining Like Terms"],
+        "core_concepts": ["Expanding Parentheses", "Distributing Negative Multipliers", "Simplifying Expanded Terms"],
         "difficulty": 2,
     },
     "Linear Equations (Two-Step & Multi-Step)": {
         "id": "linear_equations_two_step",
-        "aliases": ["linear equations", "two-step equations", "multi-step equations", "Algebra: linear equations", "Linear Equations"],
+        "aliases": ["linear equations", "two-step equations", "multi-step equations", "Algebra: linear equations", "Linear Equations", "Linear Equations (Two-Step & Multi-Step)", "two step equations", "multi step equations"],
         "subject": "Mathematics",
         "grade": "9th Grade",
         "category": "Algebra",
-        "prerequisites": ["Linear Equations (One-Step)", "Combining Like Terms", "Distributive Property"],
+        "prerequisites": ["Linear Equations (One-Step)", "Combining Like Terms"],
         "core_concepts": ["Two-step equations", "Distributive property in equations", "Variables on both sides", "Transposition Sign Rules"],
         "difficulty": 3,
     },
     "Linear Inequalities": {
         "id": "linear_inequalities",
-        "aliases": ["inequalities", "linear inequalities"],
+        "aliases": ["inequalities", "linear inequalities", "Algebra: linear inequalities", "Linear Inequalities"],
         "subject": "Mathematics",
         "grade": "9th Grade",
         "category": "Algebra",
@@ -108,29 +111,9 @@ KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
         "core_concepts": ["Inequality symbols", "Flipping inequality sign when multiplying/dividing by negative", "Number line graphing"],
         "difficulty": 3,
     },
-    "Relations and Functions": {
-        "id": "relations_and_functions",
-        "aliases": ["functions", "relations", "Functions: identifying functions"],
-        "subject": "Mathematics",
-        "grade": "9th Grade",
-        "category": "Functions",
-        "prerequisites": ["Linear Equations (Two-Step & Multi-Step)"],
-        "core_concepts": ["Function Definition", "Domain and Range", "Vertical Line Test", "Function Notation f(x)"],
-        "difficulty": 3,
-    },
-    "Function Tables & Graphing": {
-        "id": "function_tables_graphing",
-        "aliases": ["function tables", "graphing linear functions", "Functions: tables", "Functions: graphing lines"],
-        "subject": "Mathematics",
-        "grade": "9th Grade",
-        "category": "Functions",
-        "prerequisites": ["Relations and Functions"],
-        "core_concepts": ["Input-Output Tables", "Slope-Intercept Form (y = mx + b)", "Plotting Coordinate Points"],
-        "difficulty": 3,
-    },
     "Simultaneous Equations": {
         "id": "simultaneous_equations",
-        "aliases": ["simultaneous equations", "system of equations", "systems of linear equations"],
+        "aliases": ["simultaneous equations", "system of equations", "systems of linear equations", "Algebra: simultaneous equations", "Systems of Equations"],
         "subject": "Mathematics",
         "grade": "10th Grade",
         "category": "Algebra",
@@ -140,22 +123,118 @@ KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
     },
     "Quadratic Equations": {
         "id": "quadratic_equations",
-        "aliases": ["quadratics", "quadratic equations", "factoring quadratics"],
+        "aliases": ["quadratics", "quadratic equations", "factoring quadratics", "Algebra: quadratic equations", "Quadratic Equations"],
         "subject": "Mathematics",
         "grade": "10th Grade",
         "category": "Algebra",
-        "prerequisites": ["Linear Equations (Two-Step & Multi-Step)", "Combining Like Terms"],
+        "prerequisites": ["Linear Equations (Two-Step & Multi-Step)"],
         "core_concepts": ["Factoring Quadratics", "Quadratic Formula", "Completing the Square", "Parabolas"],
         "difficulty": 4,
     },
-    "Pythagorean Theorem": {
-        "id": "pythagorean_theorem",
-        "aliases": ["pythagoras", "pythagorean theorem", "Geometry: triangles"],
+
+    # ── Functions ──
+    "Relations and Functions": {
+        "id": "relations_and_functions",
+        "aliases": ["functions", "relations", "Functions: identifying functions", "Relations and Functions", "Relations & Functions"],
+        "subject": "Mathematics",
+        "grade": "9th Grade",
+        "category": "Functions",
+        "prerequisites": ["Variables & Expressions"],
+        "core_concepts": ["Function Definition", "Domain and Range", "Vertical Line Test", "Function Notation f(x)"],
+        "difficulty": 3,
+    },
+    "Function Tables": {
+        "id": "function_tables",
+        "aliases": ["function tables", "Functions: tables", "Function Tables", "input output tables", "evaluating function tables"],
+        "subject": "Mathematics",
+        "grade": "9th Grade",
+        "category": "Functions",
+        "prerequisites": ["Relations and Functions"],
+        "core_concepts": ["Input-Output Tables", "Function Rules", "Completing Tables", "Pattern of Change"],
+        "difficulty": 3,
+    },
+    "Graphing Linear Functions": {
+        "id": "graphing_linear_functions",
+        "aliases": ["graphing linear functions", "Functions: graphing lines", "Graphing Linear Functions", "slope intercept form", "graphing lines", "Function Tables & Graphing"],
+        "subject": "Mathematics",
+        "grade": "9th Grade",
+        "category": "Functions",
+        "prerequisites": ["Function Tables"],
+        "core_concepts": ["Slope-Intercept Form (y = mx + b)", "Plotting Ordered Pairs", "Slope (m) and Intercept (b)", "Line Graphing"],
+        "difficulty": 3,
+    },
+
+    # ── Geometry ──
+    "Angles": {
+        "id": "angles",
+        "aliases": ["angles", "Geometry: angle relationships", "Angles", "Angle Relationships", "complementary angles", "supplementary angles", "angle measurement"],
+        "subject": "Mathematics",
+        "grade": "8th Grade",
+        "category": "Geometry",
+        "prerequisites": [],
+        "core_concepts": ["Classifying Angles (Acute, Right, Obtuse)", "Complementary Angles (Sum 90°)", "Supplementary Angles (Sum 180°)", "Vertical Angles"],
+        "difficulty": 2,
+    },
+    "Triangles": {
+        "id": "triangles",
+        "aliases": ["triangles", "Geometry: triangles", "Triangles", "triangle theorems", "triangle angle sum", "Classifying Triangles"],
         "subject": "Mathematics",
         "grade": "9th Grade",
         "category": "Geometry",
-        "prerequisites": ["Order of Operations (PEMDAS)"],
-        "core_concepts": ["Right Triangles", "Hypotenuse Calculation", "Square Roots in Geometry"],
+        "prerequisites": ["Angles"],
+        "core_concepts": ["Triangle Angle-Sum Theorem (180°)", "Classifying Triangles (Isosceles, Equilateral, Scalene)", "Finding Missing Interior Angles", "Exterior Angle Theorem"],
+        "difficulty": 2,
+    },
+    "Pythagorean Theorem": {
+        "id": "pythagorean_theorem",
+        "aliases": ["pythagoras", "pythagorean theorem", "Pythagorean Theorem", "Right Triangles", "hypotenuse calculation", "a^2 + b^2 = c^2"],
+        "subject": "Mathematics",
+        "grade": "9th Grade",
+        "category": "Geometry",
+        "prerequisites": ["Triangles"],
+        "core_concepts": ["Right Triangles", "Hypotenuse Calculation (c = √(a² + b²))", "Missing Leg Calculation", "Square Roots in Geometry"],
+        "difficulty": 2,
+    },
+    "Area and Volume": {
+        "id": "area_and_volume",
+        "aliases": ["area and volume", "Geometry: area and volume", "Area and Volume", "Area & Volume", "perimeter", "volume of prisms", "surface area"],
+        "subject": "Mathematics",
+        "grade": "9th Grade",
+        "category": "Geometry",
+        "prerequisites": ["Triangles"],
+        "core_concepts": ["Area of Triangles and Quadrilaterals", "Volume of Rectangular and Triangular Prisms", "Correct Square and Cubic Units", "Perimeter Calculations"],
+        "difficulty": 2,
+    },
+
+    # ── Statistics ──
+    "Reading Data Displays": {
+        "id": "reading_data_displays",
+        "aliases": ["reading data displays", "Statistics: data displays", "Reading Data Displays", "data displays", "bar graphs", "line graphs", "circle graphs", "histogram"],
+        "subject": "Mathematics",
+        "grade": "8th Grade",
+        "category": "Statistics",
+        "prerequisites": [],
+        "core_concepts": ["Reading Bar, Line, and Circle Graphs", "Comparing Quantities in Data Displays", "Interpreting Axes and Legends", "Identifying Misleading Graph Scales"],
+        "difficulty": 1,
+    },
+    "Measures of Center": {
+        "id": "measures_of_center",
+        "aliases": ["measures of center", "Statistics: mean median mode", "Measures of Center", "mean median mode", "mean", "median", "mode", "Measures of Central Tendency", "outliers"],
+        "subject": "Mathematics",
+        "grade": "8th Grade",
+        "category": "Statistics",
+        "prerequisites": ["Reading Data Displays"],
+        "core_concepts": ["Calculating Mean (Average)", "Finding Median (Middle Value)", "Identifying Mode", "Choosing Best Measure of Center", "Effect of Outliers"],
+        "difficulty": 2,
+    },
+    "Probability": {
+        "id": "probability",
+        "aliases": ["probability", "Statistics: probability", "Probability", "simple events", "theoretical probability", "experimental probability", "chance and likelihood"],
+        "subject": "Mathematics",
+        "grade": "8th Grade",
+        "category": "Statistics",
+        "prerequisites": ["Fractions and Ratios"],
+        "core_concepts": ["Expressing Probability (Fractions, Decimals, Percentages)", "Calculating Theoretical Probability (Favorable / Total Outcomes)", "Simple and Complementary Events", "Experimental vs Theoretical Probability"],
         "difficulty": 2,
     },
 }
@@ -163,20 +242,26 @@ KNOWLEDGE_GRAPH: Dict[str, Dict[str, Any]] = {
 
 def find_topic_node(topic_name: Optional[str]) -> Optional[Dict[str, Any]]:
     """
-    Flexibly finds a Knowledge Graph node by exact name, ID, alias, or substring match.
+    Flexibly finds a Knowledge Graph node with strict precedence:
+    1. Exact Knowledge Graph key match
+    2. Exact Alias match
+    3. Primary subject mapping (e.g., 'Geometry' -> 'Angles', 'Statistics' -> 'Reading Data Displays')
+    4. Exact node ID match
+    5. Clean prefix alias match (e.g. 'Geometry: triangles' -> 'triangles')
+    6. Safe substring match (length >= 4 only)
     """
     if not topic_name:
         return None
     normalized = topic_name.strip().casefold()
 
-    # Exact name match
+    # 1. Exact name match on KNOWLEDGE_GRAPH keys
     for key, node in KNOWLEDGE_GRAPH.items():
-        if key.casefold() == normalized or node.get("id", "").casefold() == normalized:
+        if key.casefold() == normalized:
             node_copy = node.copy()
             node_copy["name"] = key
             return node_copy
 
-    # Alias match
+    # 2. Exact alias match
     for key, node in KNOWLEDGE_GRAPH.items():
         for alias in node.get("aliases", []):
             if alias.casefold() == normalized:
@@ -184,12 +269,59 @@ def find_topic_node(topic_name: Optional[str]) -> Optional[Dict[str, Any]]:
                 node_copy["name"] = key
                 return node_copy
 
-    # Substring match
+    # 3. Primary Subject-level category fallback
+    SUBJECT_PRIMARY_MAP = {
+        "algebra": "Variables & Expressions",
+        "pre-algebra": "Order of Operations (PEMDAS)",
+        "pre algebra": "Order of Operations (PEMDAS)",
+        "functions": "Relations and Functions",
+        "geometry": "Angles",
+        "statistics": "Reading Data Displays",
+    }
+    if normalized in SUBJECT_PRIMARY_MAP:
+        primary_key = SUBJECT_PRIMARY_MAP[normalized]
+        if primary_key in KNOWLEDGE_GRAPH:
+            node_copy = KNOWLEDGE_GRAPH[primary_key].copy()
+            node_copy["name"] = primary_key
+            return node_copy
+
+    # 4. Exact ID match
     for key, node in KNOWLEDGE_GRAPH.items():
-        if normalized in key.casefold() or any(normalized in alias.casefold() for alias in node.get("aliases", [])):
+        if node.get("id", "").casefold() == normalized:
             node_copy = node.copy()
             node_copy["name"] = key
             return node_copy
+
+    # 5. Clean prefix alias match (e.g. 'Geometry: angle relationships' -> 'angle relationships')
+    for key, node in KNOWLEDGE_GRAPH.items():
+        for alias in node.get("aliases", []):
+            cleaned = alias.casefold()
+            for prefix in ("pre-algebra: ", "algebra: ", "functions: ", "geometry: ", "statistics: "):
+                if cleaned.startswith(prefix):
+                    cleaned = cleaned[len(prefix):]
+            if normalized == cleaned:
+                node_copy = node.copy()
+                node_copy["name"] = key
+                return node_copy
+
+    # 6. Safe substring match ONLY if meaningful query length >= 4
+    if len(normalized) >= 4:
+        for key, node in KNOWLEDGE_GRAPH.items():
+            if normalized in key.casefold() or key.casefold() in normalized:
+                node_copy = node.copy()
+                node_copy["name"] = key
+                return node_copy
+
+        for key, node in KNOWLEDGE_GRAPH.items():
+            for alias in node.get("aliases", []):
+                cleaned = alias.casefold()
+                for prefix in ("pre-algebra: ", "algebra: ", "functions: ", "geometry: ", "statistics: "):
+                    if cleaned.startswith(prefix):
+                        cleaned = cleaned[len(prefix):]
+                if (len(cleaned) >= 4 and normalized in cleaned) or (len(normalized) >= 4 and cleaned in normalized):
+                    node_copy = node.copy()
+                    node_copy["name"] = key
+                    return node_copy
 
     return None
 

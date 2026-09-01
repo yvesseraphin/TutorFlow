@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Stage, Layer, Line, Text as KonvaText } from "react-konva";
+import { Stage, Layer, Line, Rect, Text as KonvaText } from "react-konva";
 import katex from "katex";
 import { api } from "../lib/api";
 import { AudioStreamPlayer, AudioStreamRecorder, SpeechTranscriber, unlockAudioContext } from "../lib/liveAudio";
@@ -3108,40 +3108,159 @@ const WhiteboardSidebar = ({
 };
 
 const COLOR_MAP = {
-  blue: { ink: "#1d4ed8", border: "rgba(37, 99, 235, 0.45)", glow: "rgba(29, 78, 216, 0.35)" },
-  green: { ink: "#15803d", border: "rgba(22, 163, 74, 0.45)", glow: "rgba(21, 128, 61, 0.35)" },
-  red: { ink: "#dc2626", border: "rgba(239, 68, 68, 0.45)", glow: "rgba(220, 38, 38, 0.35)" },
-  purple: { ink: "#7e22ce", border: "rgba(147, 51, 234, 0.45)", glow: "rgba(126, 34, 206, 0.35)" },
-  orange: { ink: "#ea580c", border: "rgba(249, 115, 22, 0.45)", glow: "rgba(234, 88, 12, 0.35)" },
-  black: { ink: "#0f172a", border: "rgba(15, 23, 42, 0.45)", glow: "rgba(15, 23, 42, 0.3)" },
+  blue: { ink: "#1d4ed8", border: "rgba(29, 78, 216, 0.45)", label: "#1e40af" },
+  green: { ink: "#15803d", border: "rgba(21, 128, 61, 0.45)", label: "#166534" },
+  red: { ink: "#dc2626", border: "rgba(220, 38, 38, 0.45)", label: "#991b1b" },
+  purple: { ink: "#7e22ce", border: "rgba(126, 34, 206, 0.45)", label: "#6b21a8" },
+  orange: { ink: "#ea580c", border: "rgba(234, 88, 12, 0.45)", label: "#c2410c" },
+  black: { ink: "#0f172a", border: "rgba(15, 23, 42, 0.45)", label: "#334155" },
 };
 
-function cleanLatexString(raw) {
+/**
+ * Full Math & LaTeX Translation Engine:
+ * Converts Unicode, shorthands, ASCII operators, spoken phrases, and unescaped functions
+ * returned by AI models into 100% valid, renderable LaTeX.
+ */
+export function translateToKaTeX(raw) {
   if (!raw) return "";
   let s = String(raw).trim();
-  // Strip outer quotes and markdown math dollar signs
+
+  // Strip markdown code fences, quotes, and dollar math delimiters
+  s = s.replace(/^```(?:latex|math)?\s*/i, "").replace(/\s*```$/i, "");
   s = s.replace(/^["']+|["']+$/g, "");
   s = s.replace(/^\$+|\$+$/g, "");
+
+  // 1. Comprehensive Unicode to Standard LaTeX replacements
+  const UNICODE_TRANSLATIONS = [
+    [/×/g, " \\times "],
+    [/÷/g, " \\div "],
+    [/·|•/g, " \\cdot "],
+    [/±/g, " \\pm "],
+    [/∓/g, " \\mp "],
+    [/≤/g, " \\leq "],
+    [/≥/g, " \\geq "],
+    [/≠/g, " \\neq "],
+    [/≈/g, " \\approx "],
+    [/≡/g, " \\equiv "],
+    [/√(?:\(([^)]+)\)|([0-9a-zA-Z]+))/g, "\\sqrt{$1$2}"],
+    [/√/g, " \\sqrt{} "],
+    [/∛(?:\(([^)]+)\)|([0-9a-zA-Z]+))/g, "\\sqrt[3]{$1$2}"],
+    [/π/g, " \\pi "],
+    [/θ/g, " \\theta "],
+    [/α/g, " \\alpha "],
+    [/β/g, " \\beta "],
+    [/γ/g, " \\gamma "],
+    [/δ/g, " \\delta "],
+    [/Δ/g, " \\Delta "],
+    [/σ/g, " \\sigma "],
+    [/Σ/g, " \\Sigma "],
+    [/μ/g, " \\mu "],
+    [/λ/g, " \\lambda "],
+    [/∠/g, " \\angle "],
+    [/°/g, "^\\circ "],
+    [/∥/g, " \\parallel "],
+    [/⊥/g, " \\perp "],
+    [/△/g, " \\triangle "],
+    [/∞/g, " \\infty "],
+    [/²/g, "^2"],
+    [/³/g, "^3"],
+    [/⁴/g, "^4"],
+    [/⁵/g, "^5"],
+    [/⁶/g, "^6"],
+    [/⁷/g, "^7"],
+    [/⁸/g, "^8"],
+    [/⁹/g, "^9"],
+    [/⁰/g, "^0"],
+    [/½/g, "\\frac{1}{2}"],
+    [/⅓/g, "\\frac{1}{3}"],
+    [/⅔/g, "\\frac{2}{3}"],
+    [/¼/g, "\\frac{1}{4}"],
+    [/¾/g, "\\frac{3}{4}"],
+  ];
+
+  for (const [regex, rep] of UNICODE_TRANSLATIONS) {
+    s = s.replace(regex, rep);
+  }
+
+  // 2. ASCII Shorthands to LaTeX
+  s = s.replace(/!=|\/=/g, " \\neq ");
+  s = s.replace(/<=/g, " \\leq ");
+  s = s.replace(/>=/g, " \\geq ");
+  s = s.replace(/~=|~~/g, " \\approx ");
+  s = s.replace(/\+-/g, " \\pm ");
+  s = s.replace(/-\+/g, " \\mp ");
+  s = s.replace(/<==>|<=>/g, " \\Leftrightarrow ");
+  s = s.replace(/==>|=>/g, " \\Rightarrow ");
+  s = s.replace(/-->|->/g, " \\rightarrow ");
+  s = s.replace(/<--|<-/g, " \\leftarrow ");
+
+  // 3. Roots & powers: sqrt(...) -> \sqrt{...}, cbrt(...) -> \sqrt[3]{...}
+  s = s.replace(/\bsqrt\s*\(([^)]+)\)/gi, "\\sqrt{$1}");
+  s = s.replace(/\bcbrt\s*\(([^)]+)\)/gi, "\\sqrt[3]{$1}");
+
+  // 4. Degrees: e.g. 90deg, 180 degrees -> 90^\circ
+  s = s.replace(/(\d+)\s*(?:deg|degrees)\b/gi, "$1^\\circ");
+
+  // 5. Common word formulas: wrap descriptive math words in \text{...}
+  const WORDS_TO_WRAP = [
+    "Area", "Perimeter", "Volume", "Length", "Width", "Height", "Base", "Radius",
+    "Diameter", "Circumference", "Hypotenuse", "Slope", "Mean", "Median", "Mode",
+    "Range", "Probability", "Step", "Count", "Sum", "Total", "event", "favorable"
+  ];
+  for (const w of WORDS_TO_WRAP) {
+    const r = new RegExp(`(?<!\\\\text\\{)\\b${w}\\b(?![a-zA-Z0-9_{])`, "g");
+    s = s.replace(r, `\\text{${w}}`);
+  }
+
+  // 6. Trigonometric and math functions: ensure leading backslash if not present
+  s = s.replace(/(?<!\\)\b(sin|cos|tan|sec|csc|cot|arcsin|arccos|arctan|log|ln|lim|exp|det|max|min)\b/g, "\\$1");
+
+  // 7. Multiplication asterisk between terms: '2 * x' -> '2 \\cdot x'
+  s = s.replace(/(\w|\))\s*\*\s*(\w|\()/g, "$1 \\cdot $2");
+
+  // 8. Clean double spaces
+  s = s.replace(/\s+/g, " ").trim();
+
   return s;
 }
 
-function renderKaTeX(latex) {
+export function renderKaTeX(latex, isBlock = false) {
   if (!latex) return null;
+  const cleaned = translateToKaTeX(latex);
   try {
-    return katex.renderToString(cleanLatexString(latex), {
-      displayMode: false,
+    return katex.renderToString(cleaned, {
+      displayMode: isBlock,
       throwOnError: false,
+      trust: true,
+      strict: false,
     });
   } catch (e) {
+    console.warn("KaTeX render fallback:", e);
     return null;
   }
 }
 
-const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, index = 0 }) => {
-  const cleanText = useMemo(() => cleanLatexString(text), [text]);
+/**
+ * AnimatedTeacherHandwriting:
+ * Renders directly on the whiteboard surface with pure dry-erase marker ink (NO CARDS, NO BOXES).
+ * Cascades neatly down the board to prevent overlapping and shows teacher transformation arrows.
+ */
+const AnimatedTeacherHandwriting = ({
+  text,
+  explanation,
+  color = "blue",
+  x,
+  y,
+  index = 0,
+  stepNumber,
+  arrowLabel,
+  isFinalSolution = false,
+  totalSteps = 1,
+}) => {
+  const cleanText = useMemo(() => translateToKaTeX(text), [text]);
   const [displayedChars, setDisplayedChars] = useState(0);
 
-  // Progressive handwriting stroke animation effect
+  // Progressive handwriting typewriter animation
   useEffect(() => {
     setDisplayedChars(0);
     const totalChars = cleanText.length;
@@ -3154,7 +3273,7 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
       if (current >= totalChars) {
         clearInterval(interval);
       }
-    }, 28); // 28ms per character matches natural human handwriting speed while speaking
+    }, 24); // 24ms matches real human handwriting cadence while speaking
 
     return () => clearInterval(interval);
   }, [cleanText]);
@@ -3162,10 +3281,16 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
   const isComplete = displayedChars >= cleanText.length;
   const animatedPartialText = cleanText.slice(0, displayedChars);
 
-  // Check if text is LaTeX math formula
+  // Check if text should be parsed with KaTeX
   const isLatex = useMemo(() => {
-    return /[\\[\]{}^_=+*/<>~]|\b(lim|inf|sup|frac|dots|sqrt|times|approx|leq|geq|neq|pm)\b/i.test(cleanText) ||
-      cleanText.includes("=") || cleanText.includes("+") || cleanText.includes("-");
+    return (
+      /[\\[\]{}^_=+*/<>~]|\b(lim|inf|sup|frac|dots|sqrt|times|approx|leq|geq|neq|pm|div|cdot|pi|theta|sin|cos|tan)\b/i.test(
+        cleanText
+      ) ||
+      cleanText.includes("=") ||
+      cleanText.includes("+") ||
+      cleanText.includes("-")
+    );
   }, [cleanText]);
 
   const katexHtml = useMemo(() => {
@@ -3173,20 +3298,20 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
     return renderKaTeX(isComplete ? cleanText : animatedPartialText);
   }, [isLatex, cleanText, isComplete, animatedPartialText]);
 
-  const textColor = useMemo(() => {
-    if (!color || color === "black") return "#111111";
-    if (color === "blue") return "#2563eb";
-    if (color === "green") return "#16a34a";
-    if (color === "red") return "#ef4444";
-    if (color === "purple") return "#8b5cf6";
-    if (color === "orange") return "#f97316";
-    return color;
+  const inkColor = useMemo(() => {
+    if (COLOR_MAP[color]) return COLOR_MAP[color].ink;
+    return color || "#1d4ed8";
   }, [color]);
 
-  // Clean structured slot positioning preventing any overlaps
-  const slotTop = 18 + (index % 4) * 18;
-  const topPos = y !== undefined && y > 15 ? Math.min(y, 75) : slotTop;
-  const leftPos = x !== undefined && x > 0 ? Math.min(x, 60) : 8;
+  // Intelligent non-overlapping slot calculation:
+  // Step 1 -> 14%, Step 2 -> 32%, Step 3 -> 50%, Step 4+ -> 68%
+  const effectiveStepIndex = stepNumber !== undefined && stepNumber !== null ? stepNumber - 1 : index;
+  const slotTop = 14 + (effectiveStepIndex % 4) * 19;
+  const topPos = y !== undefined && y > 10 && y < 85 ? y : slotTop;
+  const leftPos = x !== undefined && x > 0 && x < 75 ? x : 8;
+
+  const displayStepLabel = stepNumber ? `Step ${stepNumber}` : totalSteps > 1 ? `Step ${index + 1}` : null;
+  const isSolutionBoxed = isFinalSolution || /(^x\s*=|solution|answer|result)/i.test(cleanText) && isComplete;
 
   return (
     <div
@@ -3198,53 +3323,155 @@ const AnimatedTeacherHandwriting = ({ text, explanation, color = "black", x, y, 
         pointerEvents: "none",
         display: "flex",
         flexDirection: "column",
-        gap: 4,
-        maxWidth: "600px",
+        gap: 3,
+        maxWidth: "680px",
         userSelect: "none",
         animation: "fadeIn 0.2s ease",
       }}
     >
-      {katexHtml ? (
+      {/* Instructional Teacher Transition Arrow Linking from Previous Step */}
+      {(arrowLabel || (index > 0 && !y)) && (
         <div
-          className="katex-math-render"
           style={{
-            fontSize: "clamp(22px, 2.6vw, 32px)",
-            color: textColor,
-            fontWeight: 700,
-            letterSpacing: "0.01em",
-            lineHeight: 1.3,
-            display: "inline-flex",
+            display: "flex",
             alignItems: "center",
-          }}
-          dangerouslySetInnerHTML={{ __html: katexHtml }}
-        />
-      ) : (
-        <span
-          style={{
-            fontFamily: "'Outfit', -apple-system, sans-serif",
-            fontSize: "clamp(18px, 2vw, 24px)",
-            fontWeight: 700,
-            color: textColor,
-            lineHeight: "1.35",
-            letterSpacing: "-0.01em",
+            gap: 8,
+            marginBottom: 2,
+            userSelect: "none",
           }}
         >
-          {animatedPartialText}
-          {!isComplete && (
-            <span style={{ display: "inline-block", width: 2, height: "1em", background: textColor, marginLeft: 2, animation: "blink 0.6s infinite" }} />
+          <svg width="20" height="22" viewBox="0 0 20 22" fill="none">
+            <path
+              d="M10 2 V16 M5 11 L10 16 L15 11"
+              stroke={inkColor}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {arrowLabel && (
+            <span
+              style={{
+                fontFamily: "'Outfit', -apple-system, sans-serif",
+                fontSize: "12.5px",
+                fontWeight: 700,
+                color: inkColor,
+                background: "rgba(241, 245, 249, 0.95)",
+                padding: "2px 8px",
+                borderRadius: 6,
+                border: `1px dashed ${inkColor}66`,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {arrowLabel}
+            </span>
           )}
-        </span>
+        </div>
       )}
 
+      {/* Direct Whiteboard Math Ink (Zero Cards, Pure Dry-Erase Whiteboard Canvas Look) */}
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+          background: "transparent",
+          border: isSolutionBoxed ? `2.5px solid ${inkColor}` : "none",
+          borderRadius: isSolutionBoxed ? 10 : 0,
+          padding: isSolutionBoxed ? "6px 14px" : "0",
+          boxShadow: isSolutionBoxed ? `0 0 12px ${inkColor}22` : "none",
+          transition: "border 0.2s ease, padding 0.2s ease",
+        }}
+      >
+        {displayStepLabel && (
+          <span
+            style={{
+              fontFamily: "'Outfit', -apple-system, sans-serif",
+              fontSize: "12px",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: inkColor,
+              opacity: 0.85,
+              marginRight: 4,
+            }}
+          >
+            {displayStepLabel}:
+          </span>
+        )}
+
+        {katexHtml ? (
+          <div
+            className="katex-math-render"
+            style={{
+              fontSize: "clamp(24px, 2.8vw, 36px)",
+              color: inkColor,
+              fontWeight: 600,
+              letterSpacing: "0.01em",
+              lineHeight: 1.25,
+              display: "inline-flex",
+              alignItems: "center",
+            }}
+            dangerouslySetInnerHTML={{ __html: katexHtml }}
+          />
+        ) : (
+          <span
+            style={{
+              fontFamily: "'Outfit', -apple-system, sans-serif",
+              fontSize: "clamp(20px, 2.2vw, 28px)",
+              fontWeight: 700,
+              color: inkColor,
+              lineHeight: "1.3",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {animatedPartialText}
+            {!isComplete && (
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 2.5,
+                  height: "1em",
+                  background: inkColor,
+                  marginLeft: 3,
+                  animation: "blink 0.6s infinite",
+                }}
+              />
+            )}
+          </span>
+        )}
+
+        {isSolutionBoxed && (
+          <span
+            style={{
+              fontFamily: "'Outfit', -apple-system, sans-serif",
+              fontSize: "11px",
+              fontWeight: 800,
+              color: "#ffffff",
+              background: inkColor,
+              padding: "2px 6px",
+              borderRadius: 4,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              marginLeft: 6,
+            }}
+          >
+            Solution
+          </span>
+        )}
+      </div>
+
+      {/* Teacher Explanation Written Below Math Ink */}
       {explanation && isComplete && (
         <span
           style={{
-            fontFamily: "'Outfit', sans-serif",
-            fontSize: "13.5px",
-            fontWeight: 500,
-            color: textColor === "#111111" ? "#555555" : textColor,
-            lineHeight: "1.4",
-            opacity: 0.9,
+            fontFamily: "'Outfit', -apple-system, sans-serif",
+            fontSize: "14px",
+            fontWeight: 600,
+            color: inkColor === "#0f172a" ? "#475569" : inkColor,
+            lineHeight: "1.35",
+            opacity: 0.92,
+            paddingLeft: 2,
             animation: "fadeIn 0.3s ease",
           }}
         >
@@ -3286,6 +3513,7 @@ const InteractiveWhiteboard = ({
   const debounceTimerRef = React.useRef(null);
   const [isGridVisible, setIsGridVisible] = useState(false);
   const [showMathMenu, setShowMathMenu] = useState(false);
+  const [isCheckingBoard, setIsCheckingBoard] = useState(false);
 
   // Sync with parent page lines
   React.useEffect(() => {
@@ -3311,7 +3539,11 @@ const InteractiveWhiteboard = ({
   const emitFrame = React.useCallback((triggerTurn = false) => {
     if (!effectiveStageRef.current || !onCanvasFrame) return;
     try {
-      const dataUrl = effectiveStageRef.current.toDataURL({ mimeType: "image/jpeg", quality: 0.6, pixelRatio: 1 });
+      if (triggerTurn) {
+        setIsCheckingBoard(true);
+        setTimeout(() => setIsCheckingBoard(false), 3000);
+      }
+      const dataUrl = effectiveStageRef.current.toDataURL({ mimeType: "image/jpeg", quality: 0.85, pixelRatio: 1 });
       onCanvasFrame(dataUrl, triggerTurn);
     } catch (e) {
       console.warn("Canvas frame capture error:", e);
@@ -3322,7 +3554,7 @@ const InteractiveWhiteboard = ({
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       emitFrame(false);
-    }, 800);
+    }, 600);
   }, [emitFrame]);
 
   const saveHistory = (newLines) => {
@@ -3801,6 +4033,15 @@ const InteractiveWhiteboard = ({
               onTouchEnd={handlePointerUp}
             >
               <Layer>
+                {/* Solid white background so exported snapshots are clean and crisp rather than transparent/black */}
+                <Rect
+                  x={0}
+                  y={0}
+                  width={dimensions.width || 1200}
+                  height={dimensions.height || 800}
+                  fill="#ffffff"
+                  listening={false}
+                />
                 {localLines.map((line, i) => (
                   line.type === "text" ? (
                     <KonvaText
@@ -3869,16 +4110,20 @@ const InteractiveWhiteboard = ({
           </div>
         ))}
 
-        {/* AI Live Teacher Handwriting Animated On Whiteboard */}
+        {/* AI Live Teacher Handwriting & Math Steps Directly on Whiteboard (No Cards) */}
         {aiHints.map((hint, idx) => (
           <AnimatedTeacherHandwriting
             key={hint.id || idx}
             index={idx}
+            stepNumber={hint.stepNumber}
+            arrowLabel={hint.arrowLabel}
+            isFinalSolution={hint.isFinalSolution}
             text={hint.text}
             explanation={hint.explanation}
             color={hint.color || "blue"}
             x={hint.x}
             y={hint.y}
+            totalSteps={aiHints.length}
           />
         ))}
 
@@ -4085,27 +4330,29 @@ const InteractiveWhiteboard = ({
           <button
             type="button"
             onClick={() => emitFrame(true)}
+            disabled={isCheckingBoard}
             style={{
               height: 38,
               padding: "0 14px",
               borderRadius: 8,
-              background: "#0a0a0a",
+              background: isCheckingBoard ? "#2563eb" : "#0a0a0a",
               color: "#ffffff",
               border: 0,
               fontFamily: "Outfit, sans-serif",
               fontSize: 13,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: isCheckingBoard ? "default" : "pointer",
               marginLeft: "auto",
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+              transition: "all 0.2s ease",
             }}
             title="Ask AI Teacher to inspect whiteboard work"
           >
-            <Zap size={15} />
-            <span>Check My Board</span>
+            <Zap size={15} style={{ transform: isCheckingBoard ? "scale(1.2)" : "none", transition: "transform 0.2s ease" }} />
+            <span>{isCheckingBoard ? "Inspecting Board..." : "Check My Board"}</span>
           </button>
           <button
             type="button"
@@ -4423,10 +4670,13 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               const rawText = args.latex || args.text;
               if (rawText) {
                 const newHint = {
-                  id: Date.now(),
+                  id: Date.now() + Math.random(),
                   text: rawText,
                   x: args.x,
                   y: args.y,
+                  stepNumber: args.step_number || args.step || null,
+                  arrowLabel: args.arrow_label || null,
+                  isFinalSolution: !!args.is_final_solution,
                   color: args.color || "blue",
                   explanation: args.explanation,
                 };
@@ -4436,7 +4686,23 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                     return prev;
                   }
                   const next = [...prev, newHint];
-                  return next.length > 4 ? next.slice(next.length - 4) : next;
+                  return next.length > 5 ? next.slice(next.length - 5) : next;
+                });
+              }
+            } else if (name === "draw_arrow_annotation") {
+              const actionText = args.action_text || args.label || "";
+              if (actionText) {
+                setAiHints((prev) => {
+                  if (prev.length > 0) {
+                    const lastIdx = prev.length - 1;
+                    const updated = [...prev];
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      arrowLabel: actionText,
+                    };
+                    return updated;
+                  }
+                  return prev;
                 });
               }
             } else if (name === "show_socratic_hint") {
@@ -4577,33 +4843,119 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 ]);
               }
             } else if (name === "draw_geometric_shape") {
-              const shapeType = args.shape_type || "triangle";
+              const shapeType = (args.shape_type || "triangle").toLowerCase();
+              const color = args.color || "blue";
+              const strokeColor = COLOR_MAP[color]?.ink || "#1d4ed8";
               const cx = 400;
               const cy = 240;
               const strokes = [];
 
-              if (shapeType === "circle") {
+              if (shapeType === "coordinate_grid" || shapeType === "graph" || shapeType === "coordinate_plane") {
+                // X Axis
+                strokes.push({
+                  tool: "pen",
+                  color: "#0f172a",
+                  strokeWidth: 3,
+                  points: [cx - 200, cy, cx + 200, cy],
+                });
+                strokes.push({
+                  tool: "pen",
+                  color: "#0f172a",
+                  strokeWidth: 3,
+                  points: [cx + 190, cy - 6, cx + 200, cy, cx + 190, cy + 6],
+                });
+                // Y Axis
+                strokes.push({
+                  tool: "pen",
+                  color: "#0f172a",
+                  strokeWidth: 3,
+                  points: [cx, cy + 150, cx, cy - 150],
+                });
+                strokes.push({
+                  tool: "pen",
+                  color: "#0f172a",
+                  strokeWidth: 3,
+                  points: [cx - 6, cy - 140, cx, cy - 150, cx + 6, cy - 140],
+                });
+                // Axis Labels
+                strokes.push({
+                  type: "text",
+                  x: cx + 205,
+                  y: cy - 10,
+                  text: "x",
+                  fontSize: 16,
+                  fontStyle: "bold",
+                  color: "#0f172a",
+                });
+                strokes.push({
+                  type: "text",
+                  x: cx + 10,
+                  y: cy - 155,
+                  text: "y",
+                  fontSize: 16,
+                  fontStyle: "bold",
+                  color: "#0f172a",
+                });
+                // Grid Tick Marks
+                for (let i = -4; i <= 4; i++) {
+                  if (i !== 0) {
+                    const tx = cx + i * 40;
+                    strokes.push({
+                      tool: "pen",
+                      color: "#94a3b8",
+                      strokeWidth: 2,
+                      points: [tx, cy - 5, tx, cy + 5],
+                    });
+                    const ty = cy - i * 30;
+                    strokes.push({
+                      tool: "pen",
+                      color: "#94a3b8",
+                      strokeWidth: 2,
+                      points: [cx - 5, ty, cx + 5, ty],
+                    });
+                  }
+                }
+              } else if (shapeType === "right_triangle") {
+                const ox = cx - 90;
+                const oy = cy + 70;
+                const legA = 130;
+                const legB = 170;
+                // Triangle
+                strokes.push({
+                  tool: "pen",
+                  color: strokeColor,
+                  strokeWidth: 3.5,
+                  points: [ox, oy, ox + legB, oy, ox, oy - legA, ox, oy],
+                });
+                // Right angle square
+                strokes.push({
+                  tool: "pen",
+                  color: "#64748b",
+                  strokeWidth: 2.5,
+                  points: [ox + 16, oy, ox + 16, oy - 16, ox, oy - 16],
+                });
+              } else if (shapeType === "circle") {
                 const r = 80;
                 const pts = [];
                 for (let i = 0; i <= 36; i++) {
                   const angle = (i / 36) * 2 * Math.PI;
                   pts.push(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
                 }
-                strokes.push({ tool: "pen", color: "#2563eb", strokeWidth: 3.5, points: pts });
+                strokes.push({ tool: "pen", color: strokeColor, strokeWidth: 3.5, points: pts });
               } else if (shapeType === "rectangle" || shapeType === "square") {
                 const rw = shapeType === "square" ? 140 : 200;
                 const rh = shapeType === "square" ? 140 : 110;
                 strokes.push({
                   tool: "shape-rect",
-                  color: "#2563eb",
+                  color: strokeColor,
                   strokeWidth: 3.5,
                   points: [cx - rw / 2, cy - rh / 2, cx + rw / 2, cy - rh / 2, cx + rw / 2, cy + rh / 2, cx - rw / 2, cy + rh / 2, cx - rw / 2, cy - rh / 2],
                 });
               } else {
-                // Triangle
+                // Equilateral / General Triangle
                 strokes.push({
                   tool: "pen",
-                  color: "#2563eb",
+                  color: strokeColor,
                   strokeWidth: 3.5,
                   points: [cx, cy - 80, cx + 90, cy + 70, cx - 90, cy + 70, cx, cy - 80],
                 });
@@ -4882,9 +5234,30 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
   };
 
   const handleCanvasFrame = (base64Image, triggerTurn = false) => {
+    if (triggerTurn) {
+      const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setChatMessages((prev) => [
+        ...prev,
+        { sender: "student", text: "Checked whiteboard work (submitted to AI)", time },
+      ]);
+      setLoadingAI(true);
+    }
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "canvas_frame", data: base64Image, triggerTurn }));
     }
+  };
+
+  const handleCheckMyBoard = () => {
+    if (stageRef.current) {
+      try {
+        const dataUrl = stageRef.current.toDataURL({ mimeType: "image/jpeg", quality: 0.85, pixelRatio: 1 });
+        handleCanvasFrame(dataUrl, true);
+        return;
+      } catch (e) {
+        console.warn("stageRef capture error:", e);
+      }
+    }
+    handleSendMessage("Please check what I wrote on the whiteboard");
   };
 
   const formatAIText = (text) => {
@@ -5375,7 +5748,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               <button type="button" onClick={() => handleSendMessage("Show me a visual example on the board")}>Explain visually</button>
               <button type="button" onClick={() => handleSendMessage("Can you give me a simple analogy?")}>Give an analogy</button>
               <button type="button" onClick={() => handleSendMessage("Break down step 1 for me")}>Break down step 1</button>
-              <button type="button" onClick={() => handleSendMessage("Is my calculation on the board correct?")}>Check my board</button>
+              <button type="button" onClick={handleCheckMyBoard}>Check my board</button>
               <button type="button" onClick={() => handleSendMessage("I'm ready for the teach-back challenge!")}>Teach it back</button>
             </div>
           </div>
@@ -5572,7 +5945,7 @@ const buildSubjectsList = (courses, skillMastery = []) => {
 const AIClassroom = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [user] = useState(() => {
+  const [user, setUser] = useState(() => {
     try {
       const stored = localStorage.getItem("user");
       return stored ? JSON.parse(stored) : null;
@@ -5580,7 +5953,22 @@ const AIClassroom = () => {
       return null;
     }
   });
-  const firstName = user?.full_name?.split(" ")[0] || "Student";
+  const cachedProfile = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("tutorflow_cached_profile") || "null");
+    } catch {
+      return null;
+    }
+  }, []);
+  const avatarUrl =
+    user?.avatar_url ||
+    user?.profile?.avatar_url ||
+    cachedProfile?.avatar_url ||
+    cachedProfile?.profile?.avatar_url ||
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.picture ||
+    "";
+  const firstName = user?.full_name?.split(" ")[0] || cachedProfile?.full_name?.split(" ")[0] || "Student";
   const [subjectsList, setSubjectsList] = useState(() => {
     try {
       const cachedCurr = JSON.parse(localStorage.getItem("tutorflow_cached_curriculum") || "null");
@@ -5717,8 +6105,13 @@ const AIClassroom = () => {
               className="tf-user-avatar"
               onClick={() => navigate("/profile")}
               title="View Profile"
+              style={{ overflow: "hidden" }}
             >
-              {firstName ? firstName[0].toUpperCase() : "M"}
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+              ) : (
+                firstName ? firstName[0].toUpperCase() : "M"
+              )}
             </div>
           </div>
         </div>
@@ -5995,7 +6388,20 @@ const AIClassroom = () => {
           <article className="detail-card side-card ready-card">
             <h2>Ready to begin?</h2>
             <p>Join your AI Teacher and start learning at your own pace.</p>
-            <button type="button" className="start-button" onClick={() => setLiveLesson(true)}>
+            <button
+              type="button"
+              className="start-button"
+              onClick={() => {
+                const targetTopic = nextLessonData?.lesson || selectedSubject.lessonsList?.[0]?.title || selectedSubject.name;
+                setSelectedSubject({
+                  ...selectedSubject,
+                  name: targetTopic,
+                  subject: selectedSubject.name,
+                  module: targetTopic,
+                });
+                setLiveLesson(true);
+              }}
+            >
               <Play size={20} fill="currentColor" strokeWidth={0} />
               Start Lesson
             </button>
@@ -6029,8 +6435,13 @@ const AIClassroom = () => {
             className="tf-user-avatar"
             onClick={() => navigate("/profile")}
             title="View Profile"
+            style={{ overflow: "hidden" }}
           >
-            {user?.full_name ? user.full_name[0].toUpperCase() : (user?.email ? user.email[0].toUpperCase() : "S")}
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+            ) : (
+              firstName ? firstName[0].toUpperCase() : "S"
+            )}
           </div>
         </div>
       </header>

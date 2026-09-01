@@ -63,17 +63,34 @@ def get_live_tools():
                 ),
                 types.FunctionDeclaration(
                     name="write_math_equation",
-                    description="Write a formatted LaTeX mathematical equation or step onto the whiteboard in handwriting style.",
+                    description="Write a formatted LaTeX mathematical equation or step onto the whiteboard in natural teacher handwriting style.",
                     parameters=types.Schema(
                         type=types.Type.OBJECT,
                         properties={
                             "latex": types.Schema(type=types.Type.STRING, description="The clean equation or mathematical step, e.g. '2x + 4 = 10' or 'x = 3'"),
-                            "x": types.Schema(type=types.Type.NUMBER, description="X coordinate percentage (e.g. 6 for left side)"),
-                            "y": types.Schema(type=types.Type.NUMBER, description="Y coordinate percentage (0-100)"),
+                            "step_number": types.Schema(type=types.Type.INTEGER, description="Step sequence number (1, 2, 3, 4...) for clean top-to-bottom layout"),
+                            "arrow_label": types.Schema(type=types.Type.STRING, description="Instructional transformation arrow from previous step, e.g. '- 4 from both sides', '÷ 2'"),
+                            "is_final_solution": types.Schema(type=types.Type.BOOLEAN, description="Set true if this is the final solved answer to box/circle it"),
+                            "x": types.Schema(type=types.Type.NUMBER, description="Optional X coordinate percentage (e.g. 8 for left alignment)"),
+                            "y": types.Schema(type=types.Type.NUMBER, description="Optional Y coordinate percentage (0-100)"),
                             "color": types.Schema(type=types.Type.STRING, description="Marker color: 'blue', 'green', 'red', 'purple', 'black', 'orange'"),
                             "explanation": types.Schema(type=types.Type.STRING, description="Brief note explaining this step"),
                         },
                         required=["latex"],
+                    ),
+                ),
+                types.FunctionDeclaration(
+                    name="draw_arrow_annotation",
+                    description="Draw an instructional whiteboard arrow pointing from one step to the next with an operation note (e.g. 'subtract 5 from both sides').",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "from_step": types.Schema(type=types.Type.INTEGER, description="Starting step number (e.g. 1)"),
+                            "to_step": types.Schema(type=types.Type.INTEGER, description="Target step number (e.g. 2)"),
+                            "action_text": types.Schema(type=types.Type.STRING, description="Transformation action note (e.g. '− 5 from both sides', '÷ 2')"),
+                            "color": types.Schema(type=types.Type.STRING, description="Marker color: 'blue', 'green', 'red', 'purple', 'black', 'orange'"),
+                        },
+                        required=["action_text"],
                     ),
                 ),
                 types.FunctionDeclaration(
@@ -342,7 +359,7 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
         user_id = ""
         cognitive_mode = "normal"
 
-    # Load student's AI profile
+    # Load student's AI profile & canonical topic node
     learner_context = get_student_learner_context(user_id=user_id, topic=topic, cognitive_mode=cognitive_mode) if user_id else {}
     profile = learner_context.get("profile", {})
     missing_prereqs = learner_context.get("missing_prerequisites", [])
@@ -351,57 +368,85 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
     student_full_name = profile.get("name") or "there"
     first_name = student_full_name.split()[0] if student_full_name and student_full_name != "Student" else ""
     greeting_target = first_name if first_name else "there"
-    canonical_topic = learner_context.get("topic", topic)
+    
+    topic_node = find_topic_node(topic)
+    canonical_topic = topic_node["name"] if topic_node else (learner_context.get("topic") or topic)
+    topic_category = topic_node.get("category", "General") if topic_node else "General"
+    topic_subject = topic_node.get("subject", "Mathematics") if topic_node else "Mathematics"
+
     current_session_id = str(uuid.uuid4())
+    session_start_time = datetime.now(timezone.utc)
     if user_id and is_valid_uuid(user_id):
         try:
             admin_client().table("tutoring_sessions").insert({
                 "id": current_session_id,
                 "user_id": user_id,
                 "topic": canonical_topic,
-                "subject": "Mathematics",
+                "subject": topic_category if topic_category != "General" else topic_subject,
                 "status": "in_progress",
                 "teaching_strategy": cognitive_mode or "Visual Intuition",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": session_start_time.isoformat(),
             }).execute()
-            logger.info(f"[LIVE WS DB] Created live tutoring session {current_session_id}")
+            logger.info(f"[LIVE WS DB] Created live tutoring session {current_session_id} for topic '{canonical_topic}' ({topic_category})")
         except Exception as sess_err:
             logger.warning(f"[LIVE WS DB] Could not create session row: {sess_err}")
 
     live_model_name = settings.gemini_live_model or "gemini-2.5-flash-native-audio-latest"
 
     system_instruction_text = f"""You are TutorFlow AI, a warm, joyful, encouraging, and patient 1-on-1 private teacher.
-Topic: {canonical_topic}.
-Name: {greeting_target}.
+Active Lesson Subject: {topic_subject}.
+Active Lesson Category: {topic_category}.
+Active Lesson Topic: {canonical_topic}.
+Student Name: {greeting_target}.
 Grade Level: {profile.get('grade', '9th Grade')}.
 Cognitive Mode: {cognitive_mode}.
-Missing Prerequisites: {json.dumps(missing_prereqs)}.
 Past Misconceptions: {[m.get('misconception_type') for m in past_mistakes]}.
 
-CRITICAL CONVERSATIONAL & TEACHING RULES:
-1. NATURAL SECOND-PERSON DIALOGUE:
+MANDATORY SUBJECT & TOPIC FIDELITY RULES:
+1. STRICT SUBJECT & TOPIC FOCUS:
+   - You MUST teach ONLY and DIRECTLY the topic "{canonical_topic}".
+   - DO NOT start teaching basic integers, elementary arithmetic, or unrelated algebra topics unless "{canonical_topic}" is specifically an integer lesson or the student asks for it.
+   - If the student selected a GEOMETRY topic (e.g. Angles, Triangles, Area and Volume, Pythagorean Theorem):
+     * Teach GEOMETRY principles, angle classifications, angle sums, geometric shapes, and formulas.
+   - If the student selected a STATISTICS & PROBABILITY topic (e.g. Reading Data Displays, Measures of Center, Probability):
+     * Teach STATISTICS & PROBABILITY concepts, bar/line/circle graph interpretation, mean/median/mode, or probability ratios.
+   - If the student selected a FUNCTIONS topic (e.g. Relations and Functions, Function Tables, Graphing Linear Functions):
+     * Teach FUNCTIONS, input/output mappings, vertical line test, function tables, or slope-intercept form (y = mx + b).
+   - If the student selected an ALGEBRA topic (e.g. Variables & Expressions, Combining Like Terms, Linear Equations, Quadratics):
+     * Teach ALGEBRA equations and balancing inverse operations.
+   - If the student selected a PRE-ALGEBRA topic (e.g. Order of Operations, Signed Numbers, Fractions):
+     * Teach PRE-ALGEBRA operations and number lines.
+
+2. NATURAL SECOND-PERSON DIALOGUE:
    - Always talk directly to the student as "you".
    - NEVER use the word "learner", "student", or "user" when speaking.
    - Speak like a friendly, enthusiastic human tutor in a voice call.
 
-2. TOPIC-SPECIFIC WHITEBOARD WRITING (MANDATORY WHILE SPEAKING):
-   - The student learns mathematics by SEEING IT WRITTEN AS YOU SPEAK.
-   - ALWAYS write math steps on the whiteboard using the exact tool appropriate for the topic:
-     * FOR ALGEBRA / EQUATIONS / EXPRESSIONS / POLYNOMIALS / QUADRATICS:
-       - Use `write_math_equation` to write clear algebraic equations (e.g. '2x + 5 = 15'), intermediate steps (e.g. '2x = 10'), and solutions ('x = 5').
-       - You may use `display_interactive_balance_scale` to show balance on two sides.
-       - NEVER DRAW NUMBER LINES FOR ALGEBRA TOPICS!
-     * FOR PRE-ALGEBRA / INTEGERS / SIGNED NUMBERS / NUMBER LINE GRAPHING:
-       - Use `draw_number_line` or `write_math_equation` for integer arithmetic.
+3. TOPIC-SPECIFIC WHITEBOARD WRITING, STEP CASCADING & ARROWS (MANDATORY WHILE SPEAKING):
+   - The student learns by SEEING STEPS WRITTEN CLEARLY AS YOU SPEAK.
+   - ALWAYS write steps on the whiteboard using the exact tool appropriate for "{canonical_topic}":
+     * Step-by-step layout & avoid overlapping:
+       - Use `write_math_equation` with `step_number=1` for initial problem, `step_number=2` for next step, `step_number=3`, etc.
+       - Use `arrow_label` or `draw_arrow_annotation` (e.g. '− 5 from both sides', '÷ 2', 'combine like terms', 'take square root') to show instructional arrows pointing down between steps, exactly like a human teacher!
+       - When reaching the final solved answer, set `is_final_solution=True` to draw a clean highlighted solution box.
      * FOR GEOMETRY:
-       - Use `draw_geometric_shape` and `write_math_equation` for formulas (e.g. 'a^2 + b^2 = c^2').
+       - Use `draw_geometric_shape` to draw shapes ('right_triangle', 'triangle', 'rectangle', 'circle', 'coordinate_grid').
+       - Use `write_math_equation` for geometric theorems and angle steps (e.g. '\\angle A + \\angle B = 90^\\circ', 'a^2 + b^2 = c^2', '\\text{{Area}} = \\frac{{1}}{{2}} b h').
+     * FOR STATISTICS & PROBABILITY:
+       - Use `write_math_equation` for formulas, calculations, and probabilities (e.g. 'P(\\text{{event}}) = \\frac{{\\text{{favorable}}}}{{\\text{{total}}}}', '\\text{{Mean}} = \\frac{{\\text{{Sum}}}}{{\\text{{Count}}}}').
      * FOR FUNCTIONS:
-       - Use `write_math_equation` for function rules 'f(x) = 2x + 1' and coordinates.
+       - Use `write_math_equation` for function definitions 'f(x) = 2x + 1', coordinate points '(x, y)', and slope equations.
+     * FOR ALGEBRA:
+       - Use `write_math_equation` for algebraic equations (e.g. '2x + 5 = 15', '2x = 10', 'x = 5').
+       - You may use `display_interactive_balance_scale` to illustrate two-sided balance.
+     * FOR PRE-ALGEBRA / INTEGERS:
+       - Use `draw_number_line` or `write_math_equation` for arithmetic and signed numbers.
+   - Call `clear_ai_writing()` before starting a new worked example or practice problem to keep the whiteboard clean!
    - Never explain in pure audio alone without writing on the whiteboard!
 
-3. PROACTIVE GUIDANCE ON HESITATION & MISTAKES:
+4. PROACTIVE GUIDANCE ON HESITATION & MISTAKES:
    - Always respond out loud with clear spoken audio to every student turn.
-   - If the student hesitates, pauses, seems unsure, or says "I don't know" / "I'm stuck" / "um":
+   - If the student hesitates, pauses, seems unsure, or says "I don't know" / "I'm stuck":
      * Step in proactively with warm encouragement ("No worries, let's break it down together!").
      * Write the first breakdown step or hint equation directly on the whiteboard (`write_math_equation`), and ask a simple guiding question to help them finish it.
    - When the student answers:
@@ -410,15 +455,15 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
    - When the student asks to repeat or re-explain ("repeat the question", "say that again", "I don't understand"):
      * Instantly repeat the question or current step cheerfully in clear words and ensure it is clearly written on the whiteboard!
 
-4. STRUCTURED 4-STEP LESSON FLOW & CLEAR CONCLUSION:
-   - Step 1 (Visual Intuition): Introduce the concept with an intuitive real-world analogy, write the concept on the board, and call `update_lesson_step(step_index=1, step_title="Visual Intuition")`.
-   - Step 2 (Worked Whiteboard Example): Call `clear_ai_writing()` to start fresh. Work through a clear worked example on the whiteboard using `write_math_equation` and call `update_lesson_step(step_index=2, step_title="Worked Example")`.
-   - Step 3 (Guided Practice): Call `clear_ai_writing()`. Write ONE practice problem on the whiteboard using `write_math_equation` and ask the student to solve it. Call `update_lesson_step(step_index=3, step_title="Guided Practice")`.
+5. STRUCTURED 4-STEP LESSON FLOW & CLEAR CONCLUSION:
+   - Step 1 (Visual Intuition): Introduce {canonical_topic} with an intuitive real-world analogy, write the concept on the board, and call `update_lesson_step(step_index=1, step_title="Visual Intuition")`.
+   - Step 2 (Worked Whiteboard Example): Call `clear_ai_writing()` to start fresh. Work through a clear worked example on the whiteboard for {canonical_topic} using `write_math_equation` or `draw_geometric_shape` and call `update_lesson_step(step_index=2, step_title="Worked Example")`.
+   - Step 3 (Guided Practice): Call `clear_ai_writing()`. Write ONE practice problem on the whiteboard for {canonical_topic} and ask the student to solve it. Call `update_lesson_step(step_index=3, step_title="Guided Practice")`.
    - Step 4 (Mastery & Conclusion): Once the student answers correctly, enthusiastically conclude the lesson:
      * Say: "Congratulations! You have successfully mastered today's lesson on {canonical_topic}! You did an amazing job today. We are all finished with this topic. You can click 'End Lesson' to view your report card, or let me know if you want to explore anything else!"
      * Call `conclude_lesson(mastery_summary="Mastered core concepts and practice in " + canonical_topic)` and `update_lesson_step(step_index=4, step_title="Lesson Concluded")`.
 
-5. BITE-SIZED MICRO-STEPS:
+6. BITE-SIZED MICRO-STEPS:
    - In each spoken turn, speak ONLY 1-2 concise, energetic sentences, followed by 1 clear guiding question. Keep turns snappy, visual, and conversational.
    - NEVER speak internal labels like 'Thought:', '[Strategy Adaptation]', 'Reasoning:', or raw JSON.
 """
@@ -523,18 +568,30 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                         try:
                                             img_bytes = base64.b64decode(img_b64)
                                             async with _send_lock:
-                                                await session.send_realtime_input(
-                                                    media_chunks=[types.Blob(data=img_bytes, mime_type="image/jpeg")]
-                                                )
                                                 if trigger_turn:
-                                                    logger.info("[LIVE WS VISION] Student clicked Check My Board — asking AI to inspect whiteboard work")
+                                                    logger.info("[LIVE WS VISION] Student clicked Check My Board — sending whiteboard image and inspection prompt")
                                                     inspect_turn = (
-                                                        "System event: The student just clicked 'Check My Board' and wants you to inspect the whiteboard in front of you. "
-                                                        "Look at what they wrote or drew on the whiteboard, check their mathematical work out loud, and tell them warmly if it is correct or guide them on the next step!"
+                                                        f"System event: The student just requested you to inspect what they wrote or calculated on the whiteboard for '{canonical_topic}'. "
+                                                        "Look carefully at the attached whiteboard image in this turn. "
+                                                        "Inspect the student's mathematical steps, numbers, equations, or drawings on the board. "
+                                                        "Speak out loud immediately to the student: let them know warmly if their work is correct, "
+                                                        "celebrate if it's right, or give a friendly, helpful hint if they made an arithmetic or conceptual error!"
                                                     )
                                                     await session.send_client_content(
-                                                        turns=[types.Content(role="user", parts=[types.Part.from_text(text=inspect_turn)])],
+                                                        turns=[
+                                                            types.Content(
+                                                                role="user",
+                                                                parts=[
+                                                                    types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"),
+                                                                    types.Part.from_text(text=inspect_turn),
+                                                                ],
+                                                            )
+                                                        ],
                                                         turn_complete=True,
+                                                    )
+                                                else:
+                                                    await session.send_realtime_input(
+                                                        media_chunks=[types.Blob(data=img_bytes, mime_type="image/jpeg")]
                                                     )
                                         except Exception as img_err:
                                             logger.warning(f"[LIVE WS] Canvas frame stream warning: {img_err}")
@@ -556,14 +613,7 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                                             logger.error(f"[LIVE WS GEMINI ERROR] Error sending text turn: {e}")
                                 elif msg_type == "interrupt":
                                     logger.info("[LIVE WS USER ACTION] Student triggered voice barge-in interrupt")
-                                    try:
-                                        async with _send_lock:
-                                            await session.send_client_content(
-                                                turns=[],
-                                                turn_complete=True,
-                                            )
-                                    except Exception as e:
-                                        logger.error(f"[LIVE WS] Error sending interrupt: {e}")
+                                    # Interruption on Gemini Live is naturally handled when client pauses audio playback and sends subsequent speech or turns.
                                 elif msg_type == "tool_response":
                                     tool_name = msg.get("name")
                                     call_id = msg.get("call_id")
@@ -771,10 +821,10 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
                     # Send kickoff turn on first attempt, or context resume turn on renewal
                     if _attempt == 1:
                         kickoff_prompt = (
-                            f"You are the AI Teacher starting a live 1-on-1 session on '{canonical_topic}'. "
+                            f"You are the AI Teacher starting a live 1-on-1 session on the topic '{canonical_topic}' in {topic_category}. "
                             f"Greet the student ({greeting_target}) super warmly and cheerfully in 1-2 spoken sentences. "
-                            f"Give a fun, super simple 1-sentence real-world analogy for {canonical_topic} that a child can grasp immediately, "
-                            f"and ask if they're ready to explore it together. Keep it warm, simple, and exciting!"
+                            f"Give a fun, super simple 1-sentence real-world intuition or analogy specifically about '{canonical_topic}', "
+                            f"and ask if they're ready to explore it together. Focus 100% on '{canonical_topic}' and keep it warm, simple, and exciting!"
                         )
                         async def send_kickoff():
                             try:
@@ -841,4 +891,15 @@ CRITICAL CONVERSATIONAL & TEACHING RULES:
             await keepalive_task
         except (asyncio.CancelledError, Exception):
             pass
+        if user_id and is_valid_uuid(user_id) and current_session_id:
+            try:
+                ended_at = datetime.now(timezone.utc)
+                duration_sec = max(1, int((ended_at - session_start_time).total_seconds()))
+                admin_client().table("tutoring_sessions").update({
+                    "ended_at": ended_at.isoformat(),
+                    "session_duration_sec": duration_sec,
+                }).eq("id", current_session_id).eq("status", "in_progress").execute()
+                logger.info(f"[LIVE WS DB] Session {current_session_id} finalized with duration {duration_sec}s")
+            except Exception as fin_err:
+                logger.warning(f"[LIVE WS DB] Session duration update warning: {fin_err}")
         logger.info("[LIVE WS] Session finished cleanly.")
