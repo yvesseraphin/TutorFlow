@@ -211,13 +211,13 @@ const styles = `
     flex-direction: column;
     justify-content: space-between;
     box-shadow: none;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease;
     cursor: pointer;
     box-sizing: border-box;
   }
 
   .tf-stat-card:hover {
-    border-color: #cbd5e1;
+    border: 1px solid #E2E8F0;
     transform: translateY(-2px);
     box-shadow: none;
   }
@@ -379,12 +379,13 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: border-color 0.2s ease;
+    transition: transform 0.18s ease;
     box-shadow: none;
   }
 
   .tf-session-card:hover {
-    border-color: #cbd5e1;
+    border: 1px solid #E2E8F0;
+    transform: translateY(-1px);
   }
 
   .tf-session-name {
