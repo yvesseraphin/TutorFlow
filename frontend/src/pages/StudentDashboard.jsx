@@ -9,8 +9,7 @@ import {
   Play,
   Target,
   TrendingUp,
-  Brain,
-  Bot,
+  GraduationCap,
   Sparkles,
   AlertTriangle,
   Activity,
@@ -628,7 +627,7 @@ const StudentDashboard = () => {
         <section className="tf-hero-card" aria-label="Tutor AI">
           <div className="tf-hero-copy">
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-              <Bot size={17} strokeWidth={2.2} color="#111111" />
+              <GraduationCap size={17} strokeWidth={2.2} color="#111111" />
               <p className="tf-hero-kicker" style={{ margin: 0 }}>AI Tutor</p>
             </div>
             <h2 className="tf-hero-heading">{nextLessonTitle}</h2>
