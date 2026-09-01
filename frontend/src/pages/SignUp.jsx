@@ -343,7 +343,7 @@ const SignUp = () => {
         }
         
         .custom-input:focus {
-          border: 2px solid #7ca1f1 !important;
+          border: 2px solid #111111 !important;
         }
         
         .google-btn:hover {
@@ -373,7 +373,7 @@ const SignUp = () => {
 
         .grade-trigger.open,
         .grade-trigger:focus {
-          border: 2px solid #7ca1f1;
+          border: 2px solid #111111;
           outline: none;
         }
 
