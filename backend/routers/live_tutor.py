@@ -459,11 +459,15 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
         topic = init_data.get("topic", "Algebra")
         user_id = init_data.get("user_id", "")
         cognitive_mode = init_data.get("cognitive_mode", "normal")
+        class_id = init_data.get("class_id", "")
+        document_id = init_data.get("document_id", "")
     except Exception as e:
         logger.warning(f"[LIVE WS] Failed parsing handshake: {e}")
         topic = "Algebra"
         user_id = ""
         cognitive_mode = "normal"
+        class_id = ""
+        document_id = ""
 
     # Load student's AI profile & canonical topic node
     learner_context = get_student_learner_context(user_id=user_id, topic=topic, cognitive_mode=cognitive_mode) if user_id else {}
@@ -483,6 +487,28 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
     # Resolve dedicated pedagogical hook & worked example for this topic
     hook_data = get_topic_pedagogical_hook(canonical_topic)
 
+    # RAG Retrieval from student's uploaded document or class
+    rag_context = ""
+    try:
+        from backend.services.rag_service import build_rag_prompt_context, get_custom_class_by_id
+        target_doc_id = document_id
+        if class_id and not target_doc_id:
+            c_info = get_custom_class_by_id(class_id, user_id)
+            if c_info:
+                target_doc_id = c_info.get("document_id")
+
+        if target_doc_id:
+            rag_context = build_rag_prompt_context(
+                query=f"{canonical_topic} {topic}",
+                user_id=user_id,
+                document_id=target_doc_id,
+                top_k=4,
+            )
+            if rag_context:
+                logger.info(f"[LIVE WS RAG] Injected {len(rag_context)} chars of study material context into tutor prompt")
+    except Exception as rag_err:
+        logger.warning(f"[LIVE WS RAG] Retrieval error: {rag_err}")
+
     current_session_id = str(uuid.uuid4())
     session_start_time = datetime.now(timezone.utc)
     if user_id and is_valid_uuid(user_id):
@@ -492,8 +518,10 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
                 "user_id": user_id,
                 "topic": canonical_topic,
                 "subject": topic_category if topic_category != "General" else topic_subject,
-                "status": "in_progress",
+                "status": "active",
                 "teaching_strategy": cognitive_mode or "Visual Intuition",
+                "class_id": class_id if is_valid_uuid(class_id) else None,
+                "document_id": target_doc_id if is_valid_uuid(target_doc_id) else None,
                 "created_at": session_start_time.isoformat(),
             }).execute()
             logger.info(f"[LIVE WS DB] Created live tutoring session {current_session_id} for topic '{canonical_topic}' ({topic_category})")
@@ -545,6 +573,10 @@ MANDATORY PROFESSIONAL TEACHING RULES:
    - Use lively conversational markers: "Notice what happens here...", "Check this out...", "Watch this step carefully...".
    - When the student hesitates or says "I don't know", respond warmly: "No worries at all! Let's break down the very first step together."
 """
+
+    if rag_context:
+        system_instruction_text += f"\n\n{rag_context}\n\nIMPORTANT GROUNDING RULE: The student uploaded this document/notes. Anchor your explanations, formulas, definitions, and examples in this material!"
+
 
     valid_voices = {"Aoede", "Puck", "Charon", "Kore", "Fenrir"}
     pref_voice = profile.get("voice_preference", "Aoede")
@@ -976,9 +1008,10 @@ MANDATORY PROFESSIONAL TEACHING RULES:
                 ended_at = datetime.now(timezone.utc)
                 duration_sec = max(1, int((ended_at - session_start_time).total_seconds()))
                 admin_client().table("tutoring_sessions").update({
+                    "status": "completed",
                     "ended_at": ended_at.isoformat(),
                     "session_duration_sec": duration_sec,
-                }).eq("id", current_session_id).eq("status", "in_progress").execute()
+                }).eq("id", current_session_id).execute()
                 logger.info(f"[LIVE WS DB] Session {current_session_id} finalized with duration {duration_sec}s")
             except Exception as fin_err:
                 logger.warning(f"[LIVE WS DB] Session duration update warning: {fin_err}")

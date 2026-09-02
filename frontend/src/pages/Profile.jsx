@@ -287,13 +287,13 @@ const styles = `
     position: absolute;
     left: 0;
     right: 0;
-    top: calc(100% + 8px);
+    top: calc(100% + 6px);
     z-index: 50;
-    padding: 6px;
+    padding: 5px;
     border: 1px solid #E2E8F0;
-    border-radius: 14px;
+    border-radius: 10px;
     background: #ffffff;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -301,19 +301,19 @@ const styles = `
 
   .pf-dropdown-option {
     width: 100%;
-    min-height: 44px;
-    padding: 10px 14px;
+    min-height: 38px;
+    padding: 8px 12px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 6px;
     background: transparent;
     color: #334155;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     cursor: pointer;
     font-family: 'Outfit', sans-serif;
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 500;
     text-align: left;
     transition: background 0.15s ease, color 0.15s ease;

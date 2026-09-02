@@ -93,3 +93,12 @@ def current_user(authorization: str | None = Header(default=None)) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session") from exc
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session")
+
+
+def optional_user(authorization: str | None = Header(default=None)) -> dict | None:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        return current_user(authorization)
+    except Exception:
+        return None

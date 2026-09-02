@@ -4,13 +4,11 @@ import {
   BookOpen,
   Home,
   LogOut,
-  UserRound,
 } from "lucide-react";
 
 const navItems = [
   { to: "/dashboard", label: "Home", icon: Home, exact: true },
   { to: "/classroom", label: "My Lessons", icon: BookOpen },
-  { to: "/profile", label: "Profile", icon: UserRound },
 ];
 
 const Sidebar = () => {
@@ -20,7 +18,15 @@ const Sidebar = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    navigate("/login");
+    navigate("/");
+    setTimeout(() => {
+      const heroEl = document.getElementById("hero");
+      if (heroEl) {
+        heroEl.scrollIntoView({ behavior: "smooth" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 100);
   };
 
   return (
@@ -45,17 +51,19 @@ const Sidebar = () => {
         }
 
         .tf-sidebar-logo {
-          height: 48px;
+          height: 54px;
           display: flex;
           align-items: center;
-          margin-bottom: 40px;
+          margin-bottom: 36px;
           text-decoration: none;
-          padding: 0 4px;
+          padding: 0 12px;
         }
 
         .tf-sidebar-logo img {
-          height: 40px;
+          height: 46px;
+          max-width: 190px;
           object-fit: contain;
+          object-position: left center;
         }
 
         .tf-sidebar-nav {
@@ -117,7 +125,7 @@ const Sidebar = () => {
       `}</style>
 
       <div>
-        <Link className="tf-sidebar-logo" to="/dashboard" aria-label="TutorFlow home">
+        <Link className="tf-sidebar-logo" to="/" aria-label="TutorFlow home">
           <img
             src="/Logo_cropped.png"
             alt="TutorFlow"

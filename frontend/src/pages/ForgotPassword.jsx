@@ -229,7 +229,7 @@ const ForgotPassword = () => {
             <img
               src="/Logo_cropped.png"
               alt="TutorFlow"
-              style={{ height: "40px", objectFit: "contain" }}
+              style={{ height: "50px", objectFit: "contain" }}
             />
           </div>
 

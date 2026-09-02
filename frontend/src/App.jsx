@@ -10,6 +10,7 @@ import AuthCallback from './pages/AuthCallback';
 import StudentDashboard from './pages/StudentDashboard';
 import AIClassroom from './pages/AIClassroom';
 import Profile from './pages/Profile';
+import LandingPage from './pages/LandingPage';
 
 const DashboardLayout = () => {
   const [token, setToken] = useState(() => localStorage.getItem('token'));
@@ -103,6 +104,8 @@ const DashboardLayout = () => {
 function App() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/landing" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -114,7 +117,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

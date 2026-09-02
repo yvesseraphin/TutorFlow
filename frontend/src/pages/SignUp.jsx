@@ -36,7 +36,7 @@ const S = {
     width: "100%",
     marginBottom: "20px",
   },
-  brandLogo: { height: "38px", objectFit: "contain" },
+  brandLogo: { height: "50px", objectFit: "contain" },
 
   formArea: { width: "100%", maxWidth: "380px" },
   h1: {
@@ -305,7 +305,9 @@ const SignUp = () => {
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
         notif.success("Account created successfully!");
-        navigate("/dashboard");
+        const redirectTarget = sessionStorage.getItem("redirect_to") || "/";
+        sessionStorage.removeItem("redirect_to");
+        navigate(redirectTarget);
         prefetchUserData().catch(() => {});
       } else {
         const errData = await response.json().catch(() => ({}));
@@ -460,7 +462,7 @@ const SignUp = () => {
             <img
               src="/Logo_cropped.png"
               alt="TutorFlow"
-              style={{ height: "40px", objectFit: "contain" }}
+              style={{ height: "50px", objectFit: "contain" }}
             />
           </div>
 

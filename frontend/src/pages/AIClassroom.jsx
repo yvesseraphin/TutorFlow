@@ -61,6 +61,7 @@ import {
   Trophy,
   Type,
   Undo2,
+  Upload,
   Video,
   Volume2,
   VolumeX,
@@ -113,14 +114,6 @@ const getSubjectDetails = (subjectName) => {
 
 
 
-const sortOptions = [
-  { value: "recent", label: "Recently Accessed" },
-  { value: "progress-desc", label: "Progress: High to Low" },
-  { value: "progress-asc", label: "Progress: Low to High" },
-  { value: "lessons-desc", label: "Most Lessons" },
-  { value: "name", label: "Name: A to Z" },
-  { value: "level", label: "Level" },
-];
 
 
 
@@ -2175,11 +2168,11 @@ const styles = `
   }
 
   .sort-trigger {
-    height: 48px;
-    min-width: 220px;
-    padding: 0 42px 0 16px;
+    height: 44px;
+    min-width: 200px;
+    padding: 0 38px 0 14px;
     border: 1px solid #E2E8F0;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #ffffff;
     color: #111111;
     display: flex;
@@ -2187,7 +2180,7 @@ const styles = `
     justify-content: space-between;
     box-sizing: border-box;
     font-family: 'Outfit', sans-serif;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: border-color 0.2s ease;
@@ -2228,14 +2221,14 @@ const styles = `
   .sort-menu {
     position: absolute;
     right: 0;
-    top: calc(100% + 8px);
+    top: calc(100% + 6px);
     z-index: 50;
-    min-width: 230px;
-    padding: 6px;
+    min-width: 210px;
+    padding: 5px;
     border: 1px solid #E2E8F0;
-    border-radius: 14px;
+    border-radius: 10px;
     background: #ffffff;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -2243,19 +2236,19 @@ const styles = `
 
   .sort-option {
     width: 100%;
-    min-height: 44px;
-    padding: 10px 14px;
+    min-height: 38px;
+    padding: 8px 12px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 6px;
     background: transparent;
     color: #334155;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     cursor: pointer;
     font-family: 'Outfit', sans-serif;
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 500;
     text-align: left;
     transition: background 0.15s ease, color 0.15s ease;
@@ -2511,13 +2504,40 @@ const SubjectCard = ({ subject, onOpen }) => {
   const Icon = subject.icon;
 
   return (
-    <article className="subject-card" onClick={() => !subject.comingSoon && onOpen(subject)}>
+    <article
+      className="subject-card"
+      onClick={() => !subject.comingSoon && onOpen(subject)}
+      style={subject.isCustom ? { border: "1.5px solid #111111" } : {}}
+    >
       <div className="subject-top">
         <div className="subject-intro">
-          <div className="subject-icon">
+          <div
+            className="subject-icon"
+            style={subject.isCustom ? { background: "#111111", color: "#ffffff" } : {}}
+          >
             <Icon size={32} strokeWidth={2.2} />
           </div>
           <div>
+            {subject.isCustom && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "#2563eb",
+                  background: "#eff6ff",
+                  padding: "2px 8px",
+                  borderRadius: 6,
+                  marginBottom: 4,
+                }}
+              >
+                <Sparkles size={11} /> Document RAG Class
+              </span>
+            )}
             <h2 className="subject-name">{subject.name}</h2>
             <p className="subject-description">{subject.description}</p>
           </div>
@@ -2549,7 +2569,7 @@ const SubjectCard = ({ subject, onOpen }) => {
           <div className="subject-bottom">
             <span className="lesson-count">
               <Clock3 size={18} />
-              {subject.lessons} lessons
+              {subject.lessons} {subject.lessons === 1 ? "lesson" : "lessons"}
             </span>
             <span className="subject-level">{subject.level}</span>
           </div>
@@ -4589,7 +4609,7 @@ const InteractiveWhiteboard = ({
   );
 };
 
-const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", lessonProgress = 0, userId = "" }) => {
+const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", lessonProgress = 0, userId = "", classId = "" }) => {
   const [activeRailTab, setActiveRailTab] = useState("Overview");
   const [activeTool, setActiveTool] = useState("pen");
   const [activeColor, setActiveColor] = useState("#111111");
@@ -4728,6 +4748,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             topic: initTopic,
             user_id: userId,
             type: "handshake",
+            class_id: classId || "",
           })
         );
         try {
@@ -6100,6 +6121,9 @@ const buildSubjectsList = (courses, skillMastery = []) => {
 
   const dynamicSubjects = Object.keys(courses).map((courseName) => {
     const lessonsList = courses[courseName] || [];
+    const isCustom = lessonsList.some((les) => les.is_custom);
+    const classId = lessonsList[0]?.class_id || null;
+    const documentId = lessonsList[0]?.document_id || null;
     let totalMastery = 0;
     let countedSkills = 0;
 
@@ -6124,8 +6148,9 @@ const buildSubjectsList = (courses, skillMastery = []) => {
     });
 
     const realProgress = countedSkills > 0 ? Math.round((totalMastery / countedSkills) * 100) : 0;
-    const matchingIcon =
-      courseName.includes("Algebra") && !courseName.includes("Pre")
+    const matchingIcon = isCustom
+      ? Sparkles
+      : courseName.includes("Algebra") && !courseName.includes("Pre")
         ? Calculator
         : courseName.includes("Functions")
           ? FunctionSquare
@@ -6139,13 +6164,16 @@ const buildSubjectsList = (courses, skillMastery = []) => {
 
     return {
       name: courseName,
-      description: details.cardDescription,
-      detailDescription: details.detailDescription,
+      description: isCustom ? (details.cardDescription || "Personalized class built from your study materials.") : details.cardDescription,
+      detailDescription: isCustom ? (details.detailDescription || "Master concepts from your uploaded study materials with 1-on-1 AI tutoring.") : details.detailDescription,
       progress: realProgress,
       lessons: lessonsList.length,
-      level: "Intermediate",
+      level: isCustom ? "Custom Class" : "Intermediate",
       icon: matchingIcon,
       lessonsList,
+      isCustom,
+      classId,
+      documentId,
     };
   });
 
@@ -6207,28 +6235,12 @@ const AIClassroom = () => {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [nextLessonData, setNextLessonData] = useState(null);
   const [liveLesson, setLiveLesson] = useState(false);
-  const [sortBy, setSortBy] = useState("recent");
-  const [isSortOpen, setIsSortOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const sortDropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
-        setIsSortOpen(false);
-      }
-    };
-    if (isSortOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isSortOpen]);
 
   // Auto-launch live classroom when navigating directly with a topic query parameter
   useEffect(() => {
     const topicParam = searchParams.get("topic");
+    const classIdParam = searchParams.get("class_id");
     if (topicParam) {
       const decodedTopic = decodeURIComponent(topicParam);
       setSelectedSubject({
@@ -6238,7 +6250,9 @@ const AIClassroom = () => {
         detailDescription: `Explore and master key concepts in ${decodedTopic} with your AI Personal Teacher.`,
         progress: 0,
         lessons: 1,
-        level: "Beginner",
+        level: classIdParam ? "Custom Class" : "Beginner",
+        classId: classIdParam || undefined,
+        isCustom: !!classIdParam,
       });
       setLiveLesson(true);
     }
@@ -6276,28 +6290,11 @@ const AIClassroom = () => {
   }, [fetchSubjects]);
 
   const sortedSubjects = useMemo(() => {
-    const available = subjectsList.filter((s) => !s.comingSoon);
+    const customClasses = subjectsList.filter((s) => s.isCustom && !s.comingSoon);
+    const standardClasses = subjectsList.filter((s) => !s.isCustom && !s.comingSoon);
     const comingSoon = subjectsList.filter((s) => s.comingSoon);
-
-    const sorted = [...available].sort((a, b) => {
-      switch (sortBy) {
-        case "progress-desc":
-          return (b.progress || 0) - (a.progress || 0);
-        case "progress-asc":
-          return (a.progress || 0) - (b.progress || 0);
-        case "lessons-desc":
-          return (b.lessons || 0) - (a.lessons || 0);
-        case "name":
-          return a.name.localeCompare(b.name);
-        case "level":
-          return (a.level || "").localeCompare(b.level || "");
-        default:
-          return 0;
-      }
-    });
-
-    return [...sorted, ...comingSoon];
-  }, [subjectsList, sortBy]);
+    return [...customClasses, ...standardClasses, ...comingSoon];
+  }, [subjectsList]);
 
   useEffect(() => {
     if (selectedSubject && !selectedSubject.comingSoon) {
@@ -6311,6 +6308,7 @@ const AIClassroom = () => {
     const title = selectedSubject ? selectedSubject.name : "Live Lesson";
     const subtitle = selectedSubject ? `${selectedSubject.subject || "Algebra"} • ${selectedSubject.module || ""}` : "";
     const progress = selectedSubject ? (selectedSubject.progress || 0) : 0;
+    const activeClassId = selectedSubject?.classId || searchParams.get("class_id") || "";
     return (
       <LiveLesson
         onEnd={() => {
@@ -6323,6 +6321,7 @@ const AIClassroom = () => {
         lessonSubtitle={subtitle}
         lessonProgress={progress}
         userId={user?.id || ""}
+        classId={activeClassId}
       />
     );
   }
@@ -6483,7 +6482,7 @@ const AIClassroom = () => {
                     <BookOpen size={18} />
                     Course Modules ({selectedSubject.lessonsList.length})
                   </h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     {selectedSubject.lessonsList.map((les, lIdx) => (
                       <div
                         key={lIdx}
@@ -6491,18 +6490,20 @@ const AIClassroom = () => {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
-                          padding: "12px 16px",
-                          background: "#fafafa",
-                          borderRadius: "12px",
-                          border: "1px solid #ebebeb",
+                          padding: "16px 20px",
+                          background: "#ffffff",
+                          borderRadius: "14px",
+                          border: "1px solid #E2E8F0",
+                          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
+                          transition: "all 0.15s ease",
                         }}
                       >
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: "14.5px", color: "#111111" }}>
+                          <div style={{ fontWeight: 600, fontSize: "15px", color: "#111111" }}>
                             {lIdx + 1}. {les.title}
                           </div>
                           {les.outcomes && les.outcomes.length > 0 && (
-                            <div style={{ fontSize: "13px", color: "#666666", marginTop: "2px" }}>
+                            <div style={{ fontSize: "13px", color: "#666666", marginTop: "4px" }}>
                               {les.outcomes[0]}
                             </div>
                           )}
@@ -6519,14 +6520,24 @@ const AIClassroom = () => {
                             setLiveLesson(true);
                           }}
                           style={{
-                            padding: "6px 14px",
-                            background: "#111111",
-                            color: "#ffffff",
-                            borderRadius: "8px",
-                            border: 0,
-                            fontSize: "12.5px",
+                            padding: "8px 20px",
+                            background: "#ffffff",
+                            color: "#111111",
+                            borderRadius: "10px",
+                            border: "1px solid #E2E8F0",
+                            fontSize: "13px",
                             fontWeight: 600,
                             cursor: "pointer",
+                            transition: "all 0.15s ease",
+                            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#f8fafc";
+                            e.currentTarget.style.borderColor = "#cbd5e1";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#ffffff";
+                            e.currentTarget.style.borderColor = "#E2E8F0";
                           }}
                         >
                           Start
@@ -6683,44 +6694,32 @@ const AIClassroom = () => {
       </header>
 
       <section className="lessons-content">
-        <div className="subjects-toolbar">
-          <h2 className="subjects-title">Your Subjects</h2>
-          <div className="sort-wrap">
-            <span>Sort by</span>
-            <div className="sort-control" ref={sortDropdownRef}>
-              <button
-                type="button"
-                className={`sort-trigger ${isSortOpen ? "open" : ""}`}
-                onClick={() => setIsSortOpen(!isSortOpen)}
-                aria-haspopup="listbox"
-                aria-expanded={isSortOpen}
-              >
-                <span className="sort-trigger-text">
-                  {sortOptions.find((o) => o.value === sortBy)?.label || "Select order"}
-                </span>
-                <ChevronDown className={`sort-chevron ${isSortOpen ? "open" : ""}`} size={18} />
-              </button>
-
-              {isSortOpen && (
-                <div className="sort-menu" role="listbox">
-                  {sortOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`sort-option ${sortBy === option.value ? "active" : ""}`}
-                      onClick={() => {
-                        setSortBy(option.value);
-                        setIsSortOpen(false);
-                      }}
-                    >
-                      <span className="sort-option-label">{option.label}</span>
-                      {sortBy === option.value && <CheckCircle2 size={16} color="#111111" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="subjects-toolbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
+          <h2 className="subjects-title" style={{ margin: 0 }}>Your Subjects</h2>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            style={{
+              height: "42px",
+              padding: "0 18px",
+              borderRadius: "10px",
+              background: "#111111",
+              color: "#ffffff",
+              border: "none",
+              fontSize: "14px",
+              fontWeight: 600,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+              transition: "opacity 0.2s ease, transform 0.15s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            <span>Create Class</span>
+          </button>
         </div>
 
         <div className="subject-grid">

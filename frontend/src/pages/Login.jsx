@@ -36,7 +36,7 @@ const S = {
     width: "100%",
     marginBottom: "20px",
   },
-  brandLogo: { height: "38px", objectFit: "contain" },
+  brandLogo: { height: "50px", objectFit: "contain" },
   brandName: {
     fontFamily: "'Outfit', sans-serif",
     fontSize: "24px",
@@ -330,8 +330,9 @@ const Login = () => {
         const data = await response.json();
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        notif.success("Login successful! Welcome back.");
-        navigate("/dashboard");
+        const redirectTarget = sessionStorage.getItem("redirect_to") || "/";
+        sessionStorage.removeItem("redirect_to");
+        navigate(redirectTarget);
         // Prefetch in background without holding back navigation
         prefetchUserData().catch(() => {});
       } else {
@@ -389,7 +390,7 @@ const Login = () => {
             <img
               src="/Logo_cropped.png"
               alt="TutorFlow"
-              style={{ height: "40px", objectFit: "contain" }}
+              style={{ height: "50px", objectFit: "contain" }}
             />
           </div>
 

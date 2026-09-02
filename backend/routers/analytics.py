@@ -255,11 +255,13 @@ def get_notifications(user: dict = Depends(current_user)) -> dict:
         if due_cards:
             topics = list({c["topic"] for c in due_cards if c.get("topic")})
             topic_str = ", ".join(topics[:2])
+            msg = f"{len(due_cards)} flashcard(s) ready for review in {topic_str}."
             notifications.append({
                 "id": "flashcards-due",
                 "type": "flashcard",
                 "title": "Spaced Revision Due",
-                "desc": f"{len(due_cards)} flashcard(s) ready for review in {topic_str}.",
+                "subtitle": msg,
+                "desc": msg,
                 "created_at": due_cards[0].get("next_review_at") or now_iso,
                 "topic": topics[0] if topics else "Mathematics",
                 "action_url": f"/classroom?topic={topics[0]}" if topics else "/classroom",
@@ -277,11 +279,13 @@ def get_notifications(user: dict = Depends(current_user)) -> dict:
         )
         retention_rows = retention_res.data or []
         for r in retention_rows:
+            ret_msg = f"Quick 2-min review scheduled to retain your {int(float(r.get('mastery_score', 0)) * 100)}% mastery."
             notifications.append({
                 "id": f"retention-{r['topic_id']}",
                 "type": "retention",
                 "title": f"Spaced Repetition Review Due: {r['topic_id']}",
-                "desc": f"Quick 2-min review scheduled to retain your {int(float(r.get('mastery_score', 0)) * 100)}% mastery.",
+                "subtitle": ret_msg,
+                "desc": ret_msg,
                 "created_at": r.get("updated_at") or now_iso,
                 "topic": r["topic_id"],
                 "action_url": f"/classroom?topic={r['topic_id']}",
@@ -299,11 +303,13 @@ def get_notifications(user: dict = Depends(current_user)) -> dict:
         memories = memories_res.data or []
         for m in memories:
             m_type = m.get("memory_type", "insight").replace("_", " ").title()
+            mem_summary = m.get("summary") or f"Personalized study memory created for {m.get('topic', 'your learning session')}."
             notifications.append({
                 "id": f"mem-{m['id']}",
                 "type": "memory",
                 "title": f"AI Teacher Insight: {m_type}",
-                "desc": m.get("summary", ""),
+                "subtitle": mem_summary,
+                "desc": mem_summary,
                 "created_at": m.get("created_at") or now_iso,
                 "topic": m.get("topic", ""),
                 "action_url": f"/classroom?topic={m.get('topic', '')}" if m.get("topic") else "/classroom",
@@ -325,6 +331,7 @@ def get_notifications(user: dict = Depends(current_user)) -> dict:
                 "id": f"sess-{s['id']}",
                 "type": "session",
                 "title": f"Lesson Completed: {s['topic']}",
+                "subtitle": summary_text,
                 "desc": summary_text,
                 "created_at": s.get("created_at") or now_iso,
                 "topic": s.get("topic", ""),
@@ -345,11 +352,13 @@ def get_notifications(user: dict = Depends(current_user)) -> dict:
             gaps_count = len(d.get("detected_gaps") or [])
             score_pct = int(float(d.get("overall_score", 0)) * 100)
             gap_msg = f"{gaps_count} focus area(s) identified." if gaps_count > 0 else "All prerequisites verified!"
+            diag_text = f"Readiness Score: {score_pct}%. {gap_msg}"
             notifications.append({
                 "id": f"diag-{d['id']}",
                 "type": "diagnostic",
                 "title": "AI Diagnostic Summary",
-                "desc": f"Readiness Score: {score_pct}%. {gap_msg}",
+                "subtitle": diag_text,
+                "desc": diag_text,
                 "created_at": d.get("created_at") or now_iso,
                 "topic": d.get("target_topic", "Mathematics"),
                 "action_url": "/classroom",
@@ -360,11 +369,13 @@ def get_notifications(user: dict = Depends(current_user)) -> dict:
 
     # 6. Fallback if brand new user
     if not notifications:
+        welcome_sub = "Take an AI Diagnostic or start your first lesson to begin building your knowledge graph."
         notifications.append({
             "id": "welcome-tutorflow",
             "type": "welcome",
             "title": "Welcome to TutorFlow 2.0!",
-            "desc": "Take an AI Diagnostic or start your first lesson to begin building your knowledge graph.",
+            "subtitle": welcome_sub,
+            "desc": welcome_sub,
             "created_at": now_iso,
             "topic": "Getting Started",
             "action_url": "/classroom",

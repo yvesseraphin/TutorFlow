@@ -33,8 +33,9 @@ const AuthCallback = () => {
         })
       );
       if (isMounted) {
-        notif.success("Verification successful! Welcome to TutorFlow.");
-        navigate("/dashboard", { replace: true });
+        const redirectTarget = sessionStorage.getItem("redirect_to") || "/";
+        sessionStorage.removeItem("redirect_to");
+        navigate(redirectTarget, { replace: true });
         prefetchUserData().catch(() => {});
       }
       return true;
@@ -174,7 +175,33 @@ const AuthCallback = () => {
     );
   }
 
-  return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#ffffff",
+      }}
+    >
+      <style>{`
+        @keyframes tfSpin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          border: "3.5px solid #E2E8F0",
+          borderTopColor: "#111111",
+          borderRadius: "50%",
+          animation: "tfSpin 0.75s linear infinite",
+        }}
+      />
+    </div>
+  );
 };
 
 export default AuthCallback;

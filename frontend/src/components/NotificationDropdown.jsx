@@ -46,14 +46,14 @@ const styles = `
     position: absolute;
     top: calc(100% + 14px);
     right: -175px;
-    width: 410px;
+    width: 390px;
     max-width: calc(100vw - 32px);
     background: #ffffff;
     border: 1px solid #e8e8e8;
-    border-radius: 16px;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+    border-radius: 12px;
+    box-shadow: none;
     z-index: 1000;
-    padding: 22px 24px;
+    padding: 18px 20px;
     font-family: "Outfit", sans-serif;
     animation: notifFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -126,10 +126,10 @@ const styles = `
   .notif-item {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
-    padding: 14px 8px;
-    border-bottom: 1px solid #f5f5f5;
-    border-radius: 10px;
+    gap: 12px;
+    padding: 12px 10px;
+    border-bottom: 1px solid #f4f4f4;
+    border-radius: 8px;
     cursor: pointer;
     transition: background 0.15s ease;
   }
@@ -143,9 +143,9 @@ const styles = `
   }
 
   .notif-icon-box {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
     background: #f8f8f8;
     border: 1px solid #ededed;
     display: flex;
@@ -161,37 +161,51 @@ const styles = `
     min-width: 0;
   }
 
-  .notif-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111111;
-    margin: 0 0 4px;
-    line-height: 1.3;
+  .notif-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 3px;
   }
 
-  .notif-desc {
-    font-size: 13.5px;
-    color: #555555;
-    margin: 0 0 4px;
-    line-height: 20px;
-    word-break: break-word;
+  .notif-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111111;
+    margin: 0;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .notif-time {
-    font-size: 12px;
+    font-size: 11.5px;
+    font-weight: 500;
     color: #888888;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .notif-subtitle {
+    font-size: 12.5px;
+    color: #555555;
     margin: 0;
+    line-height: 18px;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .notif-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: #111111;
     flex-shrink: 0;
-    margin-top: 8px;
-    margin-left: 6px;
-    align-self: center;
   }
 
   .notif-empty {
@@ -205,15 +219,18 @@ function formatRelativeTime(dateString) {
   if (!dateString) return "Just now";
   try {
     const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "Recently";
     const now = new Date();
     const diffSec = Math.floor((now - d) / 1000);
-    if (diffSec < 60) return "Just now";
+    if (diffSec < 45) return "Just now";
     const diffMin = Math.floor(diffSec / 60);
     if (diffMin < 60) return `${diffMin}m ago`;
     const diffHr = Math.floor(diffMin / 60);
     if (diffHr < 24) return `${diffHr}h ago`;
     const diffDays = Math.floor(diffHr / 24);
-    return `${diffDays}d ago`;
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   } catch {
     return "Recently";
   }
@@ -240,10 +257,23 @@ function getIconForType(type) {
 export const NotificationDropdown = ({ children }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const normalizeNotification = (n) => {
+    const title = n.title || "Study Milestone Update";
+    const subtitle = n.subtitle || n.desc || n.message || n.summary || "Review your personalized learning insights and progress.";
+    return {
+      ...n,
+      title,
+      subtitle,
+      desc: subtitle,
+    };
+  };
+
   const [notifications, setNotifications] = useState(() => {
     try {
       const cached = localStorage.getItem("tutorflow_cached_notifications");
-      return cached ? JSON.parse(cached) : [];
+      if (!cached) return [];
+      const parsed = JSON.parse(cached);
+      return Array.isArray(parsed) ? parsed.map(normalizeNotification) : [];
     } catch {
       return [];
     }
@@ -275,11 +305,13 @@ export const NotificationDropdown = ({ children }) => {
               parsed.retention_risk_topics.forEach((r) => {
                 const id = `retention-${r.topic}`;
                 if (!existingIds.has(id)) {
+                  const msg = `Quick 2-min review scheduled to retain your ${Math.round((r.mastery || 0.8) * 100)}% mastery.`;
                   notifs.unshift({
                     id,
                     type: "retention",
                     title: `Spaced Repetition Due: ${r.topic}`,
-                    desc: `Quick 2-min review scheduled to retain your ${Math.round((r.mastery || 0.8) * 100)}% mastery.`,
+                    subtitle: msg,
+                    desc: msg,
                     created_at: new Date().toISOString(),
                     topic: r.topic,
                     action_url: `/classroom?topic=${encodeURIComponent(r.topic)}`,
@@ -292,8 +324,9 @@ export const NotificationDropdown = ({ children }) => {
         } catch { /* ignore */ }
 
         if (notifs.length > 0) {
-          setNotifications(notifs);
-          localStorage.setItem("tutorflow_cached_notifications", JSON.stringify(notifs));
+          const normalized = notifs.map(normalizeNotification);
+          setNotifications(normalized);
+          localStorage.setItem("tutorflow_cached_notifications", JSON.stringify(normalized));
         }
       } catch (err) {
         console.error("Failed to load notifications:", err);
@@ -383,6 +416,10 @@ export const NotificationDropdown = ({ children }) => {
               notifications.map((item) => {
                 const Icon = getIconForType(item.type);
                 const isUnread = !readIds.includes(item.id);
+                const title = item.title || "Study Update";
+                const subtitle = item.subtitle || item.desc || item.message || item.summary || "Review your personalized learning milestones.";
+                const timeline = formatRelativeTime(item.created_at || item.time || item.timestamp);
+
                 return (
                   <div
                     key={item.id}
@@ -390,14 +427,18 @@ export const NotificationDropdown = ({ children }) => {
                     onClick={() => handleItemClick(item)}
                   >
                     <div className="notif-icon-box">
-                      <Icon size={20} strokeWidth={2} />
+                      <Icon size={18} strokeWidth={2} />
                     </div>
                     <div className="notif-content">
-                      <h4 className="notif-title">{item.title}</h4>
-                      <p className="notif-desc">{item.desc}</p>
-                      <span className="notif-time">{formatRelativeTime(item.created_at)}</span>
+                      <div className="notif-header-row">
+                        <h4 className="notif-title">{title}</h4>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                          <span className="notif-time">{timeline}</span>
+                          {isUnread && <div className="notif-dot" />}
+                        </div>
+                      </div>
+                      <p className="notif-subtitle">{subtitle}</p>
                     </div>
-                    {isUnread && <div className="notif-dot" />}
                   </div>
                 );
               })
