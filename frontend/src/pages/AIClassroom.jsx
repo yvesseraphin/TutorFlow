@@ -7,6 +7,7 @@ import { AudioStreamPlayer, AudioStreamRecorder, SpeechTranscriber, unlockAudioC
 import NotificationDropdown from "../components/NotificationDropdown";
 import {
   Activity,
+  ArrowLeft,
   ArrowRight,
   ArrowUp,
   BarChart3,
@@ -1535,7 +1536,7 @@ const styles = `
   }
 
   .wb-page-card {
-    border: 1px solid transparent;
+    border: none;
     border-radius: 8px;
     padding: 10px 12px;
     background: #ffffff;
@@ -1547,12 +1548,12 @@ const styles = `
   }
 
   .wb-page-card:hover {
-    background: #ffffff;
+    background: #f8fafc;
   }
 
   .wb-page-card.active {
-    border: 1px solid #111111;
-    background: #ffffff;
+    border: none;
+    background: #f1f5f9;
   }
 
   .wb-page-num {
@@ -2729,85 +2730,174 @@ const VoiceBars = ({ muted = false, active = false }) => (
 
 const _FRONTEND_MATERIALS_CACHE = new Map();
 
-const MaterialViewerModal = ({ material, onClose }) => {
+const IntegratedDocumentViewer = ({ material, onBack }) => {
   if (!material) return null;
 
+  const isVideo = material.content_type === "video" || material.type === "Videos" || material.category === "Videos";
   const formulaHtml = material.formula_latex ? renderKaTeX(material.formula_latex) : null;
+  const isPdfOrWorksheet = material.type === "Worksheets" || material.type === "Guides" || material.type === "Practice" || material.file_type === "pdf";
+
+  const topicQuery = encodeURIComponent(`${material.topic || "Math"} ${material.title || ""}`);
+  const embedVideoUrl = material.video_url || `https://www.youtube-nocookie.com/embed?listType=search&list=${topicQuery}`;
 
   return (
-    <div className="summary-overlay" onClick={onClose} style={{ zIndex: 120 }}>
-      <div className="summary-modal" style={{ maxWidth: 620, background: "#ffffff", padding: "28px" }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
-          <div>
-            <span style={{ display: "inline-block", background: "#f5f5f5", color: "#111111", fontSize: 12, fontWeight: 700, padding: "3px 8px", borderRadius: 4, marginBottom: 8, border: "1px solid #e5e5e5" }}>
-              {material.badge || material.type || "Learning Material"}
-            </span>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>
-              {material.title}
-            </h2>
-            <p style={{ margin: "4px 0 0", fontSize: 13.5, color: "#666666" }}>
-              Topic: {material.topic || "Mathematics"} • {material.duration || "Self-Paced Practice"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ border: 0, background: "transparent", cursor: "pointer", color: "#666666", padding: 4 }}
-          >
-            <X size={20} />
-          </button>
-        </div>
+    <div className="integrated-doc-viewer" style={{ padding: "20px 28px", height: "100%", overflowY: "auto" }}>
+      {/* Top action bar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid #f0f0f0" }}>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            border: "1px solid #e2e8f0",
+            background: "#ffffff",
+            color: "#111111",
+            padding: "8px 14px",
+            borderRadius: 8,
+            fontWeight: 600,
+            fontSize: 13,
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "#ffffff"; }}
+        >
+          <ArrowLeft size={16} />
+          Back to Materials
+        </button>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <p style={{ fontSize: 14.5, color: "#333333", lineHeight: "22px", margin: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#111111", background: "#f1f5f9", padding: "4px 10px", borderRadius: 6 }}>
+            {isVideo ? "Video Lecture" : isPdfOrWorksheet ? "PDF Document" : "Smart Notes"}
+          </span>
+          {!isVideo && (
+            <button
+              type="button"
+              onClick={() => window.print()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                border: "1px solid #e2e8f0",
+                background: "#ffffff",
+                color: "#111111",
+                padding: "8px 14px",
+                borderRadius: 8,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+              title="Download or Print PDF"
+            >
+              <Download size={15} />
+              Download / Print PDF
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isVideo ? (
+        /* Embedded Video Player & Key Takeaways */
+        <div style={{ maxWidth: 880, margin: "0 auto" }}>
+          <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%", background: "#0a0a0a", borderRadius: 12, overflow: "hidden", marginBottom: 24, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}>
+            <iframe
+              style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+              src={embedVideoUrl}
+              title={material.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111111", margin: "0 0 8px" }}>
+            {material.title}
+          </h2>
+          <p style={{ fontSize: 14.5, color: "#555555", lineHeight: "24px", margin: "0 0 20px" }}>
             {material.description}
           </p>
-
-          {formulaHtml && (
-            <div style={{ background: "#f9fafb", padding: "16px 20px", borderRadius: 10, border: "1px solid #e5e7eb", textAlign: "center", margin: "8px 0" }}>
-              <div
-                className="katex-math-render"
-                style={{ fontSize: "22px", color: "#111111" }}
-                dangerouslySetInnerHTML={{ __html: formulaHtml }}
-              />
-            </div>
-          )}
-
-          {material.preview_steps && material.preview_steps.length > 0 && (
-            <div style={{ background: "#fafafa", border: "1px solid #ebebeb", borderRadius: 10, padding: "14px 18px" }}>
-              <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: "#111111" }}>
-                Key Steps & Concepts
+          {material.preview_steps && (
+            <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: 20 }}>
+              <h4 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#111111" }}>
+                Key Concepts Covered in Video
               </h4>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: "#444444", lineHeight: "22px" }}>
-                {material.preview_steps.map((step, sIdx) => (
-                  <li key={sIdx} style={{ marginBottom: 4 }}>
-                    {step}
-                  </li>
+              <ul style={{ margin: 0, paddingLeft: 20, color: "#444444", fontSize: 14, lineHeight: "24px" }}>
+                {material.preview_steps.map((step, idx) => (
+                  <li key={idx} style={{ marginBottom: 6 }}>{step}</li>
                 ))}
               </ul>
             </div>
           )}
         </div>
+      ) : (
+        /* Full PDF Document / Handout / Notes Reader */
+        <div style={{ maxWidth: 840, margin: "0 auto", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "36px 40px", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+          {/* Document Header */}
+          <div style={{ borderBottom: "2px solid #111111", paddingBottom: 18, marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: "#64748b", textTransform: "uppercase" }}>
+                TutorFlow Study Material • {material.topic || "Mathematics"}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>
+                Estimated: {material.duration || "Self-Paced Practice"}
+              </span>
+            </div>
+            <h1 style={{ fontSize: 26, fontWeight: 800, color: "#111111", margin: "0 0 10px", lineHeight: "34px" }}>
+              {material.title}
+            </h1>
+            <p style={{ fontSize: 15, color: "#475569", lineHeight: "24px", margin: 0 }}>
+              {material.description}
+            </p>
+          </div>
 
-        <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 10 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: "9px 20px",
-              background: "#111111",
-              color: "#ffffff",
-              borderRadius: 8,
-              border: 0,
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Done
-          </button>
+          {/* Formula Callout */}
+          {formulaHtml && (
+            <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 10, padding: "20px 24px", margin: "24px 0", textAlign: "center" }}>
+              <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 8 }}>
+                Core Concept & Formula
+              </span>
+              <div
+                className="katex-math-render"
+                style={{ fontSize: "24px", color: "#111111", margin: "4px 0" }}
+                dangerouslySetInnerHTML={{ __html: formulaHtml }}
+              />
+            </div>
+          )}
+
+          {/* Step-by-Step Procedure */}
+          <div style={{ margin: "28px 0" }}>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: "#111111", margin: "0 0 14px", borderLeft: "3px solid #111111", paddingLeft: 10 }}>
+              Step-by-Step Guide
+            </h3>
+            {material.preview_steps && material.preview_steps.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {material.preview_steps.map((step, idx) => (
+                  <div key={idx} style={{ display: "flex", gap: 12, alignItems: "flex-start", background: "#fafafa", padding: "12px 16px", borderRadius: 8, border: "1px solid #f1f5f9" }}>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#111111", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                      {idx + 1}
+                    </span>
+                    <span style={{ fontSize: 14.5, color: "#334155", lineHeight: "22px", marginTop: 1 }}>
+                      {step}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 14.5, color: "#64748b" }}>Read through the core definitions and properties above.</p>
+            )}
+          </div>
+
+          {/* Traps & Practice Notes */}
+          <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "20px 24px", margin: "28px 0" }}>
+            <h4 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "#111111" }}>
+              Key Takeaway & Common Trap
+            </h4>
+            <p style={{ margin: 0, fontSize: 14, color: "#475569", lineHeight: "22px" }}>
+              Always check the axes, labels, and order of operations before proceeding. Practice applying this rule to similar questions to build lasting fluency.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -2950,99 +3040,101 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
 
   return (
     <div className="content-list-view">
-      {selectedMaterial && (
-        <MaterialViewerModal
+      {selectedMaterial ? (
+        <IntegratedDocumentViewer
           material={selectedMaterial}
-          onClose={() => setSelectedMaterial(null)}
+          onBack={() => setSelectedMaterial(null)}
         />
-      )}
-
-      <div className="content-header">
-        <h2>{type}</h2>
-        <div className="content-search">
-          <Search size={18} />
-          <input
-            placeholder={`Search ${type.toLowerCase()}...`}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="content-tabs">
-        {tabs.map((tab, i) => (
-          <button
-            key={i}
-            className={`content-tab${activeTab === tab ? " active" : ""}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      <div className="content-cards-container">
-        {loading ? (
-          <div style={{ padding: "64px 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                border: "3px solid #f0f0f0",
-                borderTopColor: "#111111",
-                borderRadius: "50%",
-                animation: "spin 0.8s linear infinite",
-              }}
-            />
-            <p style={{ margin: 0, fontSize: 14, color: "#666666", fontWeight: 500 }}>
-              Loading {type.toLowerCase()} for {topic}...
-            </p>
-          </div>
-        ) : filteredMaterials.length === 0 ? (
-          <div className="tf-empty-wrap" style={{ padding: "48px 0" }}>
-            <div className="tf-empty-icon-circle">
-              <img
-                src="/book.webp"
-                alt="Empty state illustration"
-                style={{ width: "96px", height: "96px", objectFit: "contain", transform: "scale(1.1)" }}
+      ) : (
+        <>
+          <div className="content-header">
+            <h2>{type}</h2>
+            <div className="content-search">
+              <Search size={18} />
+              <input
+                placeholder={`Search ${type.toLowerCase()}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <h3 className="tf-empty-title">No {type.toLowerCase()} found</h3>
-            <p className="tf-empty-desc">No materials matching your search or category.</p>
           </div>
-        ) : (
-          filteredMaterials.map((item) => (
-            <div className="content-card" key={item.id} onClick={() => setSelectedMaterial(item)}>
-              <div className="content-card-icon">
-                {item.content_type === "video" || item.type === "Videos" ? (
-                  <PlaySquare size={28} strokeWidth={1.5} />
-                ) : (
-                  <File size={28} strokeWidth={1.5} />
-                )}
-              </div>
-              <div className="content-card-info">
-                <h3 className="content-card-title">{item.title}</h3>
-                <p className="content-card-desc">{item.description}</p>
-                <p className="content-card-meta">
-                  <span>{item.type || item.category || "Guide"}</span>
-                  <span>•</span>
-                  <span>{item.duration || "5 min"}</span>
+
+          <div className="content-tabs">
+            {tabs.map((tab, i) => (
+              <button
+                key={i}
+                className={`content-tab${activeTab === tab ? " active" : ""}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="content-cards-container">
+            {loading ? (
+              <div style={{ padding: "64px 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    border: "3px solid #f0f0f0",
+                    borderTopColor: "#111111",
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                  }}
+                />
+                <p style={{ margin: 0, fontSize: 14, color: "#666666", fontWeight: 500 }}>
+                  Loading {type.toLowerCase()} for {topic}...
                 </p>
               </div>
-              <button
-                type="button"
-                className="content-card-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedMaterial(item);
-                }}
-              >
-                View
-              </button>
-            </div>
-          ))
-        )}
-      </div>
+            ) : filteredMaterials.length === 0 ? (
+              <div className="tf-empty-wrap" style={{ padding: "48px 0" }}>
+                <div className="tf-empty-icon-circle">
+                  <img
+                    src="/book.webp"
+                    alt="Empty state illustration"
+                    style={{ width: "96px", height: "96px", objectFit: "contain", transform: "scale(1.1)" }}
+                  />
+                </div>
+                <h3 className="tf-empty-title">No {type.toLowerCase()} found</h3>
+                <p className="tf-empty-desc">No materials matching your search or category.</p>
+              </div>
+            ) : (
+              filteredMaterials.map((item) => (
+                <div className="content-card" key={item.id} onClick={() => setSelectedMaterial(item)}>
+                  <div className="content-card-icon">
+                    {item.content_type === "video" || item.type === "Videos" ? (
+                      <PlaySquare size={28} strokeWidth={1.5} />
+                    ) : (
+                      <File size={28} strokeWidth={1.5} />
+                    )}
+                  </div>
+                  <div className="content-card-info">
+                    <h3 className="content-card-title">{item.title}</h3>
+                    <p className="content-card-desc">{item.description}</p>
+                    <p className="content-card-meta">
+                      <span>{item.type || item.category || "Guide"}</span>
+                      <span>•</span>
+                      <span>{item.duration || "5 min"}</span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="content-card-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedMaterial(item);
+                    }}
+                  >
+                    View
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -3255,7 +3347,7 @@ const WhiteboardSidebar = ({
               <div className="wb-page-preview">
                 <div className="fake-preview-title">{p.title || `Page ${idx + 1}`}</div>
                 <div className="fake-preview-subtitle">
-                  {p.subtitle || (p.lines?.length > 0 ? `${p.lines.length} strokes drawn` : "Empty canvas")}
+                  {p.lines?.length > 0 ? `${p.lines.length} strokes drawn` : "Empty workspace"}
                 </div>
               </div>
             </div>
@@ -4271,25 +4363,6 @@ const InteractiveWhiteboard = ({
       <div className="whiteboard-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <h2>Whiteboard</h2>
-          {isLiveConnected && (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "3px 10px",
-                borderRadius: 20,
-                background: "#f5f5f5",
-                color: "#111111",
-                fontSize: 12,
-                fontWeight: 600,
-                border: "1px solid #e5e5e5",
-              }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#111111", animation: "pulse 1.5s infinite" }} />
-              AI Watching Live
-            </span>
-          )}
         </div>
         <div className="tool-row">
           {headerTools.map((item) => {
@@ -4455,34 +4528,6 @@ const InteractiveWhiteboard = ({
               userSelect: "none",
             }}
           >
-            {onClearAiWriting && (
-              <div style={{ display: "flex", justifyContent: "flex-end", pointerEvents: "auto", marginBottom: -10 }}>
-                <button
-                  type="button"
-                  onClick={onClearAiWriting}
-                  style={{
-                    border: "1px solid #e2e8f0",
-                    background: "#ffffff",
-                    borderRadius: 6,
-                    padding: "4px 8px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#64748b",
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#111111"; e.currentTarget.style.borderColor = "#cbd5e1"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
-                  title="Clear AI notes"
-                >
-                  <X size={13} />
-                  Clear AI Notes
-                </button>
-              </div>
-            )}
             {aiHints.map((hint, idx) => (
               <AnimatedTeacherHandwriting
                 key={hint.id || idx}
@@ -4907,10 +4952,10 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
         );
         try {
           await unlockAudioContext();
-          await transcriber.start();
-          if (isMounted) setIsMicStreaming(true);
+          // Ensure student mic starts muted by default
+          setIsMicStreaming(false);
         } catch (err) {
-          console.log("Microphone ready upon user interaction:", err);
+          console.log("Audio unlock ready:", err);
         }
       };
 
@@ -5062,7 +5107,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               };
               setAiHighlights((prev) => [...prev, newHl]);
             } else if (name === "write_board_hint" || name === "write_math_equation") {
-              const rawText = args.latex || args.text;
+              const rawText = args.latex || args.text || args.explanation || args.equation || args.formula || (args.step_number ? `Step ${args.step_number}` : "");
               if (rawText) {
                 const newHint = {
                   id: Date.now() + Math.random(),
@@ -5071,7 +5116,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                   arrowLabel: args.arrow_label || null,
                   isFinalSolution: !!args.is_final_solution,
                   color: args.color || "blue",
-                  explanation: args.explanation,
+                  explanation: (args.latex && args.explanation && args.latex !== args.explanation) ? args.explanation : null,
                 };
                 setAiHints((prev) => {
                   const cleanNew = (rawText || "").trim().replace(/\s+/g, " ");
@@ -5082,6 +5127,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                   return next.length > 6 ? next.slice(next.length - 6) : next;
                 });
               }
+            } else if (name === "clear_student_whiteboard") {
+              handleClearPage();
             } else if (name === "draw_arrow_annotation") {
               const actionText = args.action_text || args.label || "";
               if (actionText) {
@@ -5994,10 +6041,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
         <aside className="chat-panel">
           <div className="chat-header">
             <h3>Class Chat</h3>
-            <span className="live-chat-badge">
-              <Sparkles size={13} />
-              Tutor AI
-            </span>
           </div>
 
           {activeMisconception && (

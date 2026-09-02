@@ -62,6 +62,16 @@ def get_live_tools():
                     ),
                 ),
                 types.FunctionDeclaration(
+                    name="clear_student_whiteboard",
+                    description="Clear student handwritten drawings from the whiteboard to prevent overlap or prepare a fresh workspace.",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "reason": types.Schema(type=types.Type.STRING, description="Why student work is being cleared (e.g. 'Starting clean worked example')")
+                        },
+                    ),
+                ),
+                types.FunctionDeclaration(
                     name="write_math_equation",
                     description="Write a formatted LaTeX mathematical equation or step onto the whiteboard in natural teacher handwriting style.",
                     parameters=types.Schema(
@@ -632,7 +642,12 @@ CORE PEDAGOGICAL DIRECTIVES (MUST FOLLOW STRICTLY):
    - The student has an interactive multi-page whiteboard and can create multiple pages.
    - You will receive real-time notifications about how many pages exist, which page the student is currently viewing, and if they have drawn.
    - NEVER write over or overlap the student's handwritten work or math calculations!
-   - If the student is drawing or needs space, or before starting a brand-new practice problem, call `clear_ai_writing` to keep the board clean and spacious.
+   - You have two powerful clearing tools:
+     * `clear_ai_writing`: Clears your own teacher equations/notes from the board.
+     * `clear_student_whiteboard`: Clears the student's drawing when starting a fresh problem or if needed to prevent clutter.
+   - CRITICAL WHITEBOARD VISIBILITY RULE:
+     * When calling `write_math_equation`, you MUST ALWAYS provide the `latex` field containing the formula, title, or equation you want to appear on the whiteboard (e.g. `latex: '\\text{Step 1: Identify Graph Axes & Labels}'`).
+     * Never leave `latex` blank or pass only `explanation`! The student's board renders the `latex` string. If omitted, the board stays blank.
 """
 
     if rag_context:
