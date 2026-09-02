@@ -646,7 +646,7 @@ CORE PEDAGOGICAL DIRECTIVES (MUST FOLLOW STRICTLY):
      * `clear_ai_writing`: Clears your own teacher equations/notes from the board.
      * `clear_student_whiteboard`: Clears the student's drawing when starting a fresh problem or if needed to prevent clutter.
    - CRITICAL WHITEBOARD VISIBILITY RULE:
-     * When calling `write_math_equation`, you MUST ALWAYS provide the `latex` field containing the formula, title, or equation you want to appear on the whiteboard (e.g. `latex: '\\text{Step 1: Identify Graph Axes & Labels}'`).
+     * When calling `write_math_equation`, you MUST ALWAYS provide the `latex` field containing the formula, title, or equation you want to appear on the whiteboard (e.g. `latex: "\\text{{Step 1: Identify Graph Axes}}"`).
      * Never leave `latex` blank or pass only `explanation`! The student's board renders the `latex` string. If omitted, the board stays blank.
 """
 
