@@ -1340,20 +1340,21 @@ const styles = `
 
   .chat-input-wrap {
     margin: 10px 14px 14px;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
     padding: 10px 12px;
     background: #ffffff;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: none;
+    transition: none;
   }
 
   .chat-input-wrap:focus-within {
-    border-color: #111111;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    border-color: #e2e8f0;
+    box-shadow: none;
+    outline: none;
   }
 
   .attached-file-chip {
@@ -1534,8 +1535,8 @@ const styles = `
   }
 
   .wb-page-card {
-    border: 1px solid #e5e5e5;
-    border-radius: 6px;
+    border: 1px solid transparent;
+    border-radius: 8px;
     padding: 10px 12px;
     background: #ffffff;
     display: flex;
@@ -1546,20 +1547,19 @@ const styles = `
   }
 
   .wb-page-card:hover {
-    background: #fafafa;
-    border-color: #cccccc;
+    background: #ffffff;
   }
 
   .wb-page-card.active {
-    border: 2px solid #0a0a0a;
-    background: #f9f9f9;
+    border: 1px solid #111111;
+    background: #ffffff;
   }
 
   .wb-page-num {
     width: 26px;
     height: 26px;
-    border-radius: 4px;
-    background: #f0f0f0;
+    border-radius: 6px;
+    background: #f4f4f5;
     color: #111111;
     display: flex;
     align-items: center;
@@ -1569,7 +1569,7 @@ const styles = `
   }
 
   .wb-page-card.active .wb-page-num {
-    background: #0a0a0a;
+    background: #111111;
     color: #ffffff;
   }
 
@@ -3434,23 +3434,31 @@ const AnimatedTeacherHandwriting = ({
   const visiblePlainText = useMemo(() => stripLatexToPlainText(text), [text]);
   const [displayedChars, setDisplayedChars] = useState(0);
 
-  // Progressive handwriting typewriter animation
+  // Progressive handwriting typewriter animation with sequential delay
   useEffect(() => {
     setDisplayedChars(0);
     const targetLength = isHeader ? displayText.length : visiblePlainText.length;
     if (targetLength === 0) return;
 
-    let current = 0;
-    const interval = setInterval(() => {
-      current += 1;
-      setDisplayedChars(current);
-      if (current >= targetLength) {
-        clearInterval(interval);
-      }
-    }, 22); // 22ms per character matches natural human handwriting cadence while speaking
+    // Stagger start delay based on step index to prevent multiple steps from writing simultaneously
+    const staggerDelay = Math.min(index * 400, 1600);
+    let interval = null;
+    const startTimer = setTimeout(() => {
+      let current = 0;
+      interval = setInterval(() => {
+        current += 1;
+        setDisplayedChars(current);
+        if (current >= targetLength) {
+          clearInterval(interval);
+        }
+      }, 20); // 20ms per character for smooth, steady handwriting
+    }, staggerDelay);
 
-    return () => clearInterval(interval);
-  }, [displayText, visiblePlainText, isHeader]);
+    return () => {
+      clearTimeout(startTimer);
+      if (interval) clearInterval(interval);
+    };
+  }, [displayText, visiblePlainText, isHeader, index]);
 
   const targetLength = isHeader ? displayText.length : visiblePlainText.length;
   const isComplete = displayedChars >= targetLength;
@@ -3479,13 +3487,6 @@ const AnimatedTeacherHandwriting = ({
     return color || "#1d4ed8";
   }, [color]);
 
-  // Intelligent non-overlapping slot calculation:
-  // Step 1 -> 14%, Step 2 -> 32%, Step 3 -> 50%, Step 4+ -> 68%
-  const effectiveStepIndex = stepNumber !== undefined && stepNumber !== null ? stepNumber - 1 : index;
-  const slotTop = 14 + (effectiveStepIndex % 4) * 19;
-  const topPos = y !== undefined && y > 10 && y < 85 ? y : slotTop;
-  const leftPos = x !== undefined && x > 0 && x < 75 ? x : 8;
-
   // Real teacher logic: DO NOT show 'STEP 1:' on titles! Only show on actual problem steps.
   const displayStepLabel = !isHeader && stepNumber ? `Step ${stepNumber}` : !isHeader && totalSteps > 1 ? `Step ${index + 1}` : null;
   const isSolutionBoxed = !isHeader && (isFinalSolution || (/(^x\s*=|solution|answer|result)/i.test(displayText) && isComplete));
@@ -3495,17 +3496,15 @@ const AnimatedTeacherHandwriting = ({
   return (
     <div
       style={{
-        position: "absolute",
-        left: `${leftPos}%`,
-        top: `${topPos}%`,
+        position: "relative",
         zIndex: 8,
         pointerEvents: "none",
         display: "flex",
         flexDirection: "column",
-        gap: 3,
+        gap: 4,
         maxWidth: "680px",
         userSelect: "none",
-        animation: "fadeIn 0.2s ease",
+        animation: "fadeIn 0.25s ease",
       }}
     >
       {/* Instructional Teacher Transition Arrow Linking from Previous Step */}
@@ -3735,6 +3734,7 @@ const InteractiveWhiteboard = ({
   onCanvasFrame,
   aiHighlights = [],
   aiHints = [],
+  onClearAiWriting,
   isLiveConnected = false,
 }) => {
   const containerRef = React.useRef(null);
@@ -4349,22 +4349,66 @@ const InteractiveWhiteboard = ({
           </div>
         ))}
 
-        {/* AI Live Teacher Handwriting & Math Steps Directly on Whiteboard (No Cards) */}
-        {aiHints.map((hint, idx) => (
-          <AnimatedTeacherHandwriting
-            key={hint.id || idx}
-            index={idx}
-            stepNumber={hint.stepNumber}
-            arrowLabel={hint.arrowLabel}
-            isFinalSolution={hint.isFinalSolution}
-            text={hint.text}
-            explanation={hint.explanation}
-            color={hint.color || "blue"}
-            x={hint.x}
-            y={hint.y}
-            totalSteps={aiHints.length}
-          />
-        ))}
+        {/* AI Live Teacher Handwriting & Math Steps Directly on Whiteboard (Cascading Sequential Flow) */}
+        {aiHints.length > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              top: "76px",
+              left: "28px",
+              maxWidth: "700px",
+              width: "calc(100% - 56px)",
+              pointerEvents: "none",
+              zIndex: 8,
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+              userSelect: "none",
+            }}
+          >
+            {onClearAiWriting && (
+              <div style={{ display: "flex", justifyContent: "flex-end", pointerEvents: "auto", marginBottom: -10 }}>
+                <button
+                  type="button"
+                  onClick={onClearAiWriting}
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    background: "#ffffff",
+                    borderRadius: 6,
+                    padding: "4px 8px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#64748b",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#111111"; e.currentTarget.style.borderColor = "#cbd5e1"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
+                  title="Clear AI notes"
+                >
+                  <X size={13} />
+                  Clear AI Notes
+                </button>
+              </div>
+            )}
+            {aiHints.map((hint, idx) => (
+              <AnimatedTeacherHandwriting
+                key={hint.id || idx}
+                index={idx}
+                stepNumber={hint.stepNumber}
+                arrowLabel={hint.arrowLabel}
+                isFinalSolution={hint.isFinalSolution}
+                text={hint.text}
+                explanation={hint.explanation}
+                color={hint.color || "blue"}
+                totalSteps={aiHints.length}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Whiteboard Header Topic - Positioned cleanly in top-left */}
         {lessonTitle && (
@@ -4691,6 +4735,25 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
     setClearTrigger((t) => t + 1);
   };
 
+  const broadcastWhiteboardState = (pageId, totalPagesCount, pageTitle, strokesCount = 0) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "whiteboard_state",
+          active_page: pageId,
+          total_pages: totalPagesCount,
+          page_title: pageTitle || `Page ${pageId}`,
+          student_has_written: strokesCount > 0,
+          student_strokes_count: strokesCount,
+        })
+      );
+    }
+  };
+
+  useEffect(() => {
+    broadcastWhiteboardState(activePageId, pages.length, currentPage?.title, currentLines.length);
+  }, [activePageId, pages.length, currentLines.length]);
+
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
@@ -4749,6 +4812,8 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             user_id: userId,
             type: "handshake",
             class_id: classId || "",
+            total_pages: pages.length,
+            active_page: activePageId,
           })
         );
         try {
@@ -4913,8 +4978,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                 const newHint = {
                   id: Date.now() + Math.random(),
                   text: rawText,
-                  x: args.x,
-                  y: args.y,
                   stepNumber: args.step_number || args.step || null,
                   arrowLabel: args.arrow_label || null,
                   isFinalSolution: !!args.is_final_solution,
@@ -4927,7 +4990,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                     return prev;
                   }
                   const next = [...prev, newHint];
-                  return next.length > 5 ? next.slice(next.length - 5) : next;
+                  return next.length > 6 ? next.slice(next.length - 6) : next;
                 });
               }
             } else if (name === "draw_arrow_annotation") {
@@ -5294,17 +5357,21 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
               const desc = args.operation_label || args.description || "";
               const highlightSign = args.highlight_sign || "";
               if (toEq) {
-                setAiHints((prev) => [
-                  ...prev,
-                  {
-                    id: Date.now(),
+                setAiHints((prev) => {
+                  const cleanNew = (toEq || "").trim().replace(/\s+/g, " ");
+                  if (prev.some((h) => (h.text || "").trim().replace(/\s+/g, " ") === cleanNew)) {
+                    return prev;
+                  }
+                  const newTrans = {
+                    id: Date.now() + Math.random(),
                     text: toEq,
+                    arrowLabel: desc ? `${desc}${highlightSign ? ` (${highlightSign})` : ""}` : "Next step",
                     explanation: desc ? `${desc}${highlightSign ? ` (${highlightSign})` : ""}` : `Transformed from ${fromEq}`,
-                    color: "green",
-                    x: 10,
-                    y: 35,
-                  },
-                ]);
+                    color: "blue",
+                  };
+                  const next = [...prev, newTrans];
+                  return next.length > 6 ? next.slice(next.length - 6) : next;
+                });
               }
             } else if (name === "clear_ai_writing" || name === "clear_board_annotations") {
               setAiHighlights([]);
@@ -5587,12 +5654,11 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
         <div
           style={{
-            width: 48,
-            height: 48,
-            border: "3.5px solid #f0f0f0",
-            borderTopColor: "#111111",
+            width: 10,
+            height: 10,
             borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
+            background: "#111111",
+            animation: "pulse 1.2s infinite ease-in-out",
             marginBottom: 20,
           }}
         />
@@ -5632,46 +5698,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             <h1>
               {lessonTitle} <span className="live-dot">•</span>
             </h1>
-            {!isLiveConnected && (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  background: "#fef3c7",
-                  color: "#92400e",
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  border: "1px solid #fde68a",
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706", animation: "pulse 1s infinite" }} />
-                Reconnecting to AI Tutor...
-              </span>
-            )}
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                background: "#ffffff",
-                color: "#111111",
-                padding: "4px 10px",
-                borderRadius: 6,
-                fontSize: 12.5,
-                fontWeight: 600,
-                border: "1px solid #e5e5e5",
-              }}
-              title={`Adaptive Strategy: ${strategyReason}`}
-            >
-              <Sparkles size={14} color="#111111" />
-              <span>Strategy:</span>
-              <strong style={{ background: "#f3f4f6", padding: "2px 6px", borderRadius: 4, color: "#111111" }}>
-                {teachingStrategy}
-              </strong>
-            </span>
           </div>
           {lessonSubtitle && <p>{lessonSubtitle}</p>}
         </div>
@@ -5690,20 +5716,6 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           >
             <Download size={17} />
             Export
-          </button>
-          <button
-            type="button"
-            className="top-action"
-            onClick={toggleLiveMic}
-            style={{
-              background: isMicStreaming ? "#111111" : "#ffffff",
-              color: isMicStreaming ? "#ffffff" : "#111111",
-              borderColor: isMicStreaming ? "#111111" : "#e5e5e5",
-              fontWeight: 600,
-            }}
-          >
-            {isMicStreaming ? <Mic size={18} color="#ffffff" /> : <MicOff size={18} color="#111111" />}
-            {isMicStreaming ? "Live Mic ON" : "Turn Mic ON"}
           </button>
           <button
             type="button"
@@ -5858,6 +5870,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             onCanvasFrame={handleCanvasFrame}
             aiHighlights={aiHighlights}
             aiHints={aiHints}
+            onClearAiWriting={() => setAiHints([])}
             isLiveConnected={isLiveConnected}
           />
         )}
@@ -6036,30 +6049,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
                   onClick={() => fileInputRef.current?.click()}
                   title="Upload image or file"
                 >
-                  <Paperclip size={17} />
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleLiveMic}
-                  style={{
-                    border: 0,
-                    background: isMicStreaming ? "#111111" : "#f5f5f5",
-                    color: isMicStreaming ? "#ffffff" : "#111111",
-                    padding: "6px 10px",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: "all 0.15s ease",
-                  }}
-                  title={isMicStreaming ? "Live microphone is streaming. Click to mute." : "Click to stream voice"}
-                >
-                  {isMicStreaming ? <Mic size={16} className="pulse-icon" /> : <MicOff size={16} />}
-                  <span>{isMicStreaming ? "Mic On" : "Mic Off"}</span>
+                  <Plus size={18} />
                 </button>
               </div>
 
@@ -6365,7 +6355,6 @@ const AIClassroom = () => {
               })()}
             </div>
             <div>
-              <p className="lesson-kicker">{selectedSubject.name} • {selectedSubject.level || "Beginner"}</p>
               <h1 className="lesson-title-large">{selectedSubject.name}</h1>
               <p className="lesson-description-large">
                 {selectedSubject.detailDescription || selectedSubject.description || getSubjectDetails(selectedSubject.name).detailDescription}

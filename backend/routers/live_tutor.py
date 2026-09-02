@@ -426,6 +426,56 @@ def get_topic_pedagogical_hook(topic_name: str) -> dict:
             "worked_eq_3": "= 50\\%",
             "practice_prompt": "What is the probability of rolling a number greater than 4 on a 6-sided die?"
         }
+    elif "pemdas" in t_lower or "order of operation" in t_lower or "operation" in t_lower:
+        return {
+            "hook": "Why do we even have an order of operations? If you have 10 - 2 × 3, someone might subtract first and get 24, while someone else multiplies first and gets 4! To stop math from falling into chaos, mathematicians agreed on a universal traffic law: PEMDAS. Parentheses first, then Exponents, then Multiplication & Division left-to-right, and finally Addition & Subtraction.",
+            "concept_eq": "\\text{P} \\to \\text{E} \\to \\text{M / D} \\to \\text{A / S}",
+            "worked_example_intro": "Let's walk through an expression step-by-step: 10 - 2 × 3. Notice why multiplication must be done before subtraction!",
+            "worked_eq_1": "10 - 2 \\times 3",
+            "worked_eq_2": "= 10 - 6",
+            "worked_eq_3": "= 4",
+            "practice_prompt": "What if we had parentheses: (10 - 2) × 3? Which part would we have to calculate first now?"
+        }
+    elif "fraction" in t_lower or "ratio" in t_lower:
+        return {
+            "hook": "Fractions are just sharing pizza fairly! The bottom number (denominator) tells you how many equal slices the whole pizza was cut into, and the top number (numerator) tells you how many slices you actually have on your plate.",
+            "concept_eq": "\\frac{\\text{Numerator (Parts)}}{\\text{Denominator (Total)}}",
+            "worked_example_intro": "Watch how we combine matching slices when adding 1/4 + 2/4.",
+            "worked_eq_1": "\\frac{1}{4} + \\frac{2}{4}",
+            "worked_eq_2": "= \\frac{1 + 2}{4}",
+            "worked_eq_3": "= \\frac{3}{4}",
+            "practice_prompt": "If you have 2/5 + 1/5, what does that combine to?"
+        }
+    elif "exponent" in t_lower or "power" in t_lower:
+        return {
+            "hook": "Multiplication is repeated addition (3 × 4 is 3 added 4 times). Exponents are repeated multiplication! 2³ isn't 2 × 3; it means multiplying 2 by itself 3 times: 2 × 2 × 2 = 8.",
+            "concept_eq": "b^n = \\underbrace{b \\times b \\times \\dots \\times b}_{n \\text{ times}}",
+            "worked_example_intro": "Let's evaluate 3³ step by step.",
+            "worked_eq_1": "3^3 = 3 \\times 3 \\times 3",
+            "worked_eq_2": "= 9 \\times 3",
+            "worked_eq_3": "= 27",
+            "practice_prompt": "What does 4² evaluate to?"
+        }
+    elif "inequalit" in t_lower:
+        return {
+            "hook": "Think of an inequality like a speed limit sign: your speed doesn't have to be exact, it just has to stay within a boundary! An inequality describes a whole range of possibilities.",
+            "concept_eq": "x < 5 \\quad (\\text{all values strictly less than 5})",
+            "worked_example_intro": "Watch how we solve and graph 2x + 1 > 7.",
+            "worked_eq_1": "2x + 1 > 7",
+            "worked_eq_2": "2x > 6",
+            "worked_eq_3": "x > 3",
+            "practice_prompt": "If x > 3, is the number 4 a valid solution?"
+        }
+    elif "factor" in t_lower or "quadratic" in t_lower:
+        return {
+            "hook": "Factoring a quadratic is like detective work: we have an area or total expression, and we want to find the two mystery puzzle pieces that multiplied together to create it!",
+            "concept_eq": "x^2 + bx + c = (x + p)(x + q)",
+            "worked_example_intro": "Let's factor x² + 5x + 6 by finding two numbers that multiply to 6 and add to 5.",
+            "worked_eq_1": "x^2 + 5x + 6",
+            "worked_eq_2": "p \\times q = 6, \\quad p + q = 5 \\implies 2 \\text{ and } 3",
+            "worked_eq_3": "= (x + 2)(x + 3)",
+            "practice_prompt": "What two numbers multiply to 10 and add to 7?"
+        }
     else:
         return {
             "hook": f"Every big breakthrough in {topic_name} comes from one simple intuitive rule that makes complex problems easy to unlock.",
@@ -539,39 +589,50 @@ Grade Level: {profile.get('grade', '9th Grade')}.
 Cognitive Mode: {cognitive_mode}.
 Past Misconceptions: {[m.get('misconception_type') for m in past_mistakes]}.
 
-TOPIC PEDAGOGICAL BLUEPRINT (USE THESE EXACT EXAMPLES):
-- Curiosity Story Hook: "{hook_data['hook']}"
-- Key Concept Formula: "{hook_data['concept_eq']}"
+TOPIC PEDAGOGICAL BLUEPRINT:
+- Concept Intuition & Story Hook: "{hook_data['hook']}"
+- Key Concept Rule/Formula: "{hook_data['concept_eq']}"
 - Worked Example Intro: "{hook_data['worked_example_intro']}"
-- Worked Example Steps:
-  * Step 1: "{hook_data['worked_eq_1']}"
-  * Step 2: "{hook_data['worked_eq_2']}"
-  * Step 3: "{hook_data['worked_eq_3']}"
-- Practice Problem: "{hook_data['practice_prompt']}"
+- First Step: "{hook_data['worked_eq_1']}"
+- Second Step: "{hook_data['worked_eq_2']}"
+- Final Result: "{hook_data['worked_eq_3']}"
+- Practice Problem for Student: "{hook_data['practice_prompt']}"
 
-MANDATORY PROFESSIONAL TEACHING RULES:
-1. CHARISMATIC, STORY-FIRST INTRODUCTION (NO SCRIPTED ROBOTIC OPENINGS):
-   - NEVER open with generic phrases like "Welcome to [Topic]! Are you ready to explore it today?".
-   - Open with a warm, energetic 1-sentence greeting to {greeting_target}, then immediately tell the Curiosity Story Hook: "{hook_data['hook']}".
-   - Write the concept formula "{hook_data['concept_eq']}" on the whiteboard with `write_math_equation`.
-   - Tell the student: "Watch my pen on the board as we work through this first example together!"
+CORE PEDAGOGICAL DIRECTIVES (MUST FOLLOW STRICTLY):
 
-2. SYNCHRONIZED "THINK-ALOUD" WHITEBOARD MODELING:
-   - When solving a problem, write and speak AT THE SAME TIME:
-     * Explain each parenthesis, substitution, and sign change out loud as you write it on the whiteboard!
-     * Use `write_math_equation(latex=..., step_number=1, 2, 3...)` and `arrow_label` (e.g. 'substitute x=5', '− 5 from both sides', '÷ 2').
-     * Never dump final answers without showing the intermediate steps!
+1. PHASE 1: CONCEPT INTUITION & "WHY" FIRST (DO NOT RUSH TO EXAMPLES):
+   - In your first turn, welcome {greeting_target} warmly.
+   - Explain the BIG PICTURE CONCEPT in natural, captivating words using the Story Hook: "{hook_data['hook']}".
+   - Write ONLY the main concept rule or formula on the board: `write_math_equation(latex="{hook_data['concept_eq']}")`.
+   - Explain what that rule means conceptually in plain English.
+   - Check in with the student: ask if the concept makes intuitive sense before diving into any calculation!
+   - NEVER start calculating an example problem in turn 1! The student must understand the concept first.
 
-3. "I DO, WE DO, YOU DO" GRADUAL RELEASE (NEVER ASK BEFORE TEACHING):
-   - Phase 1 ("I Do" - Worked Example): You solve the example completely on the whiteboard while speaking ({hook_data['worked_eq_1']} -> {hook_data['worked_eq_2']} -> {hook_data['worked_eq_3']}).
-   - Phase 2 ("We Do" - Guided Check): Check if the student followed the steps ("Notice why we multiplied before adding?").
-   - Phase 3 ("You Do" - Practice): Present the practice problem "{hook_data['practice_prompt']}" for the student to solve.
+2. PHASE 2: STRICT WHITEBOARD PACING — EXACTLY ONE STEP PER SPEECH TURN:
+   - When solving an example with the student, WRITE ONLY ONE STEP on the whiteboard per conversational turn!
+   - ABSOLUTE PROHIBITION: DO NOT emit multiple `write_math_equation` or transformation tool calls in the same turn!
+   - Structure for each step:
+     * First speak: Explain the mathematical intuition and reason for the upcoming step (e.g. why we evaluate parentheses before multiplication).
+     * Call `write_math_equation` for that single line with a helpful `arrow_label` (e.g. 'Parentheses first', 'Evaluate 3²', 'Multiply').
+     * Pause and engage the student (e.g. "Notice how we simplified the inside? What operation do you see next?").
+   - Give the student time to see the writing and respond.
 
-4. NATURAL HUMAN CONVERSATIONAL CADENCE:
-   - Always talk directly to the student as "you".
-   - Speak in snappy 1-2 sentence micro-steps.
-   - Use lively conversational markers: "Notice what happens here...", "Check this out...", "Watch this step carefully...".
-   - When the student hesitates or says "I don't know", respond warmly: "No worries at all! Let's break down the very first step together."
+3. PHASE 3: TEACH BEYOND THE EQUATION (NO ROBOTIC READING):
+   - Never just read numbers out loud (e.g. "10 minus 9 is 1").
+   - World-class teachers explain the insight, the "why", and the common trap:
+     * "Notice how tempting it is to subtract first here? That is the #1 trap students fall into! But remember our PEMDAS rule: multiplication always has priority over subtraction."
+   - Connect every step back to the core concept.
+
+4. PHASE 4: GUIDED PRACTICE ("YOU DO"):
+   - After completing the example step-by-step, present the practice problem: "{hook_data['practice_prompt']}".
+   - Encourage the student to write their answer on the whiteboard using their marker or say it aloud.
+   - If they write on the board or click "Check My Board", inspect their work and provide encouraging, specific feedback.
+
+5. WHITEBOARD MULTI-PAGE & SPATIAL NON-OVERLAPPING AWARENESS:
+   - The student has an interactive multi-page whiteboard and can create multiple pages.
+   - You will receive real-time notifications about how many pages exist, which page the student is currently viewing, and if they have drawn.
+   - NEVER write over or overlap the student's handwritten work or math calculations!
+   - If the student is drawing or needs space, or before starting a brand-new practice problem, call `clear_ai_writing` to keep the board clean and spacious.
 """
 
     if rag_context:
@@ -701,7 +762,7 @@ MANDATORY PROFESSIONAL TEACHING RULES:
                                                     )
                                                 else:
                                                     await session.send_realtime_input(
-                                                        media_chunks=[types.Blob(data=img_bytes, mime_type="image/jpeg")]
+                                                        media=types.Blob(data=img_bytes, mime_type="image/jpeg")
                                                     )
                                         except Exception as img_err:
                                             logger.warning(f"[LIVE WS] Canvas frame stream warning: {img_err}")
@@ -721,6 +782,31 @@ MANDATORY PROFESSIONAL TEACHING RULES:
                                             logger.info(f"[LIVE WS GEMINI] Delivered student turn to Gemini Live")
                                         except Exception as e:
                                             logger.error(f"[LIVE WS GEMINI ERROR] Error sending text turn: {e}")
+                                elif msg_type == "whiteboard_state":
+                                    active_pg = msg.get("active_page", 1)
+                                    total_pgs = msg.get("total_pages", 1)
+                                    pg_title = msg.get("page_title", f"Page {active_pg}")
+                                    student_wrote = msg.get("student_has_written", False)
+                                    strokes_count = msg.get("student_strokes_count", 0)
+                                    logger.info(f"[LIVE WS] Whiteboard state: page {active_pg}/{total_pgs} ('{pg_title}') - strokes: {strokes_count}")
+                                    try:
+                                        async with _send_lock:
+                                            await session.send_client_content(
+                                                turns=[
+                                                    types.Content(
+                                                        role="user",
+                                                        parts=[
+                                                            types.Part.from_text(
+                                                                text=f"System note: The student is currently on Whiteboard Page {active_pg} of {total_pgs} ('{pg_title}'). "
+                                                                     f"{'The student has drawn work on this page. Never overlap their handwriting!' if student_wrote else 'This page is empty.'}"
+                                                            )
+                                                        ],
+                                                    )
+                                                ],
+                                                turn_complete=False,
+                                            )
+                                    except Exception as ws_err:
+                                        logger.warning(f"[LIVE WS] Whiteboard state forwarding warning: {ws_err}")
                                 elif msg_type == "interrupt":
                                     logger.info("[LIVE WS USER ACTION] Student triggered voice barge-in interrupt")
                                     # Interruption on Gemini Live is naturally handled when client pauses audio playback and sends subsequent speech or turns.
@@ -931,12 +1017,12 @@ MANDATORY PROFESSIONAL TEACHING RULES:
                     # Send kickoff turn on first attempt, or context resume turn on renewal
                     if _attempt == 1:
                         kickoff_prompt = (
-                            f"You are the AI Teacher starting a 1-on-1 private lesson with {greeting_target} on '{canonical_topic}'. "
-                            f"1. Greet {greeting_target} in 1 short, enthusiastic, natural sentence. "
-                            f"2. Introduce the concept using this exact real-world story hook: '{hook_data['hook']}' "
-                            f"3. Write the concept formula '{hook_data['concept_eq']}' on the whiteboard using `write_math_equation`. "
-                            f"4. Tell them: 'Watch my pen on the board as we work through this first example together!' "
-                            f"Be charismatic, lively, and encouraging. Do NOT ask them to solve a question yet!"
+                            f"You are TutorFlow AI starting a 1-on-1 private lesson with {greeting_target} on '{canonical_topic}'. "
+                            f"1. Greet {greeting_target} warmly in 1 short, enthusiastic sentence. "
+                            f"2. Introduce the concept using this exact story hook: '{hook_data['hook']}' "
+                            f"3. Write the core concept rule or formula '{hook_data['concept_eq']}' on the whiteboard using `write_math_equation`. "
+                            f"4. Ask {greeting_target} a warm check-in question to see if the core idea makes sense before working on an example together. "
+                            f"CRITICAL: Do NOT start calculating a multi-step example in this opening turn! Teach the big-picture intuition first."
                         )
                         async def send_kickoff():
                             try:
