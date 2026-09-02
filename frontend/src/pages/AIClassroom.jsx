@@ -2812,6 +2812,69 @@ const MaterialViewerModal = ({ material, onClose }) => {
   );
 };
 
+const getFallbackMaterials = (topicName) => [
+  {
+    id: `guide-${topicName}-1`,
+    title: `Mastering ${topicName}: Visual Concept Guide`,
+    type: "Guides",
+    category: "Guides",
+    topic: topicName,
+    description: `Deep-dive visual concept guide and intuitive breakdown for ${topicName}.`,
+    duration: "5 min read",
+    badge: "Core Guide",
+    formula_latex: "PEMDAS: P \\rightarrow E \\rightarrow M/D \\rightarrow A/S",
+    preview_steps: ["Identify grouping symbols", "Evaluate exponents", "Perform multiplication & division left to right"],
+  },
+  {
+    id: `notes-${topicName}-2`,
+    title: `${topicName}: Formula & Key Rules Cheat-Sheet`,
+    type: "Lesson Notes",
+    category: "Lesson Notes",
+    topic: topicName,
+    description: `Comprehensive reference sheet with core rules, properties, and standard procedures for ${topicName}.`,
+    duration: "4 min read",
+    badge: "Smart Notes",
+    formula_latex: "(a + b)^2 = a^2 + 2ab + b^2",
+    preview_steps: ["Step-by-step order", "Parentheses first", "Left-to-right tiebreaker"],
+  },
+  {
+    id: `examples-${topicName}-3`,
+    title: `${topicName}: Worked Examples & Common Traps`,
+    type: "Examples",
+    category: "Examples",
+    topic: topicName,
+    description: `Annotated step-by-step walkthroughs highlighting common mistakes to avoid.`,
+    duration: "8 min practice",
+    badge: "Worked Example",
+    formula_latex: "4 + 3 \\times 2 = 4 + 6 = 10",
+    preview_steps: ["Spot the multiplication first", "Don't add 4+3 first", "Compute final result"],
+  },
+  {
+    id: `worksheets-${topicName}-4`,
+    title: `${topicName}: Graded Practice Problem Set`,
+    type: "Worksheets",
+    category: "Worksheets",
+    topic: topicName,
+    description: `Carefully scaffolded practice exercises to cement your conceptual mastery.`,
+    duration: "15 min practice",
+    badge: "Practice Set",
+    formula_latex: "18 \\div 3 \\times 2 + (5 - 2)^2",
+    preview_steps: ["Parentheses: (5-2)=3", "Exponents: 3^2=9", "Multiplication/Division: 18/3*2=12"],
+  },
+  {
+    id: `videos-${topicName}-5`,
+    title: `Visual Intuition & Graphic Explanation for ${topicName}`,
+    type: "Videos",
+    category: "Videos",
+    topic: topicName,
+    description: `Interactive graphic breakdown showing why the rules work the way they do.`,
+    duration: "6 min video",
+    badge: "Video Tutorial",
+    formula_latex: "f(x) \\rightarrow \\text{Visual Model}",
+    preview_steps: ["Intuitive meaning", "Geometric representation", "Real-world analogies"],
+  },
+];
+
 const ContentListView = ({ type, topic = "Algebra" }) => {
   const [activeTab, setActiveTab] = useState("All");
   const [materials, setMaterials] = useState([]);
@@ -2821,7 +2884,8 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
 
   useEffect(() => {
     let isMounted = true;
-    const cacheKey = `${topic}:${type}`;
+    const cleanTopic = topic || "Algebra";
+    const cacheKey = `${cleanTopic}:${type}`;
 
     if (_FRONTEND_MATERIALS_CACHE.has(cacheKey)) {
       setMaterials(_FRONTEND_MATERIALS_CACHE.get(cacheKey));
@@ -2830,10 +2894,21 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
     }
 
     setLoading(true);
-    api(`/tutor/materials?category=${encodeURIComponent(type)}&topic=${encodeURIComponent(topic)}`)
+
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        const fallbacks = getFallbackMaterials(cleanTopic);
+        _FRONTEND_MATERIALS_CACHE.set(cacheKey, fallbacks);
+        setMaterials(fallbacks);
+        setLoading(false);
+      }
+    }, 2500);
+
+    api(`/tutor/materials?category=${encodeURIComponent(type)}&topic=${encodeURIComponent(cleanTopic)}`)
       .then((data) => {
         if (isMounted) {
-          const list = Array.isArray(data) ? data : [];
+          clearTimeout(timer);
+          const list = Array.isArray(data) && data.length > 0 ? data : getFallbackMaterials(cleanTopic);
           _FRONTEND_MATERIALS_CACHE.set(cacheKey, list);
           setMaterials(list);
           setLoading(false);
@@ -2841,13 +2916,17 @@ const ContentListView = ({ type, topic = "Algebra" }) => {
       })
       .catch(() => {
         if (isMounted) {
-          setMaterials([]);
+          clearTimeout(timer);
+          const list = getFallbackMaterials(cleanTopic);
+          _FRONTEND_MATERIALS_CACHE.set(cacheKey, list);
+          setMaterials(list);
           setLoading(false);
         }
       });
 
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
   }, [type, topic]);
 
@@ -3750,7 +3829,7 @@ const InteractiveWhiteboard = ({
   const isDrawing = React.useRef(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const debounceTimerRef = React.useRef(null);
-  const [isGridVisible, setIsGridVisible] = useState(false);
+  const [isGridVisible, setIsGridVisible] = useState(true);
   const [showMathMenu, setShowMathMenu] = useState(false);
   const [isCheckingBoard, setIsCheckingBoard] = useState(false);
 
@@ -4238,13 +4317,23 @@ const InteractiveWhiteboard = ({
         ref={containerRef}
         style={{
           position: "relative",
-          backgroundImage: isGridVisible
-            ? "radial-gradient(#cbd5e1 1.2px, transparent 1.2px), radial-gradient(#e2e8f0 1.2px, #ffffff 1.2px)"
-            : "none",
-          backgroundSize: "24px 24px",
-          backgroundPosition: "0 0, 12px 12px",
+          backgroundColor: "#ffffff",
         }}
       >
+        {isGridVisible && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 6,
+              pointerEvents: "none",
+              backgroundImage: "radial-gradient(#94a3b8 1.5px, transparent 1.5px)",
+              backgroundSize: "24px 24px",
+              backgroundPosition: "0 0",
+              opacity: 0.85,
+            }}
+          />
+        )}
         <div
           style={{
             position: "absolute",
@@ -5654,11 +5743,12 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
 
         <div
           style={{
-            width: 10,
-            height: 10,
+            width: 48,
+            height: 48,
+            border: "3.5px solid #f0f0f0",
+            borderTopColor: "#111111",
             borderRadius: "50%",
-            background: "#111111",
-            animation: "pulse 1.2s infinite ease-in-out",
+            animation: "spin 0.8s linear infinite",
             marginBottom: 20,
           }}
         />
@@ -5716,6 +5806,20 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
           >
             <Download size={17} />
             Export
+          </button>
+          <button
+            type="button"
+            className="top-action"
+            onClick={toggleLiveMic}
+            style={{
+              background: isMicStreaming ? "#111111" : "#ffffff",
+              color: isMicStreaming ? "#ffffff" : "#111111",
+              borderColor: isMicStreaming ? "#111111" : "#e5e5e5",
+              fontWeight: 600,
+            }}
+          >
+            {isMicStreaming ? <Mic size={18} color="#ffffff" /> : <MicOff size={18} color="#111111" />}
+            {isMicStreaming ? "Live Mic ON" : "Turn Mic ON"}
           </button>
           <button
             type="button"

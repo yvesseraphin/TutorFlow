@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -16,7 +17,7 @@ from backend.services.ai_learner import (
     save_learner_memory,
 )
 from backend.services.lesson_planner import generate_personalized_lesson_plan
-from backend.services.supabase import admin_client, current_user
+from backend.services.supabase import admin_client, current_user, optional_user
 
 logger = logging.getLogger("tutorflow.tutor_router")
 router = APIRouter(prefix="/tutor", tags=["Tutor"])
@@ -68,7 +69,7 @@ class EndSessionRequest(BaseModel):
 _MATERIALS_CACHE: Dict[str, List[Dict[str, Any]]] = {}
 
 @router.get("/materials")
-async def get_materials(category: str = "All", topic: str = "Algebra", user: dict = Depends(current_user)) -> List[Dict[str, Any]]:
+async def get_materials(category: str = "All", topic: str = "Algebra", user: Optional[dict] = Depends(optional_user)) -> List[Dict[str, Any]]:
     """
     Returns dynamically generated and curated educational materials (Lesson Notes, Guides, Worksheets, Videos, Examples, Practice)
     specifically mapped to the learner and requested topic.
@@ -113,13 +114,16 @@ Each item must have:
 Return strict JSON:
 {{"materials": [...]}}
 """
-            response = await client_ai.aio.models.generate_content(
-                model=settings.gemini_model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.2,
+            response = await asyncio.wait_for(
+                client_ai.aio.models.generate_content(
+                    model=settings.gemini_model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.2,
+                    ),
                 ),
+                timeout=3.0,
             )
             data = json.loads(response.text)
             gen_materials = data.get("materials") or []
