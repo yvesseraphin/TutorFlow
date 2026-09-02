@@ -134,9 +134,9 @@ const LandingPage = () => {
         setIsAnalyzing(true);
         setAnalysisStep(0);
 
-        // Step text ticker
-        const timer1 = setTimeout(() => setAnalysisStep(1), 1200);
-        const timer2 = setTimeout(() => setAnalysisStep(2), 2400);
+        // Step text ticker (quick & responsive)
+        const timer1 = setTimeout(() => setAnalysisStep(1), 350);
+        const timer2 = setTimeout(() => setAnalysisStep(2), 700);
 
         try {
             const formData = new FormData();
@@ -192,7 +192,7 @@ const LandingPage = () => {
                     sessionStorage.setItem('redirect_to', classroomUrl);
                     navigate('/signup');
                 }
-            }, 1000);
+            }, 300);
         }
     };
 
@@ -476,10 +476,10 @@ const LandingPage = () => {
                 {isAnalyzing && (
                     <div className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-4 animate-in fade-in duration-200'>
                         <div className='bg-white rounded-2xl p-8 sm:p-10 max-w-md w-full border border-neutral-200 flex flex-col items-center text-center'>
-                            {/* Animated Pulse & Spinner */}
+                            {/* Animated Pulse & Spinner in clean black */}
                             <div className='relative size-16 mb-6 flex items-center justify-center'>
-                                <div className='absolute inset-0 rounded-full bg-purple-100 animate-ping opacity-75'></div>
-                                <div className='relative size-14 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white'>
+                                <div className='absolute inset-0 rounded-full bg-neutral-200 animate-ping opacity-75'></div>
+                                <div className='relative size-14 rounded-full bg-[#111111] flex items-center justify-center text-white'>
                                     <svg className='animate-spin size-6 text-white' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
                                         <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
                                         <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
@@ -492,18 +492,18 @@ const LandingPage = () => {
                             </h3>
 
                             <p className='text-sm text-neutral-600 mb-6 transition-all duration-300 min-h-[40px] flex items-center justify-center'>
-                                {analysisStep === 0 && 'Analyzing study materials & notes...'}
-                                {analysisStep === 1 && 'Diagnosing prerequisites & key concepts...'}
-                                {analysisStep === 2 && 'Synthesizing personalized master curriculum...'}
-                                {analysisStep === 3 && 'Classroom ready! Launching session...'}
+                                {analysisStep === 0 && 'Reading your study materials & notes...'}
+                                {analysisStep === 1 && 'Preparing your lesson concepts...'}
+                                {analysisStep === 2 && 'Setting up your interactive whiteboard...'}
+                                {analysisStep === 3 && 'Classroom ready! Opening your session...'}
                             </p>
 
-                            {/* Progress bar dots */}
+                            {/* Progress bar dots in clean black */}
                             <div className='flex items-center gap-2'>
-                                <div className={`size-2 rounded-full transition-all duration-300 ${analysisStep >= 0 ? 'bg-purple-600 scale-110' : 'bg-neutral-200'}`}></div>
-                                <div className={`size-2 rounded-full transition-all duration-300 ${analysisStep >= 1 ? 'bg-purple-600 scale-110' : 'bg-neutral-200'}`}></div>
-                                <div className={`size-2 rounded-full transition-all duration-300 ${analysisStep >= 2 ? 'bg-purple-600 scale-110' : 'bg-neutral-200'}`}></div>
-                                <div className={`size-2 rounded-full transition-all duration-300 ${analysisStep >= 3 ? 'bg-purple-600 scale-110' : 'bg-neutral-200'}`}></div>
+                                <div className={`size-2 rounded-full transition-all duration-300 ${analysisStep >= 0 ? 'bg-[#111111] scale-110' : 'bg-neutral-200'}`}></div>
+                                <div className={`size-2 rounded-full transition-all duration-300 ${analysisStep >= 1 ? 'bg-[#111111] scale-110' : 'bg-neutral-200'}`}></div>
+                                <div className={`size-2 rounded-full transition-all duration-300 ${analysisStep >= 2 ? 'bg-[#111111] scale-110' : 'bg-neutral-200'}`}></div>
+                                <div className={`size-2 rounded-full transition-all duration-300 ${analysisStep >= 3 ? 'bg-[#111111] scale-110' : 'bg-neutral-200'}`}></div>
                             </div>
                         </div>
                     </div>

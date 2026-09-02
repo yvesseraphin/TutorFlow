@@ -4948,6 +4948,7 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
             class_id: classId || "",
             total_pages: pages.length,
             active_page: activePageId,
+            is_reconnect: hasLoadedOnceRef.current,
           })
         );
         try {
@@ -5523,6 +5524,12 @@ const LiveLesson = ({ onEnd, lessonTitle = "Live Lesson", lessonSubtitle = "", l
         console.warn("[LIVE WS CLIENT] Live WebSocket connection closed.");
         if (isMounted) {
           setIsLiveConnected(false);
+          // Stop any audio buffer playback so words do not repeat twice on reconnect
+          try {
+            playerRef.current?.stop();
+          } catch (e) {
+            console.log("Audio player stop on close:", e);
+          }
           // Automatic resilient reconnection with backoff
           if (!reconnectTimeout) {
             reconnectTimeout = setTimeout(() => {

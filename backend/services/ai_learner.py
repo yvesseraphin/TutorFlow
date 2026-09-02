@@ -304,24 +304,25 @@ def find_topic_node(topic_name: Optional[str]) -> Optional[Dict[str, Any]]:
                 node_copy["name"] = key
                 return node_copy
 
-    # 6. Safe substring match ONLY if meaningful query length >= 4
-    if len(normalized) >= 4:
-        for key, node in KNOWLEDGE_GRAPH.items():
-            if normalized in key.casefold() or key.casefold() in normalized:
+    # 6. Safe word-boundary match (never match substrings inside different words like 'ratio' in 'operations')
+    import re
+    for key, node in KNOWLEDGE_GRAPH.items():
+        key_clean = key.casefold()
+        if normalized == key_clean or re.search(rf"\b{re.escape(normalized)}\b", key_clean) or re.search(rf"\b{re.escape(key_clean)}\b", normalized):
+            node_copy = node.copy()
+            node_copy["name"] = key
+            return node_copy
+
+    for key, node in KNOWLEDGE_GRAPH.items():
+        for alias in node.get("aliases", []):
+            cleaned = alias.casefold()
+            for prefix in ("pre-algebra: ", "algebra: ", "functions: ", "geometry: ", "statistics: "):
+                if cleaned.startswith(prefix):
+                    cleaned = cleaned[len(prefix):]
+            if len(cleaned) >= 3 and (re.search(rf"\b{re.escape(cleaned)}\b", normalized) or re.search(rf"\b{re.escape(normalized)}\b", cleaned)):
                 node_copy = node.copy()
                 node_copy["name"] = key
                 return node_copy
-
-        for key, node in KNOWLEDGE_GRAPH.items():
-            for alias in node.get("aliases", []):
-                cleaned = alias.casefold()
-                for prefix in ("pre-algebra: ", "algebra: ", "functions: ", "geometry: ", "statistics: "):
-                    if cleaned.startswith(prefix):
-                        cleaned = cleaned[len(prefix):]
-                if (len(cleaned) >= 4 and normalized in cleaned) or (len(normalized) >= 4 and cleaned in normalized):
-                    node_copy = node.copy()
-                    node_copy["name"] = key
-                    return node_copy
 
     return None
 

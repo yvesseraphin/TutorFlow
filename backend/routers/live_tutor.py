@@ -436,6 +436,16 @@ def get_topic_pedagogical_hook(topic_name: str) -> dict:
             "worked_eq_3": "= 50\\%",
             "practice_prompt": "What is the probability of rolling a number greater than 4 on a 6-sided die?"
         }
+    elif "data display" in t_lower or "reading data" in t_lower or "histogram" in t_lower or "bar chart" in t_lower:
+        return {
+            "hook": "Data displays and charts are visual stories! Instead of sifting through a messy list of raw numbers, a clear chart instantly shows you trends, peaks, and comparisons.",
+            "concept_eq": "\\text{Chart Analysis: Identify Title, Axes, Scale, and Trends}",
+            "worked_example_intro": "Let's read and interpret a data display step-by-step.",
+            "worked_eq_1": "\\text{Step 1: Check the horizontal and vertical axis labels}",
+            "worked_eq_2": "\\text{Step 2: Read the height or value on the vertical scale}",
+            "worked_eq_3": "\\text{Step 3: State the final comparison clearly}",
+            "practice_prompt": "Looking at the display, which category has the highest value?"
+        }
     elif "pemdas" in t_lower or "order of operation" in t_lower or "operation" in t_lower:
         return {
             "hook": "Why do we even have an order of operations? If you have 10 - 2 × 3, someone might subtract first and get 24, while someone else multiplies first and gets 4! To stop math from falling into chaos, mathematicians agreed on a universal traffic law: PEMDAS. Parentheses first, then Exponents, then Multiplication & Division left-to-right, and finally Addition & Subtraction.",
@@ -446,7 +456,7 @@ def get_topic_pedagogical_hook(topic_name: str) -> dict:
             "worked_eq_3": "= 4",
             "practice_prompt": "What if we had parentheses: (10 - 2) × 3? Which part would we have to calculate first now?"
         }
-    elif "fraction" in t_lower or "ratio" in t_lower:
+    elif bool(re.search(r"\b(fraction|fractions|ratio|ratios)\b", t_lower)):
         return {
             "hook": "Fractions are just sharing pizza fairly! The bottom number (denominator) tells you how many equal slices the whole pizza was cut into, and the top number (numerator) tells you how many slices you actually have on your plate.",
             "concept_eq": "\\frac{\\text{Numerator (Parts)}}{\\text{Denominator (Total)}}",
@@ -540,7 +550,8 @@ async def live_tutor_websocket(websocket: WebSocket, token: Optional[str] = None
     greeting_target = first_name if first_name else "there"
     
     topic_node = find_topic_node(topic)
-    canonical_topic = topic_node["name"] if topic_node else (learner_context.get("topic") or topic)
+    # Prioritize the student's exact topic (never override custom lessons or selected topics)
+    canonical_topic = topic.strip() if topic and topic.strip() else (topic_node["name"] if topic_node else "Algebra")
     topic_category = topic_node.get("category", "General") if topic_node else "General"
     topic_subject = topic_node.get("subject", "Mathematics") if topic_node else "Mathematics"
 
@@ -598,6 +609,12 @@ Student Name: {greeting_target}.
 Grade Level: {profile.get('grade', '9th Grade')}.
 Cognitive Mode: {cognitive_mode}.
 Past Misconceptions: {[m.get('misconception_type') for m in past_mistakes]}.
+
+NATURAL CONVERSATION & ADDRESS DIRECTIVE (CRITICAL):
+- DO NOT say the student's name repeatedly in every turn or sentence!
+- Greet them with their name ONCE in your very first welcome sentence.
+- After that opening turn, address them naturally as "you" (e.g. "What do you think?", "How does that look to you?", "Notice how you can simplify this").
+- NEVER repeat or tack the student's name onto every sentence.
 
 TOPIC PEDAGOGICAL BLUEPRINT:
 - Concept Intuition & Story Hook: "{hook_data['hook']}"
@@ -1029,15 +1046,16 @@ CORE PEDAGOGICAL DIRECTIVES (MUST FOLLOW STRICTLY):
                     client_task = asyncio.create_task(client_to_gemini())
                     gemini_task = asyncio.create_task(gemini_to_client())
 
-                    # Send kickoff turn on first attempt, or context resume turn on renewal
-                    if _attempt == 1:
+                    # Send kickoff turn ONLY on brand-new first session (NEVER on WebSocket reconnect)
+                    is_reconnect = init_data.get("is_reconnect", False)
+                    if _attempt == 1 and not is_reconnect:
                         kickoff_prompt = (
-                            f"You are TutorFlow AI starting a 1-on-1 private lesson with {greeting_target} on '{canonical_topic}'. "
-                            f"1. Greet {greeting_target} warmly in 1 short, enthusiastic sentence. "
+                            f"You are TutorFlow AI starting a 1-on-1 private lesson on '{canonical_topic}'. "
+                            f"1. Greet {greeting_target} warmly in 1 short opening sentence (e.g. 'Welcome {greeting_target}! Today we're exploring {canonical_topic}.'). "
                             f"2. Introduce the concept using this exact story hook: '{hook_data['hook']}' "
                             f"3. Write the core concept rule or formula '{hook_data['concept_eq']}' on the whiteboard using `write_math_equation`. "
-                            f"4. Ask {greeting_target} a warm check-in question to see if the core idea makes sense before working on an example together. "
-                            f"CRITICAL: Do NOT start calculating a multi-step example in this opening turn! Teach the big-picture intuition first."
+                            f"4. Ask a warm check-in question to see if the core idea makes intuitive sense before diving into calculations together. "
+                            f"IMPORTANT: Address the student naturally as 'you'—do NOT repeat their name repeatedly! Teach the big-picture intuition first."
                         )
                         async def send_kickoff():
                             try:
@@ -1056,9 +1074,9 @@ CORE PEDAGOGICAL DIRECTIVES (MUST FOLLOW STRICTLY):
                         # Seamless resumption without greeting again
                         resume_context = " | ".join(recent_turns[-4:]) if recent_turns else "Ongoing lesson"
                         resume_prompt = (
-                            f"System update: The live session has seamlessly continued for '{canonical_topic}'. "
+                            f"System update: The live session has seamlessly reconnected for '{canonical_topic}'. "
                             f"Recent conversational context: {resume_context}. "
-                            f"Do NOT greet or introduce yourself again. Continue directly from the active step!"
+                            f"Do NOT greet or introduce yourself again. Continue directly from where you left off smoothly!"
                         )
                         async def send_resume():
                             try:
